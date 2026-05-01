@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+.turbo/
+
+# Environment files
+.env
+.env.*
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Compiled native binary
+packages/cli/bin/nowplaying
+
+# Debug
+npm-debug.log*
+pnpm-debug.log*
+
+# Turbo
+.turbo

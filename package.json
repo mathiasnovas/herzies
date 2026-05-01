@@ -1,0 +1,15 @@
+{
+  "name": "herzies-monorepo",
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "check": "turbo check"
+  },
+  "packageManager": "pnpm@10.21.0",
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.13",
+    "turbo": "^2.5.0",
+    "typescript": "^6.0.3"
+  }
+}
