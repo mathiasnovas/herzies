@@ -82,22 +82,13 @@ export default function Home() {
 					<p style={{ color: "var(--text-dim)", fontSize: 12, marginBottom: 4 }}>
 						// evolution
 					</p>
-					<p style={{ fontSize: 13, marginBottom: "1rem" }}>
+					<p style={{ fontSize: 13 }}>
 						<span style={{ color: "var(--yellow)" }}>Stage 1</span> — a tiny blob
 						<br />
 						<span style={{ color: "var(--cyan)" }}>Stage 2</span> — limbs sprout
 						<br />
 						<span style={{ color: "var(--purple)" }}>Stage 3</span> — full form
 					</p>
-					<div
-						style={{
-							display: "flex",
-							justifyContent: "center",
-							padding: "1rem 0",
-						}}
-					>
-						<HerzieArt />
-					</div>
 				</div>
 			</div>
 
@@ -124,6 +115,17 @@ export default function Home() {
 						<span style={{ color: "var(--green)" }}>$</span> herzies register
 					</p>
 				</div>
+			</div>
+
+			{/* Herzie */}
+			<div
+				style={{
+					display: "flex",
+					justifyContent: "center",
+					padding: "2rem 0",
+				}}
+			>
+				<HerzieArt />
 			</div>
 
 		</main>
