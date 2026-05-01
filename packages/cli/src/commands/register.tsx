@@ -54,12 +54,7 @@ function RegisterApp() {
 					// Sync herzie if exists
 					const herzie = loadHerzie();
 					if (herzie) {
-						await syncHerzie({
-							name: herzie.name,
-							friendCode: herzie.friendCode,
-							stage: herzie.stage,
-							level: herzie.level,
-						});
+						await syncHerzie(herzie);
 					}
 				}
 

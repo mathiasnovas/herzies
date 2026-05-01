@@ -133,13 +133,8 @@ export async function runHatch() {
 	const herzie = createHerzie(name);
 	saveHerzie(herzie);
 
-	// Register online so others can find this Herzie by friend code
-	await syncHerzie({
-		name: herzie.name,
-		friendCode: herzie.friendCode,
-		stage: herzie.stage,
-		level: herzie.level,
-	});
+	// Sync online if logged in
+	await syncHerzie(herzie);
 
 	render(<RevealApp herzie={herzie} />);
 }

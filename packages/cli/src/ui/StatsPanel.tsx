@@ -58,7 +58,7 @@ export function StatsPanel({ herzie }: Props) {
 			<Box>
 				<Text bold>XP: </Text>
 				<XpBar progress={progress} />
-				<Text dimColor> ({toNext} to next)</Text>
+				<Text dimColor> ({Math.ceil(toNext)} to next)</Text>
 			</Box>
 
 			<Box marginTop={1}>

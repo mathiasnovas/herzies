@@ -43,7 +43,7 @@ export function calculateXpGain(
 	if (isCravingGenre) {
 		xp *= 1.5;
 	}
-	return Math.floor(xp);
+	return xp;
 }
 
 export function applyXp(

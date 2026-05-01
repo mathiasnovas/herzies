@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { HerzieProfile } from "@herzies/shared";
+import type { Herzie, HerzieProfile } from "@herzies/shared";
 import { loadSession } from "./state.js";
 
 // Public client credentials — anon key is safe to ship, RLS protects the data
@@ -32,18 +32,25 @@ export function isLoggedIn(): boolean {
 	return loadSession() !== null;
 }
 
-/** Sync a Herzie to the server. Requires login. */
-export async function syncHerzie(profile: HerzieProfile): Promise<boolean> {
+/** Sync a full Herzie to the server. Requires login. */
+export async function syncHerzie(herzie: Herzie): Promise<boolean> {
 	const session = loadSession();
 	if (!session) return false;
 	try {
 		const { error } = await getSupabase().from("herzies").upsert(
 			{
 				user_id: session.userId,
-				friend_code: profile.friendCode,
-				name: profile.name,
-				stage: profile.stage,
-				level: profile.level,
+				friend_code: herzie.friendCode,
+				name: herzie.name,
+				stage: herzie.stage,
+				level: herzie.level,
+				xp: Math.floor(herzie.xp),
+				appearance: herzie.appearance,
+				total_minutes_listened: herzie.totalMinutesListened,
+				genre_minutes: herzie.genreMinutes,
+				friend_codes: herzie.friendCodes,
+				last_craving_date: herzie.lastCravingDate,
+				last_craving_genre: herzie.lastCravingGenre,
 			},
 			{ onConflict: "user_id" },
 		);

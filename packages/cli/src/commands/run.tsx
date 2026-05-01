@@ -25,6 +25,7 @@ interface SessionState {
 	tracksPlayed: number;
 	currentTrack: NowPlayingInfo | null;
 	connected: boolean;
+	online: boolean;
 	events: EventMessage[];
 }
 
@@ -69,6 +70,7 @@ function RunApp() {
 		tracksPlayed: 0,
 		currentTrack: null,
 		connected: false,
+		online: false,
 		events: [],
 	});
 	const [tick, setTick] = useState(0);
@@ -161,19 +163,27 @@ function RunApp() {
 		}
 	}, [pushEvent]);
 
-	// Load herzie on mount and sync profile online
+	// Load herzie on mount
 	useEffect(() => {
 		const h = loadHerzie();
 		if (!h) return;
 		herzieRef.current = h;
 		setHerzie(h);
-		syncHerzie({
-			name: h.name,
-			friendCode: h.friendCode,
-			stage: h.stage,
-			level: h.level,
-		});
 	}, []);
+
+	// Sync to Supabase every 10 seconds
+	useEffect(() => {
+		if (!herzie) return;
+		const sync = async () => {
+			const h = herzieRef.current;
+			if (!h) return;
+			const ok = await syncHerzie(h);
+			setSession((s) => ({ ...s, online: ok }));
+		};
+		sync();
+		const interval = setInterval(sync, 10000);
+		return () => clearInterval(interval);
+	}, [herzie !== null]);
 
 	// Polling loop
 	useEffect(() => {
@@ -224,6 +234,14 @@ function RunApp() {
 					{" "}
 					— {session.currentTrack ? "listening" : `idle${dots}`}
 				</Text>
+				<Text>
+					{" "}
+					{session.online ? (
+						<Text color="green">[online]</Text>
+					) : (
+						<Text dimColor>[offline]</Text>
+					)}
+				</Text>
 			</Box>
 
 			{/* Main layout: Herzie art + stats */}
@@ -261,7 +279,7 @@ function RunApp() {
 					<Box>
 						<Text bold>XP: </Text>
 						<XpBar progress={progress} />
-						<Text dimColor> ({toNext} to next)</Text>
+						<Text dimColor> ({Math.ceil(toNext)} to next)</Text>
 					</Box>
 
 					{/* Music stats */}
@@ -328,7 +346,7 @@ function RunApp() {
 						</Text>
 						<Text dimColor>
 							{" "}
-							| +{session.sessionXp} XP this session
+							| +{Math.floor(session.sessionXp)} XP this session
 						</Text>
 					</Box>
 				) : (
