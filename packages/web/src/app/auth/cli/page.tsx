@@ -6,7 +6,8 @@ import { useState, Suspense } from "react";
 
 function AuthForm() {
 	const searchParams = useSearchParams();
-	const port = searchParams.get("port") ?? "8974";
+	const port = searchParams.get("port");
+	const fromCli = !!port;
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [mode, setMode] = useState<"login" | "register">("register");
@@ -33,9 +34,13 @@ function AuthForm() {
 
 		const session = result.data.session;
 		if (session) {
-			// Redirect back to the CLI's local server
-			const callbackUrl = `http://127.0.0.1:${port}/callback?access_token=${session.access_token}&refresh_token=${session.refresh_token}`;
-			window.location.href = callbackUrl;
+			if (fromCli) {
+				// Redirect back to the CLI's local server
+				window.location.href = `http://127.0.0.1:${port}/callback?access_token=${session.access_token}&refresh_token=${session.refresh_token}`;
+			} else {
+				// Web-only login — redirect to profile/success page
+				window.location.href = "/auth/success";
+			}
 		} else {
 			setError("Check your email to confirm your account, then log in.");
 			setLoading(false);
