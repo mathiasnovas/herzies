@@ -9,8 +9,9 @@ function AuthForm() {
 	const port = searchParams.get("port");
 	const fromCli = !!port;
 	const [email, setEmail] = useState("");
+	const [password, setPassword] = useState("");
+	const [mode, setMode] = useState<"login" | "register">("register");
 	const [error, setError] = useState("");
-	const [sent, setSent] = useState(false);
 	const [loading, setLoading] = useState(false);
 
 	async function handleSubmit(e: React.FormEvent) {
@@ -20,43 +21,39 @@ function AuthForm() {
 
 		const supabase = createSupabaseClient();
 
-		// Magic link — redirects back to /auth/callback which handles the token
-		const redirectTo = fromCli
-			? `${window.location.origin}/auth/callback?cli_port=${port}`
-			: `${window.location.origin}/auth/callback`;
+		const result =
+			mode === "register"
+				? await supabase.auth.signUp({ email, password })
+				: await supabase.auth.signInWithPassword({ email, password });
 
-		const { error } = await supabase.auth.signInWithOtp({
-			email,
-			options: { emailRedirectTo: redirectTo },
-		});
-
-		if (error) {
-			setError(error.message);
+		if (result.error) {
+			setError(result.error.message);
 			setLoading(false);
 			return;
 		}
 
-		setSent(true);
-		setLoading(false);
+		const session = result.data.session;
+		if (session) {
+			if (fromCli) {
+				window.location.href = `http://127.0.0.1:${port}/callback?access_token=${session.access_token}&refresh_token=${session.refresh_token}`;
+			} else {
+				window.location.href = `/auth/callback`;
+			}
+		} else {
+			setError("Check your email to confirm your account, then log in.");
+			setLoading(false);
+		}
 	}
 
-	if (sent) {
-		return (
-			<main style={{ maxWidth: 400, margin: "0 auto", padding: "4rem 2rem" }}>
-				<h1 style={{ color: "#c77dff" }}>herzies</h1>
-				<p style={{ color: "#4ade80" }}>Check your email!</p>
-				<p>
-					We sent a magic link to <strong>{email}</strong>.
-					Click it to log in.
-				</p>
-				{fromCli && (
-					<p style={{ color: "#7ec8e3", marginTop: "1rem" }}>
-						Keep your terminal open — it will connect automatically.
-					</p>
-				)}
-			</main>
-		);
-	}
+	const inputStyle = {
+		width: "100%",
+		padding: "0.5rem",
+		background: "#16213e",
+		color: "#e0e0e0",
+		border: "1px solid #333",
+		borderRadius: 4,
+		fontFamily: "monospace",
+	};
 
 	return (
 		<main
@@ -67,7 +64,11 @@ function AuthForm() {
 			}}
 		>
 			<h1 style={{ color: "#c77dff" }}>herzies</h1>
-			<p>Enter your email to log in or create an account.</p>
+			<p>
+				{mode === "register"
+					? "Create an account to sync your Herzie"
+					: "Log in to your account"}
+			</p>
 
 			<form onSubmit={handleSubmit}>
 				<div style={{ marginBottom: "1rem" }}>
@@ -79,22 +80,26 @@ function AuthForm() {
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
 							required
-							style={{
-								width: "100%",
-								padding: "0.5rem",
-								background: "#16213e",
-								color: "#e0e0e0",
-								border: "1px solid #333",
-								borderRadius: 4,
-								fontFamily: "monospace",
-							}}
+							style={inputStyle}
+						/>
+					</label>
+				</div>
+				<div style={{ marginBottom: "1rem" }}>
+					<label>
+						Password
+						<br />
+						<input
+							type="password"
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+							required
+							minLength={6}
+							style={inputStyle}
 						/>
 					</label>
 				</div>
 
-				{error && (
-					<p style={{ color: "#ff6b6b" }}>{error}</p>
-				)}
+				{error && <p style={{ color: "#ff6b6b" }}>{error}</p>}
 
 				<button
 					type="submit"
@@ -112,9 +117,32 @@ function AuthForm() {
 						cursor: "pointer",
 					}}
 				>
-					{loading ? "..." : "Send magic link"}
+					{loading
+						? "..."
+						: mode === "register"
+							? "Create account"
+							: "Log in"}
 				</button>
 			</form>
+
+			<p style={{ marginTop: "1rem", textAlign: "center" }}>
+				<button
+					onClick={() =>
+						setMode(mode === "register" ? "login" : "register")
+					}
+					style={{
+						background: "none",
+						border: "none",
+						color: "#7ec8e3",
+						fontFamily: "monospace",
+						cursor: "pointer",
+					}}
+				>
+					{mode === "register"
+						? "Already have an account? Log in"
+						: "Need an account? Register"}
+				</button>
+			</p>
 		</main>
 	);
 }
