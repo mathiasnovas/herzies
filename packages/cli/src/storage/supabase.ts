@@ -2,13 +2,14 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { HerzieProfile } from "@herzies/shared";
 import { loadSession } from "./state.js";
 
-const SUPABASE_URL = process.env.HERZIES_SUPABASE_URL ?? "https://placeholder.supabase.co";
-const SUPABASE_ANON_KEY = process.env.HERZIES_SUPABASE_ANON_KEY ?? "";
+// Public client credentials — anon key is safe to ship, RLS protects the data
+const SUPABASE_URL = "https://ojqfqxolbjegorgoyond.supabase.co";
+const SUPABASE_ANON_KEY =
+	"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qcWZxeG9sYmplZ29yZ295b25kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTcwMjgsImV4cCI6MjA5MzIzMzAyOH0.BBT77VK1ROJr57BJvMfCyra3lbycMA9u2-jxG-LhBJE";
 
 let client: SupabaseClient | null = null;
 
-export function getSupabase(): SupabaseClient | null {
-	if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+export function getSupabase(): SupabaseClient {
 	if (!client) {
 		const session = loadSession();
 		client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -26,23 +27,25 @@ export function getSupabase(): SupabaseClient | null {
 	return client;
 }
 
-export function isOnline(): boolean {
-	return !!SUPABASE_URL && !!SUPABASE_ANON_KEY;
+/** Check if the user is logged in */
+export function isLoggedIn(): boolean {
+	return loadSession() !== null;
 }
 
-/** Register or update a Herzie in the online registry */
-export async function registerHerzie(profile: HerzieProfile): Promise<boolean> {
-	const sb = getSupabase();
-	if (!sb) return false;
+/** Sync a Herzie to the server. Requires login. */
+export async function syncHerzie(profile: HerzieProfile): Promise<boolean> {
+	const session = loadSession();
+	if (!session) return false;
 	try {
-		const { error } = await sb.from("herzies").upsert(
+		const { error } = await getSupabase().from("herzies").upsert(
 			{
+				user_id: session.userId,
 				friend_code: profile.friendCode,
 				name: profile.name,
 				stage: profile.stage,
 				level: profile.level,
 			},
-			{ onConflict: "friend_code" },
+			{ onConflict: "user_id" },
 		);
 		return !error;
 	} catch {
@@ -50,14 +53,12 @@ export async function registerHerzie(profile: HerzieProfile): Promise<boolean> {
 	}
 }
 
-/** Look up a Herzie by friend code */
+/** Look up a Herzie by friend code (public, no auth needed) */
 export async function lookupHerzie(
 	friendCode: string,
 ): Promise<HerzieProfile | null> {
-	const sb = getSupabase();
-	if (!sb) return null;
 	try {
-		const { data, error } = await sb
+		const { data, error } = await getSupabase()
 			.from("herzies")
 			.select("name, friend_code, stage, level")
 			.eq("friend_code", friendCode)
@@ -74,15 +75,14 @@ export async function lookupHerzie(
 	}
 }
 
-/** Look up multiple Herzies by friend codes */
+/** Look up multiple Herzies by friend codes (public, no auth needed) */
 export async function lookupHerzies(
 	friendCodes: string[],
 ): Promise<Map<string, HerzieProfile>> {
 	const result = new Map<string, HerzieProfile>();
-	const sb = getSupabase();
-	if (!sb || friendCodes.length === 0) return result;
+	if (friendCodes.length === 0) return result;
 	try {
-		const { data, error } = await sb
+		const { data, error } = await getSupabase()
 			.from("herzies")
 			.select("name, friend_code, stage, level")
 			.in("friend_code", friendCodes);
@@ -96,7 +96,7 @@ export async function lookupHerzies(
 			});
 		}
 	} catch {
-		// Graceful degradation
+		// Graceful degradation — works offline
 	}
 	return result;
 }

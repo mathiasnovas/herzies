@@ -13,7 +13,7 @@ import {
 	recordGenreMinutes,
 } from "@herzies/shared";
 import { type NowPlayingInfo, getNowPlaying } from "../music/nowplaying.js";
-import { registerHerzie } from "../storage/supabase.js";
+import { syncHerzie } from "../storage/supabase.js";
 import { loadHerzie, saveHerzie } from "../storage/state.js";
 import { HerzieDisplay } from "../ui/HerzieDisplay.js";
 
@@ -167,7 +167,7 @@ function RunApp() {
 		if (!h) return;
 		herzieRef.current = h;
 		setHerzie(h);
-		registerHerzie({
+		syncHerzie({
 			name: h.name,
 			friendCode: h.friendCode,
 			stage: h.stage,

@@ -3,7 +3,7 @@ import { Box, Text, render, useApp } from "ink";
 import React, { useEffect } from "react";
 import { composeHerzie } from "../art/composer.js";
 import { createHerzie } from "../core/herzie.js";
-import { registerHerzie } from "../storage/supabase.js";
+import { syncHerzie } from "../storage/supabase.js";
 import { loadHerzie, saveHerzie } from "../storage/state.js";
 import type { Herzie } from "@herzies/shared";
 
@@ -134,7 +134,7 @@ export async function runHatch() {
 	saveHerzie(herzie);
 
 	// Register online so others can find this Herzie by friend code
-	await registerHerzie({
+	await syncHerzie({
 		name: herzie.name,
 		friendCode: herzie.friendCode,
 		stage: herzie.stage,

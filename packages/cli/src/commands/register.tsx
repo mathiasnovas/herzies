@@ -5,7 +5,7 @@ import open from "open";
 import React, { useEffect, useState } from "react";
 import { loadHerzie } from "../storage/state.js";
 import { saveSession } from "../storage/state.js";
-import { getSupabase, registerHerzie } from "../storage/supabase.js";
+import { getSupabase, syncHerzie } from "../storage/supabase.js";
 
 const CALLBACK_PORT = 8974;
 
@@ -18,15 +18,6 @@ function RegisterApp() {
 
 	useEffect(() => {
 		const sb = getSupabase();
-		if (!sb) {
-			setError(
-				"Supabase not configured. Set HERZIES_SUPABASE_URL and HERZIES_SUPABASE_ANON_KEY.",
-			);
-			setStatus("error");
-			setTimeout(() => exit(), 100);
-			return;
-		}
-
 		setStatus("opening");
 
 		// Start a local server to receive the auth callback
@@ -63,7 +54,7 @@ function RegisterApp() {
 					// Sync herzie if exists
 					const herzie = loadHerzie();
 					if (herzie) {
-						await registerHerzie({
+						await syncHerzie({
 							name: herzie.name,
 							friendCode: herzie.friendCode,
 							stage: herzie.stage,
@@ -85,7 +76,7 @@ function RegisterApp() {
 		server.listen(CALLBACK_PORT, () => {
 			setStatus("waiting");
 			// Open the Supabase auth page — the web app will handle the redirect
-			const authUrl = `${process.env.HERZIES_WEB_URL ?? "http://localhost:3000"}/auth/cli?port=${CALLBACK_PORT}`;
+			const authUrl = `${process.env.HERZIES_WEB_URL ?? "https://herzies-web.vercel.app"}/auth/cli?port=${CALLBACK_PORT}`;
 			open(authUrl);
 		});
 
