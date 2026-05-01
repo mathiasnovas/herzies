@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg: #0c0c14;
+  --bg-panel: #12121e;
+  --border: #2a2a3a;
+  --text: #c8c8d0;
+  --text-dim: #6a6a7a;
+  --purple: #c77dff;
+  --cyan: #7ec8e3;
+  --green: #4ade80;
+  --yellow: #facc15;
+  --red: #ff6b6b;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+::selection {
+  background: var(--purple);
+  color: var(--bg);
+}
+
+/* Scanline overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  z-index: 9999;
+}
+
+/* Cursor blink */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Gentle float for herzie */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Glow pulse */
+@keyframes glow {
+  0%, 100% { text-shadow: 0 0 8px currentColor; }
+  50% { text-shadow: 0 0 16px currentColor; }
+}
+
+/* Hero section — push toward vertical center */
+.hero {
+  padding: clamp(0px, 2vh, 10rem) 0 clamp(0.5rem, 3vh, 6rem);
+}
+
+/* Responsive ASCII banner */
+.banner {
+  font-size: clamp(10px, 3.8vw, 28px);
+}
+
+a {
+  color: var(--cyan);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
