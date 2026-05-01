@@ -10,7 +10,6 @@ function AuthForm() {
 	const fromCli = !!port;
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
-	const [mode, setMode] = useState<"login" | "register">("register");
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
 
@@ -20,11 +19,7 @@ function AuthForm() {
 		setLoading(true);
 
 		const supabase = createSupabaseClient();
-
-		const result =
-			mode === "register"
-				? await supabase.auth.signUp({ email, password })
-				: await supabase.auth.signInWithPassword({ email, password });
+		const result = await supabase.auth.signInWithPassword({ email, password });
 
 		if (result.error) {
 			setError(result.error.message);
@@ -40,7 +35,7 @@ function AuthForm() {
 				window.location.href = `/auth/callback`;
 			}
 		} else {
-			setError("Check your email to confirm your account, then log in.");
+			setError("Something went wrong. Try again.");
 			setLoading(false);
 		}
 	}
@@ -64,11 +59,7 @@ function AuthForm() {
 			}}
 		>
 			<h1 style={{ color: "#c77dff" }}>herzies</h1>
-			<p>
-				{mode === "register"
-					? "Create an account to sync your Herzie"
-					: "Log in to your account"}
-			</p>
+			<p>Log in to your account</p>
 
 			<form onSubmit={handleSubmit}>
 				<div style={{ marginBottom: "1rem" }}>
@@ -117,32 +108,9 @@ function AuthForm() {
 						cursor: "pointer",
 					}}
 				>
-					{loading
-						? "..."
-						: mode === "register"
-							? "Create account"
-							: "Log in"}
+					{loading ? "..." : "Log in"}
 				</button>
 			</form>
-
-			<p style={{ marginTop: "1rem", textAlign: "center" }}>
-				<button
-					onClick={() =>
-						setMode(mode === "register" ? "login" : "register")
-					}
-					style={{
-						background: "none",
-						border: "none",
-						color: "#7ec8e3",
-						fontFamily: "monospace",
-						cursor: "pointer",
-					}}
-				>
-					{mode === "register"
-						? "Already have an account? Log in"
-						: "Need an account? Register"}
-				</button>
-			</p>
 		</main>
 	);
 }
