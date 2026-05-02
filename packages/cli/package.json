@@ -1,6 +1,6 @@
 {
   "name": "herzies",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "A CLI pet that grows by listening to music",
   "type": "module",
   "bin": {
