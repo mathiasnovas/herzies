@@ -6,8 +6,11 @@
 | | | |  __/ |   / /| |  __/\__ \
 |_| |_|\___|_|  /___|_|\___||___/
 ```
-
 A CLI pet that grows by listening to music.
+
+<p align="center">
+ <img width="675" height="494" alt="Screenshot 2026-05-02 at 15 28 51" src="https://github.com/user-attachments/assets/1022876a-e1af-4600-9cec-ce50cfb3a8fa" />
+</p>
 
 ## Install
 
