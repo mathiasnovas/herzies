@@ -21,10 +21,11 @@ npm i -g herzies
 ## Usage
 
 ```sh
+herzies             # start listening
 herzies hatch       # create your herzie
+herzies status      # check on your herzie
 herzies register    # create an account
 herzies login       # log in
-herzies run         # start listening
-herzies status      # check on your herzie
 herzies friends     # manage friends
+herzies help        # show available commands
 ```

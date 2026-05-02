@@ -67,6 +67,13 @@ friendsCmd
 		runFriendsRemove(code);
 	});
 
+program
+	.command("help")
+	.description("Show available commands")
+	.action(() => {
+		program.outputHelp();
+	});
+
 // Default: launch the live dashboard
 program.action(() => {
 	runApp();
