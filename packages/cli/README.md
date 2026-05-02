@@ -9,7 +9,7 @@
 A CLI pet that grows by listening to music.
 
 <p align="center">
- <img width="675" height="494" alt="Screenshot 2026-05-02 at 15 28 51" src="https://github.com/user-attachments/assets/1022876a-e1af-4600-9cec-ce50cfb3a8fa" />
+ <img width="675" alt="herzies CLI" src="assets/screenshot.png" />
 </p>
 
 ## Install
