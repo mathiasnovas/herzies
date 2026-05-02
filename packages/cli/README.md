@@ -29,3 +29,7 @@ herzies login       # log in
 herzies friends     # manage friends
 herzies help        # show available commands
 ```
+
+## License
+
+MIT
