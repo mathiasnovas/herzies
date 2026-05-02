@@ -1,11 +1,12 @@
 {
   "name": "herzies",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A CLI pet that grows by listening to music",
   "type": "module",
   "bin": {
     "herzies": "./dist/bin/herzies.js"
   },
+  "files": ["dist", "README.md"],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
