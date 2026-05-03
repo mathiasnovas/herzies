@@ -22,6 +22,9 @@ Thumbs.db
 *.swp
 *.swo
 
+# Claude Code
+.claude/settings.local.json
+
 # Compiled native binary
 packages/cli/bin/nowplaying
 
