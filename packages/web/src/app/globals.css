@@ -85,3 +85,10 @@ a {
 a:hover {
   text-decoration: underline;
 }
+
+/* Leaderboard: hide herzie art on small screens */
+@media (max-width: 480px) {
+  .leaderboard-herzie {
+    display: none;
+  }
+}

@@ -59,7 +59,19 @@ function composeHerzie(headIdx: number, eyeIdx: number, mouthIdx: number, accIdx
 	return [acc, ...face];
 }
 
-export function HerzieArt() {
+interface HerzieArtProps {
+	appearance?: {
+		headIndex: number;
+		eyesIndex: number;
+		mouthIndex: number;
+		accessoryIndex: number;
+		colorScheme: string;
+	};
+	size?: number;
+	animate?: boolean;
+}
+
+export function HerzieArt({ appearance, size = 16, animate = true }: HerzieArtProps) {
 	const [tick, setTick] = useState(0);
 	const [herzie, setHerzie] = useState<{
 		head: number;
@@ -67,10 +79,17 @@ export function HerzieArt() {
 		mouth: number;
 		acc: number;
 		color: string;
-	} | null>(null);
+	} | null>(appearance ? {
+		head: appearance.headIndex,
+		eyes: appearance.eyesIndex,
+		mouth: appearance.mouthIndex,
+		acc: appearance.accessoryIndex,
+		color: appearance.colorScheme,
+	} : null);
 
-	// Pick random appearance on mount
+	// Pick random appearance on mount (only if no appearance prop)
 	useEffect(() => {
+		if (appearance) return;
 		const colorKeys = Object.keys(COLORS);
 		setHerzie({
 			head: Math.floor(Math.random() * HEADS.length),
@@ -79,25 +98,26 @@ export function HerzieArt() {
 			acc: Math.floor(Math.random() * ACCESSORIES.length),
 			color: colorKeys[Math.floor(Math.random() * colorKeys.length)],
 		});
-	}, []);
+	}, [appearance]);
 
 	// Float animation tick
 	useEffect(() => {
+		if (!animate) return;
 		const id = setInterval(() => setTick((t) => t + 1), 600);
 		return () => clearInterval(id);
-	}, []);
+	}, [animate]);
 
 	if (!herzie) return null;
 
 	const lines = composeHerzie(herzie.head, herzie.eyes, herzie.mouth, herzie.acc);
 	const color = COLORS[herzie.color];
-	const bounceOffset = tick % 2 === 0 ? 0 : -4;
+	const bounceOffset = animate && tick % 2 === 0 ? 0 : animate ? -4 : 0;
 
 	return (
 		<pre
 			style={{
 				color,
-				fontSize: 16,
+				fontSize: size,
 				lineHeight: 1.3,
 				margin: 0,
 				transform: `translateY(${bounceOffset}px)`,

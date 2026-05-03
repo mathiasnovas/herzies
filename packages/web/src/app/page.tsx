@@ -1,5 +1,3 @@
-import { HerzieArt } from "./HerzieArt";
-
 const BANNER = `\
  _                   _
 | |                 (_)
@@ -20,13 +18,6 @@ export default function Home() {
 				gap: "1.5rem",
 			}}
 		>
-			{/* Sign in */}
-			<nav style={{ display: "flex", justifyContent: "flex-end" }}>
-				<a href="/auth/cli" style={{ fontSize: 13, color: "var(--text-dim)" }}>
-					sign in
-				</a>
-			</nav>
-
 			{/* Hero */}
 			<section className="hero">
 				<pre
@@ -115,17 +106,6 @@ export default function Home() {
 						<span style={{ color: "var(--green)" }}>$</span> herzies register
 					</p>
 				</div>
-			</div>
-
-			{/* Herzie */}
-			<div
-				style={{
-					display: "flex",
-					justifyContent: "center",
-					padding: "2rem 0",
-				}}
-			>
-				<HerzieArt />
 			</div>
 
 		</main>

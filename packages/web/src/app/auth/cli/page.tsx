@@ -40,77 +40,105 @@ function AuthForm() {
 		}
 	}
 
-	const inputStyle = {
-		width: "100%",
-		padding: "0.5rem",
-		background: "#16213e",
-		color: "#e0e0e0",
-		border: "1px solid #333",
-		borderRadius: 4,
-		fontFamily: "monospace",
-	};
-
 	return (
 		<main
 			style={{
-				maxWidth: 400,
+				maxWidth: 800,
 				margin: "0 auto",
-				padding: "4rem 2rem",
+				padding: "3rem 1.5rem",
+				display: "flex",
+				flexDirection: "column",
+				gap: "1.5rem",
 			}}
 		>
-			<h1 style={{ color: "#c77dff" }}>herzies</h1>
-			<p>Log in to your account</p>
+			<section>
+				<h1 style={{ fontSize: 18, color: "var(--purple)", marginBottom: 4 }}>
+					sign in
+				</h1>
+				<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
+					// log in to your account
+				</p>
+			</section>
 
-			<form onSubmit={handleSubmit}>
-				<div style={{ marginBottom: "1rem" }}>
-					<label>
-						Email
-						<br />
+			<div
+				style={{
+					background: "var(--bg-panel)",
+					border: "1px solid var(--border)",
+					borderRadius: 6,
+					padding: "1.25rem",
+					maxWidth: 400,
+				}}
+			>
+				<form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+					<div>
+						<label style={{ fontSize: 12, color: "var(--text-dim)", display: "block", marginBottom: 4 }}>
+							email
+						</label>
 						<input
 							type="email"
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
 							required
-							style={inputStyle}
+							style={{
+								width: "100%",
+								padding: "0.5rem 0.75rem",
+								background: "var(--bg)",
+								color: "var(--text)",
+								border: "1px solid var(--border)",
+								borderRadius: 4,
+								fontFamily: "inherit",
+								fontSize: 13,
+							}}
 						/>
-					</label>
-				</div>
-				<div style={{ marginBottom: "1rem" }}>
-					<label>
-						Password
-						<br />
+					</div>
+					<div>
+						<label style={{ fontSize: 12, color: "var(--text-dim)", display: "block", marginBottom: 4 }}>
+							password
+						</label>
 						<input
 							type="password"
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							required
 							minLength={6}
-							style={inputStyle}
+							style={{
+								width: "100%",
+								padding: "0.5rem 0.75rem",
+								background: "var(--bg)",
+								color: "var(--text)",
+								border: "1px solid var(--border)",
+								borderRadius: 4,
+								fontFamily: "inherit",
+								fontSize: 13,
+							}}
 						/>
-					</label>
-				</div>
+					</div>
 
-				{error && <p style={{ color: "#ff6b6b" }}>{error}</p>}
+					{error && (
+						<p style={{ color: "var(--red)", fontSize: 12 }}>{error}</p>
+					)}
 
-				<button
-					type="submit"
-					disabled={loading}
-					style={{
-						width: "100%",
-						padding: "0.75rem",
-						background: "#c77dff",
-						color: "#1a1a2e",
-						border: "none",
-						borderRadius: 4,
-						fontFamily: "monospace",
-						fontWeight: "bold",
-						fontSize: "1rem",
-						cursor: "pointer",
-					}}
-				>
-					{loading ? "..." : "Log in"}
-				</button>
-			</form>
+					<button
+						type="submit"
+						disabled={loading}
+						style={{
+							width: "100%",
+							padding: "0.6rem",
+							background: "var(--purple)",
+							color: "var(--bg)",
+							border: "none",
+							borderRadius: 4,
+							fontFamily: "inherit",
+							fontWeight: 700,
+							fontSize: 13,
+							cursor: loading ? "default" : "pointer",
+							opacity: loading ? 0.6 : 1,
+						}}
+					>
+						{loading ? "..." : "log in"}
+					</button>
+				</form>
+			</div>
 		</main>
 	);
 }
