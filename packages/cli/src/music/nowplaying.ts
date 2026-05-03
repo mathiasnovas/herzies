@@ -12,9 +12,9 @@ export interface NowPlayingInfo {
 }
 
 /** Query the currently playing track from known macOS music apps via osascript */
-export function getNowPlaying(): Promise<NowPlayingInfo | null> {
+export async function getNowPlaying(): Promise<NowPlayingInfo | null> {
 	// Try each known music app in order
-	return tryMusic() ?? trySpotify() ?? Promise.resolve(null);
+	return (await tryMusic()) ?? (await trySpotify()) ?? null;
 }
 
 function tryMusic(): Promise<NowPlayingInfo | null> {
@@ -42,6 +42,8 @@ function trySpotify(): Promise<NowPlayingInfo | null> {
 		end tell
 		tell application "Spotify"
 			if player state is not playing then return "NOT_PLAYING"
+			set u to spotify url of current track
+			if u starts with "spotify:ad:" then return "NOT_PLAYING"
 			set t to name of current track
 			set a to artist of current track
 			set al to album of current track

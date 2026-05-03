@@ -30,6 +30,15 @@ herzies friends     # manage friends
 herzies help        # show available commands
 ```
 
+## Requirements
+
+- macOS (music detection uses AppleScript and is not yet available on Linux or Windows)
+
+## Want to contribute?
+
+- **Add support for other operating systems** — music detection currently relies on macOS AppleScript. Linux (e.g. MPRIS) and Windows support would be welcome.
+- **Add support for more music players** — we currently detect Apple Music and Spotify, but there are plenty more out there.
+
 ## License
 
 MIT
