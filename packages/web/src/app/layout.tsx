@@ -36,12 +36,12 @@ export default function RootLayout({
 						herzies
 					</a>
 					<div style={{ display: "flex", gap: "1rem" }}>
-					<a href="/leaderboard" style={{ fontSize: 13, color: "var(--yellow)" }}>
-						leaderboard
-					</a>
-					<a href="/auth/cli" style={{ fontSize: 13, color: "var(--text-dim)" }}>
-						sign in
-					</a>
+						<a href="/leaderboard" style={{ fontSize: 13, color: "var(--yellow)" }}>
+							leaderboard
+						</a>
+						<a href="/about" style={{ fontSize: 13, color: "var(--text-dim)" }}>
+							about
+						</a>
 					</div>
 				</nav>
 				{children}

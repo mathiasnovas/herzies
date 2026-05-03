@@ -3,8 +3,9 @@ import { Box, Text, render, useApp } from "ink";
 import React, { useEffect } from "react";
 import { composeHerzie } from "../art/composer.js";
 import { createHerzie } from "../core/herzie.js";
-import { syncHerzie } from "../storage/supabase.js";
+import { isNameTaken, syncHerzie } from "../storage/supabase.js";
 import { loadHerzie, saveHerzie } from "../storage/state.js";
+import { validateName } from "@herzies/shared";
 import type { Herzie } from "@herzies/shared";
 
 const EGG_FRAMES = [
@@ -113,11 +114,22 @@ export async function runHatch() {
 	console.log("\n\x1b[35m\x1b[1m🥚 A mysterious egg has appeared!\x1b[0m\n");
 	console.log(EGG_FRAMES[0]);
 
-	const name = await promptName();
+	let name = "";
+	while (true) {
+		name = await promptName();
 
-	if (!name) {
-		console.log("Your Herzie needs a name! Try again.");
-		return;
+		const validationError = validateName(name);
+		if (validationError) {
+			console.log(`\x1b[31m${validationError}\x1b[0m`);
+			continue;
+		}
+
+		if (await isNameTaken(name)) {
+			console.log(`\x1b[31mThe name "${name}" is already taken. Try another!\x1b[0m`);
+			continue;
+		}
+
+		break;
 	}
 
 	// Hatching animation

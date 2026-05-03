@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Herzie } from "@herzies/shared";
@@ -54,6 +54,12 @@ export function clearSession(): void {
 	ensureDir();
 	if (existsSync(SESSION_FILE)) {
 		writeFileSync(SESSION_FILE, "{}");
+	}
+}
+
+export function deleteLocalData(): void {
+	if (existsSync(CONFIG_DIR)) {
+		rmSync(CONFIG_DIR, { recursive: true });
 	}
 }
 

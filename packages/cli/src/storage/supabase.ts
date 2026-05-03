@@ -60,6 +60,35 @@ export async function syncHerzie(herzie: Herzie): Promise<boolean> {
 	}
 }
 
+/** Check if a herzie name is already taken */
+export async function isNameTaken(name: string): Promise<boolean> {
+	try {
+		const { data } = await getSupabase()
+			.from("herzies")
+			.select("name")
+			.ilike("name", name)
+			.limit(1);
+		return (data?.length ?? 0) > 0;
+	} catch {
+		return false;
+	}
+}
+
+/** Delete the user's herzie from Supabase. Requires login. */
+export async function deleteHerzie(): Promise<boolean> {
+	const session = loadSession();
+	if (!session) return false;
+	try {
+		const { error } = await getSupabase()
+			.from("herzies")
+			.delete()
+			.eq("user_id", session.userId);
+		return !error;
+	} catch {
+		return false;
+	}
+}
+
 /** Look up a Herzie by friend code (public, no auth needed) */
 export async function lookupHerzie(
 	friendCode: string,

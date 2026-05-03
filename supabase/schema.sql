@@ -22,6 +22,7 @@ create table if not exists public.herzies (
 
 -- Indexes
 create unique index if not exists idx_herzies_user_id on public.herzies(user_id);
+create unique index if not exists idx_herzies_name on public.herzies(lower(name));
 create index if not exists idx_herzies_friend_code on public.herzies(friend_code);
 
 -- Enable RLS
@@ -55,7 +56,11 @@ create policy "Authenticated users can update own herzie"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
--- No DELETE policy — herzies can't be deleted via the API
+-- DELETE: authenticated users can only delete their own herzie
+drop policy if exists "Authenticated users can delete own herzie" on public.herzies;
+create policy "Authenticated users can delete own herzie"
+  on public.herzies for delete
+  using (auth.uid() = user_id);
 
 -- Auto-update updated_at
 create or replace function update_updated_at()

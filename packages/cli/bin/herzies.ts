@@ -8,6 +8,7 @@ import {
 import { runHatch } from "../src/commands/hatch.js";
 import { runRegister } from "../src/commands/register.js";
 import { runLogin } from "../src/commands/login.js";
+import { runKill } from "../src/commands/kill.js";
 import { runApp } from "../src/commands/run.js";
 import { runStatus } from "../src/commands/status.js";
 
@@ -65,6 +66,13 @@ friendsCmd
 	.description("Remove a friendzie")
 	.action((code: string) => {
 		runFriendsRemove(code);
+	});
+
+program
+	.command("kill")
+	.description("Permanently delete your Herzie and all data")
+	.action(() => {
+		runKill();
 	});
 
 program
