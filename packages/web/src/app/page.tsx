@@ -1,3 +1,4 @@
+import { CliPreview } from "./CliPreview";
 import { CopyBlock } from "./docs/CopyBlock";
 
 const BANNER = `\
@@ -49,6 +50,8 @@ export default function Home() {
 
       {/* Install */}
       <CopyBlock command="npm i -g herzies" />
+
+      <CliPreview />
 
       <div style={{ textAlign: "center" }}>
         <a href="/docs" style={{ fontSize: 13, color: "var(--cyan)" }}>
