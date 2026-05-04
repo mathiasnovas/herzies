@@ -9,7 +9,6 @@ function AuthForm() {
 	const port = searchParams.get("port");
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
-	const [agreed, setAgreed] = useState(false);
 
 	async function handleGitHubLogin() {
 		setError("");
@@ -67,38 +66,10 @@ function AuthForm() {
 					<p style={{ color: "var(--red)", fontSize: 12 }}>{error}</p>
 				)}
 
-				<label
-					style={{
-						display: "flex",
-						alignItems: "flex-start",
-						gap: "0.5rem",
-						fontSize: 12,
-						color: "var(--text-dim)",
-						cursor: "pointer",
-					}}
-				>
-					<input
-						type="checkbox"
-						checked={agreed}
-						onChange={(e) => setAgreed(e.target.checked)}
-						style={{ marginTop: 2 }}
-					/>
-					<span>
-						I agree to the{" "}
-						<a
-							href="/terms"
-							target="_blank"
-							style={{ color: "var(--cyan)" }}
-						>
-							terms of service
-						</a>
-					</span>
-				</label>
-
 				<button
 					type="button"
 					onClick={handleGitHubLogin}
-					disabled={!agreed || loading}
+					disabled={loading}
 					style={{
 						width: "100%",
 						padding: "0.6rem",
@@ -109,8 +80,8 @@ function AuthForm() {
 						fontFamily: "inherit",
 						fontWeight: 700,
 						fontSize: 13,
-						cursor: !agreed || loading ? "default" : "pointer",
-						opacity: !agreed || loading ? 0.4 : 1,
+						cursor: loading ? "default" : "pointer",
+						opacity: loading ? 0.6 : 1,
 						display: "flex",
 						alignItems: "center",
 						justifyContent: "center",
@@ -122,6 +93,13 @@ function AuthForm() {
 					</svg>
 					{loading ? "redirecting..." : "sign in with GitHub"}
 				</button>
+
+				<p style={{ fontSize: 11, color: "var(--text-dim)" }}>
+					by signing in, you agree to the{" "}
+					<a href="/terms" target="_blank" style={{ color: "var(--cyan)" }}>
+						terms of service
+					</a>
+				</p>
 			</div>
 		</main>
 	);
