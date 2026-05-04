@@ -156,7 +156,7 @@ export function HerzieDetail({ herzie: initial }: { herzie: HerzieRow }) {
 							style={{
 								marginTop: 16,
 								fontSize: 13,
-								color: "var(--green)",
+								color: "var(--cyan)",
 							}}
 						>
 							&#9834; {herzie.now_playing.title}
@@ -199,7 +199,7 @@ export function HerzieDetail({ herzie: initial }: { herzie: HerzieRow }) {
 									</span>
 								</span>
 								{f.now_playing && (
-									<span style={{ color: "var(--green)", fontSize: 12 }}>
+									<span style={{ color: "var(--cyan)", fontSize: 12 }}>
 										&#9834; {f.now_playing.title}
 									</span>
 								)}
