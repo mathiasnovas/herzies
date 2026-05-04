@@ -14,7 +14,7 @@ import {
 	classifyGenre,
 	recordGenreMinutes,
 } from "@herzies/shared";
-import { getNowPlaying, getSystemVolume } from "../music/nowplaying.js";
+import { getNowPlaying } from "../music/nowplaying.js";
 import { syncHerzie } from "../storage/supabase.js";
 import { loadHerzie, saveHerzie } from "../storage/state.js";
 import { writePid, clearPid, loadPid } from "../storage/pid.js";
@@ -31,9 +31,9 @@ function log(msg: string) {
 }
 
 async function poll(herzie: Herzie): Promise<void> {
-	const [np, systemVolume] = await Promise.all([getNowPlaying(), getSystemVolume()]);
+	const np = await getNowPlaying();
 
-	if (!np || !np.isPlaying || !np.title || np.volume === 0 || systemVolume === 0) {
+	if (!np || !np.isPlaying || !np.title || np.volume === 0) {
 		lastPollTime = Date.now();
 		return;
 	}

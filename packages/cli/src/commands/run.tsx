@@ -12,7 +12,7 @@ import {
 	classifyGenre,
 	recordGenreMinutes,
 } from "@herzies/shared";
-import { type NowPlayingInfo, getNowPlaying, getSystemVolume } from "../music/nowplaying.js";
+import { type NowPlayingInfo, getNowPlaying } from "../music/nowplaying.js";
 import { syncHerzie } from "../storage/supabase.js";
 import { loadHerzie, saveHerzie } from "../storage/state.js";
 import { HerzieDisplay } from "../ui/HerzieDisplay.js";
@@ -89,9 +89,9 @@ function RunApp() {
 		const h = herzieRef.current;
 		if (!h) return;
 
-		const [np, systemVolume] = await Promise.all([getNowPlaying(), getSystemVolume()]);
+		const np = await getNowPlaying();
 
-		if (!np || !np.isPlaying || !np.title || np.volume === 0 || systemVolume === 0) {
+		if (!np || !np.isPlaying || !np.title || np.volume === 0) {
 			setSession((s) => ({ ...s, currentTrack: null, connected: true }));
 			lastPollTime.current = Date.now();
 			return;

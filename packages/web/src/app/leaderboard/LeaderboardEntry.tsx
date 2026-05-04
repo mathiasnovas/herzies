@@ -24,6 +24,9 @@ interface LeaderboardEntryProps {
 		eyesIndex: number;
 		mouthIndex: number;
 		accessoryIndex: number;
+		limbsIndex?: number;
+		bodyIndex?: number;
+		legsIndex?: number;
 		colorScheme: string;
 	};
 	totalMinutes: number;
@@ -77,7 +80,7 @@ export function LeaderboardEntry({
 
 			{/* Herzie art */}
 			<div className="leaderboard-herzie" style={{ flexShrink: 0 }}>
-				<HerzieArt appearance={appearance} size={8} animate={false} />
+				<HerzieArt appearance={appearance} stage={stage} size={8} animate={false} />
 			</div>
 
 			{/* Info */}

@@ -12,21 +12,6 @@ export interface NowPlayingInfo {
 	volume: number; // 0–100
 }
 
-/** Query macOS system volume — returns 0 if muted or volume is 0 */
-export function getSystemVolume(): Promise<number> {
-	return new Promise((resolve) => {
-		execFile(
-			"osascript",
-			["-e", 'set vol to (get volume settings)\nif output muted of vol then return 0\nreturn output volume of vol'],
-			{ timeout: 3000 },
-			(error, stdout) => {
-				if (error) { resolve(0); return; }
-				resolve(Number.parseInt(stdout.trim(), 10) || 0);
-			},
-		);
-	});
-}
-
 /** Query the currently playing track from known macOS music apps via osascript */
 export async function getNowPlaying(): Promise<NowPlayingInfo | null> {
 	// Try each known music app in order
