@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+	metadataBase: new URL("https://www.herzies.app"),
 	title: {
 		default: "Herzies — A CLI digital pet that grows by listening to music",
 		template: "%s | Herzies",
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 		description: "A CLI digital pet that grows by listening to music.",
 		siteName: "Herzies",
 		type: "website",
+		url: "https://www.herzies.app",
 	},
 	twitter: {
 		card: "summary",

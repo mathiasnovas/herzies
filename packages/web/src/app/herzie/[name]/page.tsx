@@ -9,9 +9,22 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
 	const { name } = await params;
 	const decoded = decodeURIComponent(name);
+	const title = `${decoded} — herzies`;
+	const description = `View ${decoded}'s herzie profile — stats, level, and listening history.`;
 	return {
-		title: `${decoded} — herzies`,
-		description: `View ${decoded}'s herzie profile`,
+		title,
+		description,
+		openGraph: {
+			title,
+			description,
+			type: "profile",
+			url: `https://www.herzies.app/herzie/${encodeURIComponent(decoded)}`,
+		},
+		twitter: {
+			card: "summary",
+			title,
+			description,
+		},
 	};
 }
 
