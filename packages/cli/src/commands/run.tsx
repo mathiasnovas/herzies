@@ -7,6 +7,7 @@ import { isDaemonRunning } from "../storage/pid.js";
 import { ensureDaemonRunning } from "../storage/daemon.js";
 import { HerzieDisplay } from "../ui/HerzieDisplay.js";
 import { StatsPanel } from "../ui/StatsPanel.js";
+import { InventoryView } from "../ui/InventoryView.js";
 
 const REFRESH_INTERVAL = 3000;
 
@@ -22,6 +23,8 @@ interface EventMessage {
 	time: number;
 }
 
+type View = "dashboard" | "inventory";
+
 function RunApp() {
 	const { exit } = useApp();
 	const [herzie, setHerzie] = useState<Herzie | null>(null);
@@ -29,6 +32,9 @@ function RunApp() {
 	const [daemonUp, setDaemonUp] = useState(false);
 	const [events, setEvents] = useState<EventMessage[]>([]);
 	const [tick, setTick] = useState(0);
+
+	// View state
+	const [view, setView] = useState<View>("dashboard");
 
 	const startXp = useRef<number>(0);
 	const prevLevel = useRef<number>(0);
@@ -99,12 +105,17 @@ function RunApp() {
 	}, []);
 
 	useInput((_input, key) => {
-		if (key.escape || (_input === "q") || (key.ctrl && _input === "c")) {
+		if (view !== "dashboard") return;
+
+		if (key.escape || _input === "q" || (key.ctrl && _input === "c")) {
 			exit();
 		}
 		if (_input === "b" && herzie) {
 			herzie.boostUntil = Date.now() + 10000;
 			saveHerzie(herzie);
+		}
+		if (_input === "i" && herzie) {
+			setView("inventory");
 		}
 	});
 
@@ -118,6 +129,17 @@ function RunApp() {
 		);
 	}
 
+	// --- Inventory view ---
+	if (view === "inventory") {
+		return (
+			<InventoryView
+				herzie={herzie}
+				onBack={() => setView("dashboard")}
+			/>
+		);
+	}
+
+	// --- Dashboard view ---
 	const sessionXp = Math.floor(herzie.xp - startXp.current);
 	const dots = ".".repeat((tick % 3) + 1).padEnd(3);
 
@@ -188,7 +210,7 @@ function RunApp() {
 
 			{/* Footer */}
 			<Box marginTop={1}>
-				<Text dimColor>Press q or Esc to exit</Text>
+				<Text dimColor>Press q to exit · i for inventory</Text>
 			</Box>
 		</Box>
 	);

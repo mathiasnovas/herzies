@@ -17,6 +17,7 @@ import { runAutostart } from "../src/commands/autostart.js";
 import { runStart } from "../src/commands/start.js";
 import { runStop } from "../src/commands/stop.js";
 import { runStatus } from "../src/commands/status.js";
+import { runInventory } from "../src/commands/inventory.js";
 
 const program = new Command();
 
@@ -86,6 +87,13 @@ program
 	.description("Stop background listening")
 	.action(() => {
 		runStop();
+	});
+
+program
+	.command("inventory")
+	.description("View your item collection")
+	.action(() => {
+		runInventory();
 	});
 
 program

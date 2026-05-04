@@ -17,9 +17,31 @@ create table if not exists public.herzies (
   last_craving_date text,
   last_craving_genre text,
   now_playing jsonb default null,
+  inventory text[] not null default '{"first-edition"}',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Items catalog
+create table if not exists public.items (
+  id text primary key,
+  name text not null,
+  description text not null default '',
+  rarity text not null default 'common' check (rarity in ('common', 'uncommon', 'rare', 'legendary')),
+  created_at timestamptz not null default now()
+);
+
+-- Seed items
+insert into public.items (id, name, description, rarity)
+values ('first-edition', 'First Edition Card', 'A token of appreciation for early adopters.', 'rare')
+on conflict (id) do nothing;
+
+-- Items are publicly readable
+alter table public.items enable row level security;
+drop policy if exists "Items are publicly readable" on public.items;
+create policy "Items are publicly readable"
+  on public.items for select
+  using (true);
 
 -- Indexes
 create unique index if not exists idx_herzies_user_id on public.herzies(user_id);

@@ -296,3 +296,22 @@ export async function lookupHerzies(
 	}
 	return result;
 }
+
+/** Fetch the current user's inventory from Supabase. Requires login. */
+export async function fetchInventory(): Promise<string[] | null> {
+	const session = loadSession();
+	if (!session) return null;
+	try {
+		await ensureFreshToken();
+		const sb = await getSupabase();
+		const { data, error } = await sb
+			.from("herzies")
+			.select("inventory")
+			.eq("user_id", session.userId)
+			.single();
+		if (error || !data) return null;
+		return data.inventory ?? [];
+	} catch {
+		return null;
+	}
+}
