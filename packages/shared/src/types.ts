@@ -44,6 +44,9 @@ export interface Herzie {
 	// Craving
 	lastCravingDate: string;
 	lastCravingGenre: string;
+
+	// Boosts
+	boostUntil?: number;
 }
 
 export interface HerzieProfile {

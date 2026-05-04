@@ -1,6 +1,6 @@
 {
   "name": "herzies",
-  "version": "0.1.15",
+  "version": "0.2.0",
   "description": "A digital pet that lives in your terminal that grows by listening to music",
   "type": "module",
   "bin": {

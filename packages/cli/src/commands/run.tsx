@@ -2,7 +2,7 @@ import { Box, Text, render, useApp, useInput } from "ink";
 import React, { useEffect, useRef, useState } from "react";
 import type { Herzie, Stage } from "@herzies/shared";
 import { type NowPlayingInfo, getNowPlaying } from "../music/nowplaying.js";
-import { loadHerzie } from "../storage/state.js";
+import { loadHerzie, saveHerzie } from "../storage/state.js";
 import { isDaemonRunning } from "../storage/pid.js";
 import { ensureDaemonRunning } from "../storage/daemon.js";
 import { HerzieDisplay } from "../ui/HerzieDisplay.js";
@@ -101,6 +101,10 @@ function RunApp() {
 	useInput((_input, key) => {
 		if (key.escape || (_input === "q") || (key.ctrl && _input === "c")) {
 			exit();
+		}
+		if (_input === "b" && herzie) {
+			herzie.boostUntil = Date.now() + 10000;
+			saveHerzie(herzie);
 		}
 	});
 

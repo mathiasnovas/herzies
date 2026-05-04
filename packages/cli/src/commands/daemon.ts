@@ -62,19 +62,21 @@ async function poll(herzie: Herzie): Promise<void> {
 		const craving = getDailyCraving(herzie.id);
 		const isCraving = genreList.length > 0 && matchesCraving(genreList, craving);
 
-		const xp = calculateXpGain(
-			minutes,
-			herzie.friendCodes.length,
-			isCraving,
-		);
-
-		// Re-read from disk to pick up changes from other commands (e.g. friends add)
+		// Re-read from disk to pick up changes from other commands (e.g. friends add, boost)
 		const fresh = loadHerzie();
 		if (fresh) {
 			herzie.friendCodes = fresh.friendCodes;
 			herzie.friendCode = fresh.friendCode;
 			herzie.name = fresh.name;
+			herzie.boostUntil = fresh.boostUntil;
 		}
+
+		const xp = calculateXpGain(
+			minutes,
+			herzie.friendCodes.length,
+			isCraving,
+			herzie.boostUntil,
+		);
 
 		const events = applyXp(herzie, xp);
 		herzie.totalMinutesListened += minutes;
