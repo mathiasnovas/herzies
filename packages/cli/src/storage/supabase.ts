@@ -68,7 +68,10 @@ export function isLoggedIn(): boolean {
 }
 
 /** Sync a full Herzie to the server. Requires login. */
-export async function syncHerzie(herzie: Herzie): Promise<boolean> {
+export async function syncHerzie(
+	herzie: Herzie,
+	nowPlaying?: { title: string; artist: string } | null,
+): Promise<boolean> {
 	const session = loadSession();
 	if (!session) return false;
 	try {
@@ -86,6 +89,7 @@ export async function syncHerzie(herzie: Herzie): Promise<boolean> {
 			friend_codes: herzie.friendCodes,
 			last_craving_date: herzie.lastCravingDate,
 			last_craving_genre: herzie.lastCravingGenre,
+			now_playing: nowPlaying ?? null,
 		});
 
 		const sb = await getSupabase();
@@ -108,6 +112,25 @@ export async function syncHerzie(herzie: Herzie): Promise<boolean> {
 			return !retryError;
 		}
 
+		return !error;
+	} catch {
+		return false;
+	}
+}
+
+/** Update only the now_playing field (used on daemon shutdown) */
+export async function syncNowPlaying(
+	nowPlaying: { title: string; artist: string } | null,
+): Promise<boolean> {
+	const session = loadSession();
+	if (!session) return false;
+	try {
+		await ensureFreshToken();
+		const sb = await getSupabase();
+		const { error } = await sb
+			.from("herzies")
+			.update({ now_playing: nowPlaying })
+			.eq("user_id", session.userId);
 		return !error;
 	} catch {
 		return false;

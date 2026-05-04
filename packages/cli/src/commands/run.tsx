@@ -344,6 +344,12 @@ function RunApp() {
 							{" "}
 							— {session.currentTrack.artist}
 						</Text>
+						{session.currentTrack.genre ? (
+							<Text dimColor>
+								{" "}
+								[{session.currentTrack.genre}]
+							</Text>
+						) : null}
 						<Text dimColor>
 							{" "}
 							| +{Math.floor(session.sessionXp)} XP this session

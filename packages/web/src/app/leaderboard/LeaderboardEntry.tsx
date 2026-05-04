@@ -31,6 +31,7 @@ interface LeaderboardEntryProps {
 	};
 	totalMinutes: number;
 	topGenres: string[];
+	nowPlaying?: { title: string; artist: string } | null;
 }
 
 function formatMinutes(mins: number): string {
@@ -48,6 +49,7 @@ export function LeaderboardEntry({
 	appearance,
 	totalMinutes,
 	topGenres,
+	nowPlaying,
 }: LeaderboardEntryProps) {
 	const rankColors = ["var(--yellow)", "var(--text)", "var(--text)"];
 	const rankColor = rank <= 3 ? rankColors[rank - 1] : "var(--text-dim)";
@@ -80,7 +82,7 @@ export function LeaderboardEntry({
 
 			{/* Herzie art */}
 			<div className="leaderboard-herzie" style={{ flexShrink: 0 }}>
-				<HerzieArt appearance={appearance} stage={stage} size={8} animate={false} />
+				<HerzieArt appearance={appearance} stage={stage} size={8} animate={!!nowPlaying} />
 			</div>
 
 			{/* Info */}
@@ -112,12 +114,20 @@ export function LeaderboardEntry({
 					<span style={{ color: "var(--green)" }}>
 						{formatMinutes(totalMinutes)}
 					</span>
-					{topGenres.length > 0 && (
-						<span style={{ marginLeft: 8 }}>
-							{topGenres.join(" / ")}
-						</span>
-					)}
 				</div>
+
+				{nowPlaying && (
+					<div
+						style={{
+							fontSize: 11,
+							marginTop: 3,
+							color: "var(--green)",
+						}}
+					>
+						<span>&#9834; {nowPlaying.title}</span>
+						<span style={{ color: "var(--text-dim)" }}> — {nowPlaying.artist}</span>
+					</div>
+				)}
 			</div>
 		</div>
 	);

@@ -16,6 +16,7 @@ create table if not exists public.herzies (
   friend_codes text[] not null default '{}',
   last_craving_date text,
   last_craving_genre text,
+  now_playing jsonb default null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

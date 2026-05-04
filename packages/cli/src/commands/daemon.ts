@@ -15,7 +15,7 @@ import {
 	recordGenreMinutes,
 } from "@herzies/shared";
 import { getNowPlaying } from "../music/nowplaying.js";
-import { syncHerzie } from "../storage/supabase.js";
+import { syncHerzie, syncNowPlaying } from "../storage/supabase.js";
 import { loadHerzie, saveHerzie } from "../storage/state.js";
 import { writePid, clearPid, loadPid } from "../storage/pid.js";
 
@@ -24,6 +24,7 @@ const SYNC_INTERVAL = 10000;
 
 let lastPollTime = Date.now();
 let lastTrackTitle = "";
+let currentNowPlaying: { title: string; artist: string } | null = null;
 
 function log(msg: string) {
 	const ts = new Date().toISOString();
@@ -34,9 +35,12 @@ async function poll(herzie: Herzie): Promise<void> {
 	const np = await getNowPlaying();
 
 	if (!np || !np.isPlaying || !np.title || np.volume === 0) {
+		currentNowPlaying = null;
 		lastPollTime = Date.now();
 		return;
 	}
+
+	currentNowPlaying = { title: np.title, artist: np.artist };
 
 	const now = Date.now();
 	const minutesSinceLastPoll = (now - lastPollTime) / 60000;
@@ -79,7 +83,7 @@ async function poll(herzie: Herzie): Promise<void> {
 }
 
 async function syncLoop(herzie: Herzie) {
-	const ok = await syncHerzie(herzie);
+	const ok = await syncHerzie(herzie, currentNowPlaying);
 	if (ok) log("synced");
 }
 
@@ -105,9 +109,11 @@ async function main() {
 	writePid(process.pid);
 	log(`daemon started (pid ${process.pid}) for ${herzie.name}`);
 
-	// Graceful shutdown
-	const cleanup = () => {
+	// Graceful shutdown — clear now_playing so leaderboard shows idle
+	const cleanup = async () => {
 		log("daemon stopping");
+		currentNowPlaying = null;
+		await syncNowPlaying(null).catch(() => {});
 		clearPid();
 		process.exit(0);
 	};
