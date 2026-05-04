@@ -34,7 +34,7 @@ export default function Home() {
 				</pre>
 
 				<p style={{ textAlign: "center", fontSize: 13, color: "var(--text-dim)" }}>
-					A CLI pet that grows by listening to music.
+					A digital pet that lives in your terminal that grows by listening to music.
 				</p>
 			</section>
 

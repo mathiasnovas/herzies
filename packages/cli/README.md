@@ -6,7 +6,7 @@
 | | | |  __/ |   / /| |  __/\__ \
 |_| |_|\___|_|  /___|_|\___||___/
 ```
-A CLI pet that grows by listening to music. **[herzies.app](https://www.herzies.app)**
+A digital pet that lives in your terminal that grows by listening to music. **[herzies.app](https://www.herzies.app)**
 
 <p align="center">
  <img width="675" alt="herzies CLI" src="https://raw.githubusercontent.com/Herzies/herzies/main/packages/cli/assets/screenshot.png" />

@@ -22,7 +22,7 @@ const program = new Command();
 
 program
 	.name("herzies")
-	.description("A CLI pet that grows by listening to music")
+	.description("A digital pet that lives in your terminal that grows by listening to music")
 	.version(version);
 
 program
