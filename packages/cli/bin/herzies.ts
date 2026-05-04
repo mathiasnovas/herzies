@@ -10,10 +10,12 @@ import {
 	runFriendsRemove,
 } from "../src/commands/friends.js";
 import { runHatch } from "../src/commands/hatch.js";
-import { runRegister } from "../src/commands/register.js";
 import { runLogin } from "../src/commands/login.js";
 import { runKill } from "../src/commands/kill.js";
 import { runApp } from "../src/commands/run.js";
+import { runAutostart } from "../src/commands/autostart.js";
+import { runStart } from "../src/commands/start.js";
+import { runStop } from "../src/commands/stop.js";
 import { runStatus } from "../src/commands/status.js";
 
 const program = new Command();
@@ -35,13 +37,6 @@ program
 	.description("Quick snapshot of your Herzie")
 	.action(() => {
 		runStatus();
-	});
-
-program
-	.command("register")
-	.description("Create an account to sync your Herzie online")
-	.action(() => {
-		runRegister();
 	});
 
 program
@@ -70,6 +65,27 @@ friendsCmd
 	.description("Remove a friendzie")
 	.action((code: string) => {
 		runFriendsRemove(code);
+	});
+
+program
+	.command("start")
+	.description("Start background listening (no terminal needed)")
+	.action(() => {
+		runStart();
+	});
+
+program
+	.command("autostart [action]")
+	.description("Auto-start daemon on login (on/off)")
+	.action((action?: string) => {
+		runAutostart(action ?? "");
+	});
+
+program
+	.command("stop")
+	.description("Stop background listening")
+	.action(() => {
+		runStop();
 	});
 
 program

@@ -1,18 +1,30 @@
 import { Box, Text, render, useApp } from "ink";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { loadHerzie } from "../storage/state.js";
+import { isDaemonRunning } from "../storage/pid.js";
+import { type NowPlayingInfo, getNowPlaying } from "../music/nowplaying.js";
 import { HerzieDisplay } from "../ui/HerzieDisplay.js";
 import { StatsPanel } from "../ui/StatsPanel.js";
 
 function StatusApp() {
 	const { exit } = useApp();
 	const herzie = loadHerzie();
+	const daemonRunning = isDaemonRunning();
+	const [nowPlaying, setNowPlaying] = useState<NowPlayingInfo | null>(null);
+	const [ready, setReady] = useState(false);
 
 	useEffect(() => {
-		// Auto-exit after render
+		getNowPlaying().then((np) => {
+			setNowPlaying(np?.isPlaying ? np : null);
+			setReady(true);
+		});
+	}, []);
+
+	useEffect(() => {
+		if (!ready) return;
 		const timer = setTimeout(() => exit(), 100);
 		return () => clearTimeout(timer);
-	}, [exit]);
+	}, [ready, exit]);
 
 	if (!herzie) {
 		return (
@@ -24,13 +36,50 @@ function StatusApp() {
 		);
 	}
 
+	if (!ready) return null;
+
 	return (
 		<Box flexDirection="column" padding={1}>
 			<Box flexDirection="row">
 				<Box flexDirection="column">
-					<HerzieDisplay appearance={herzie.appearance} stage={herzie.stage} />
+					<HerzieDisplay
+						appearance={herzie.appearance}
+						stage={herzie.stage}
+						dancing={nowPlaying !== null}
+					/>
 				</Box>
 				<StatsPanel herzie={herzie} />
+			</Box>
+
+			{/* Now playing */}
+			<Box marginTop={1}>
+				{nowPlaying ? (
+					<Text>
+						<Text color="green" bold>♪ </Text>
+						<Text bold>{nowPlaying.title}</Text>
+						<Text dimColor> — {nowPlaying.artist}</Text>
+					</Text>
+				) : (
+					<Text dimColor>♪ No music playing</Text>
+				)}
+			</Box>
+
+			{/* Daemon status */}
+			<Box>
+				{daemonRunning ? (
+					<Text>
+						<Text color="green">●</Text>
+						<Text dimColor> listening in background</Text>
+					</Text>
+				) : (
+					<Text>
+						<Text color="red">●</Text>
+						<Text dimColor> not listening — run </Text>
+						<Text bold>herzies start</Text>
+						<Text dimColor> or </Text>
+						<Text bold>herzies</Text>
+					</Text>
+				)}
 			</Box>
 		</Box>
 	);

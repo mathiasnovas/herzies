@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Herzie, HerzieProfile } from "@herzies/shared";
-import { loadSession, saveHerzie } from "./state.js";
+import { loadSession, saveSession, saveHerzie } from "./state.js";
 import { generateFriendCode } from "../core/friends.js";
 
 // Public client credentials — anon key is safe to ship, RLS protects the data
@@ -11,7 +11,35 @@ const SUPABASE_ANON_KEY =
 let client: SupabaseClient | null = null;
 let clientToken: string | undefined;
 
-export function getSupabase(): SupabaseClient {
+/** Refresh the access token if it's expired, using the stored refresh token */
+async function ensureFreshToken(): Promise<void> {
+	const session = loadSession();
+	if (!session?.refreshToken) return;
+
+	// Refresh if token expires within the next 5 minutes
+	if (session.expiresAt > Date.now() + 5 * 60 * 1000) return;
+
+	const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+		auth: { autoRefreshToken: false, persistSession: false },
+	});
+
+	const { data, error } = await sb.auth.refreshSession({
+		refresh_token: session.refreshToken,
+	});
+
+	if (!error && data.session) {
+		saveSession({
+			accessToken: data.session.access_token,
+			refreshToken: data.session.refresh_token,
+			expiresAt: Date.now() + (data.session.expires_in ?? 3600) * 1000,
+			userId: session.userId,
+		});
+		// Force client recreation with new token
+		client = null;
+	}
+}
+
+export async function getSupabase(): Promise<SupabaseClient> {
 	const session = loadSession();
 	const token = session?.accessToken;
 
@@ -20,15 +48,16 @@ export function getSupabase(): SupabaseClient {
 		clientToken = token;
 		client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 			auth: {
-				autoRefreshToken: true,
+				autoRefreshToken: false,
 				persistSession: false,
 			},
-			global: {
-				headers: token
-					? { Authorization: `Bearer ${token}` }
-					: {},
-			},
 		});
+		if (token && session?.refreshToken) {
+			await client.auth.setSession({
+				access_token: token,
+				refresh_token: session.refreshToken,
+			});
+		}
 	}
 	return client;
 }
@@ -43,6 +72,7 @@ export async function syncHerzie(herzie: Herzie): Promise<boolean> {
 	const session = loadSession();
 	if (!session) return false;
 	try {
+		await ensureFreshToken();
 		const upsertData = () => ({
 			user_id: session.userId,
 			friend_code: herzie.friendCode,
@@ -58,7 +88,8 @@ export async function syncHerzie(herzie: Herzie): Promise<boolean> {
 			last_craving_genre: herzie.lastCravingGenre,
 		});
 
-		const { error } = await getSupabase()
+		const sb = await getSupabase();
+		const { error } = await sb
 			.from("herzies")
 			.upsert(upsertData(), { onConflict: "user_id" });
 
@@ -71,7 +102,7 @@ export async function syncHerzie(herzie: Herzie): Promise<boolean> {
 				herzie.name = `${herzie.name}-${herzie.friendCode.slice(-4)}`;
 			}
 			saveHerzie(herzie);
-			const { error: retryError } = await getSupabase()
+			const { error: retryError } = await sb
 				.from("herzies")
 				.upsert(upsertData(), { onConflict: "user_id" });
 			return !retryError;
@@ -86,7 +117,7 @@ export async function syncHerzie(herzie: Herzie): Promise<boolean> {
 /** Check if a herzie name is already taken */
 export async function isNameTaken(name: string): Promise<boolean> {
 	try {
-		const { data } = await getSupabase()
+		const { data } = await (await getSupabase())
 			.from("herzies")
 			.select("name")
 			.ilike("name", name)
@@ -99,15 +130,27 @@ export async function isNameTaken(name: string): Promise<boolean> {
 
 /** Delete the user's herzie from Supabase. Requires login. */
 export async function deleteHerzie(): Promise<boolean> {
-	const session = loadSession();
-	if (!session) return false;
+	if (!loadSession()) return false;
 	try {
-		const { error } = await getSupabase()
+		await ensureFreshToken();
+		// Re-read session after potential refresh
+		const session = loadSession();
+		if (!session) return false;
+
+		const sb = await getSupabase();
+
+		// Debug: verify auth state
+		const { data: authData } = await sb.auth.getUser();
+		console.error(`debug: auth.uid = ${authData?.user?.id ?? "null"}, session.userId = ${session.userId}`);
+
+		const result = await sb
 			.from("herzies")
-			.delete()
+			.delete({ count: "exact" })
 			.eq("user_id", session.userId);
-		return !error;
-	} catch {
+		console.error(`debug: delete result:`, JSON.stringify({ error: result.error, count: result.count, status: result.status, statusText: result.statusText }));
+		return !result.error;
+	} catch (err) {
+		console.error(`Supabase delete exception: ${err}`);
 		return false;
 	}
 }
@@ -117,7 +160,7 @@ export async function lookupHerzie(
 	friendCode: string,
 ): Promise<HerzieProfile | null> {
 	try {
-		const { data, error } = await getSupabase()
+		const { data, error } = await (await getSupabase())
 			.from("herzies")
 			.select("name, friend_code, stage, level")
 			.eq("friend_code", friendCode)
@@ -137,7 +180,7 @@ export async function lookupHerzie(
 /** Add my friend code to another herzie's friend list (bidirectional) */
 export async function addFriendRemote(myCode: string, theirCode: string): Promise<void> {
 	try {
-		await getSupabase().rpc("add_friend", {
+		await (await getSupabase()).rpc("add_friend", {
 			my_friend_code: myCode,
 			their_friend_code: theirCode,
 		});
@@ -149,7 +192,7 @@ export async function addFriendRemote(myCode: string, theirCode: string): Promis
 /** Remove my friend code from another herzie's friend list */
 export async function removeFriendRemote(myCode: string, theirCode: string): Promise<void> {
 	try {
-		await getSupabase().rpc("remove_friend", {
+		await (await getSupabase()).rpc("remove_friend", {
 			my_friend_code: myCode,
 			their_friend_code: theirCode,
 		});
@@ -165,7 +208,7 @@ export async function lookupHerzies(
 	const result = new Map<string, HerzieProfile>();
 	if (friendCodes.length === 0) return result;
 	try {
-		const { data, error } = await getSupabase()
+		const { data, error } = await (await getSupabase())
 			.from("herzies")
 			.select("name, friend_code, stage, level")
 			.in("friend_code", friendCodes);

@@ -18,16 +18,6 @@ function LoginApp() {
 	const [synced, setSynced] = useState<string | null>(null);
 
 	useEffect(() => {
-		const sb = getSupabase();
-		if (!sb) {
-			setError(
-				"Supabase not configured. Set HERZIES_SUPABASE_URL and HERZIES_SUPABASE_ANON_KEY.",
-			);
-			setStatus("error");
-			setTimeout(() => exit(), 100);
-			return;
-		}
-
 		const server = createServer(async (req, res) => {
 			const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
 
@@ -52,6 +42,7 @@ function LoginApp() {
 					return;
 				}
 
+				const sb = await getSupabase();
 				const { data: { user } } = await sb.auth.getUser(accessToken);
 
 				if (!user) {
@@ -73,8 +64,9 @@ function LoginApp() {
 
 				setStatus("syncing");
 
-				// Pull the user's herzie from the server
-				const { data: herzieData } = await sb
+				// Pull the user's herzie from the server (re-get client now that session is saved)
+				const authedSb = await getSupabase();
+				const { data: herzieData } = await authedSb
 					.from("herzies")
 					.select("*")
 					.eq("user_id", user.id)

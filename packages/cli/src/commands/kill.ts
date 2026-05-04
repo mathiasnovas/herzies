@@ -1,6 +1,8 @@
 import { createInterface } from "node:readline";
 import { loadHerzie, deleteLocalData } from "../storage/state.js";
 import { deleteHerzie, isLoggedIn } from "../storage/supabase.js";
+import { runAutostart } from "./autostart.js";
+import { runStop } from "./stop.js";
 
 function confirm(prompt: string): Promise<boolean> {
 	const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -35,10 +37,13 @@ export async function runKill() {
 	if (isLoggedIn()) {
 		const deleted = await deleteHerzie();
 		if (!deleted) {
-			console.log("\n\x1b[31mFailed to delete server data. Try again later.\x1b[0m\n");
-			return;
+			console.log("\x1b[33mWarning: Could not delete server data. You may need to log in and try again.\x1b[0m");
 		}
 	}
+
+	// Stop daemon and remove autostart
+	runStop();
+	runAutostart("off");
 
 	deleteLocalData();
 	console.log(`\n\x1b[2m${herzie.name} is gone. Farewell.\x1b[0m\n`);

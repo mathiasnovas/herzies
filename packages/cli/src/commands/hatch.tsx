@@ -87,14 +87,14 @@ function RevealApp({ herzie }: { herzie: Herzie }) {
 	);
 }
 
-async function promptName(): Promise<string> {
+async function prompt(question: string): Promise<string> {
 	const rl = createInterface({
 		input: process.stdin,
 		output: process.stdout,
 	});
 
 	return new Promise((resolve) => {
-		rl.question("Give your Herzie a name: ", (answer) => {
+		rl.question(question, (answer) => {
 			rl.close();
 			resolve(answer.trim());
 		});
@@ -116,7 +116,7 @@ export async function runHatch() {
 
 	let name = "";
 	while (true) {
-		name = await promptName();
+		name = await prompt("Give your Herzie a name: ");
 
 		const validationError = validateName(name);
 		if (validationError) {
@@ -149,4 +149,20 @@ export async function runHatch() {
 	await syncHerzie(herzie);
 
 	render(<RevealApp herzie={herzie} />);
+
+	// Give Ink a moment to flush output
+	await sleep(200);
+
+	// Offer to enable autostart
+	if (process.platform === "darwin") {
+		const answer = await prompt(
+			"\nStart listening automatically on login? (Y/n) ",
+		);
+		if (answer === "" || answer.toLowerCase() === "y") {
+			const { runAutostart } = await import("./autostart.js");
+			runAutostart("on");
+			const { runStart } = await import("./start.js");
+			runStart();
+		}
+	}
 }
