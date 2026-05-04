@@ -9,6 +9,22 @@ export interface NowPlayingInfo {
 	elapsed: number; // seconds
 	isPlaying: boolean;
 	source: string; // "Music", "Spotify", etc.
+	volume: number; // 0–100
+}
+
+/** Query macOS system volume — returns 0 if muted or volume is 0 */
+export function getSystemVolume(): Promise<number> {
+	return new Promise((resolve) => {
+		execFile(
+			"osascript",
+			["-e", 'set vol to (get volume settings)\nif output muted of vol then return 0\nreturn output volume of vol'],
+			{ timeout: 3000 },
+			(error, stdout) => {
+				if (error) { resolve(0); return; }
+				resolve(Number.parseInt(stdout.trim(), 10) || 0);
+			},
+		);
+	});
 }
 
 /** Query the currently playing track from known macOS music apps via osascript */
@@ -30,7 +46,8 @@ function tryMusic(): Promise<NowPlayingInfo | null> {
 			set g to genre of current track
 			set d to duration of current track
 			set p to player position
-			return t & "||" & a & "||" & al & "||" & g & "||" & d & "||" & p
+			set v to sound volume
+			return t & "||" & a & "||" & al & "||" & g & "||" & d & "||" & p & "||" & v
 		end tell
 	`, "Music");
 }
@@ -49,7 +66,8 @@ function trySpotify(): Promise<NowPlayingInfo | null> {
 			set al to album of current track
 			set d to (duration of current track) / 1000
 			set p to player position
-			return t & "||" & a & "||" & al & "||" & "||" & d & "||" & p
+			set v to sound volume
+			return t & "||" & a & "||" & al & "||" & "||" & d & "||" & p & "||" & v
 		end tell
 	`, "Spotify");
 }
@@ -73,7 +91,7 @@ function queryApp(
 			}
 
 			const parts = result.split("||");
-			if (parts.length < 6) {
+			if (parts.length < 7) {
 				resolve(null);
 				return;
 			}
@@ -87,6 +105,7 @@ function queryApp(
 				elapsed: Number.parseFloat(parts[5]) || 0,
 				isPlaying: true,
 				source,
+				volume: Number.parseInt(parts[6], 10) || 0,
 			});
 		});
 	});
