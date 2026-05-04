@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+	title: "About",
+	description: "What herzies is, what data we collect, and how to delete your account.",
+};
+
 export default function AboutPage() {
 	const panel = {
 		background: "var(--bg-panel)",

@@ -2,8 +2,28 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-	title: "Herzies",
-	description: "A CLI pet that grows by listening to music",
+	title: {
+		default: "Herzies — A CLI digital pet that grows by listening to music",
+		template: "%s | Herzies",
+	},
+	description:
+		"Hatch your herzie, play music, and watch it evolve. A terminal-based digital pet powered by your listening habits. Works with Apple Music and Spotify on macOS.",
+	keywords: ["cli", "digital pet", "music", "terminal", "macos", "apple music", "spotify"],
+	openGraph: {
+		title: "Herzies",
+		description: "A CLI digital pet that grows by listening to music.",
+		siteName: "Herzies",
+		type: "website",
+	},
+	twitter: {
+		card: "summary",
+		title: "Herzies",
+		description: "A CLI digital pet that grows by listening to music.",
+	},
+	robots: {
+		index: true,
+		follow: true,
+	},
 };
 
 export default function RootLayout({

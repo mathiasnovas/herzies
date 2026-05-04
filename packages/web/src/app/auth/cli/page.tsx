@@ -30,7 +30,24 @@ function AuthForm() {
 		const session = result.data.session;
 		if (session) {
 			if (fromCli) {
-				window.location.href = `http://127.0.0.1:${port}/callback?access_token=${session.access_token}&refresh_token=${session.refresh_token}`;
+				// POST tokens to the local CLI server via auto-submitting form
+				// to avoid exposing them in browser history or URL bar
+				const form = document.createElement("form");
+				form.method = "POST";
+				form.action = `http://127.0.0.1:${port}/callback`;
+
+				const addField = (name: string, value: string) => {
+					const input = document.createElement("input");
+					input.type = "hidden";
+					input.name = name;
+					input.value = value;
+					form.appendChild(input);
+				};
+
+				addField("access_token", session.access_token);
+				addField("refresh_token", session.refresh_token);
+				document.body.appendChild(form);
+				form.submit();
 			} else {
 				window.location.href = `/auth/callback`;
 			}

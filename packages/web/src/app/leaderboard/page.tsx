@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import { createSupabaseClient } from "@/lib/supabase";
 import { LeaderboardEntry } from "./LeaderboardEntry";
+
+export const metadata: Metadata = {
+	title: "Leaderboard",
+	description: "Top herzies ranked by XP. See who's listened the most and evolved the furthest.",
+};
 
 interface HerzieRow {
 	name: string;
@@ -59,7 +65,7 @@ export default async function LeaderboardPage() {
 					leaderboard
 				</h1>
 				<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-					// top listeners, ranked by minutes
+					// top herzies, ranked by xp
 				</p>
 			</section>
 

@@ -31,9 +31,16 @@ function LoginApp() {
 		const server = createServer(async (req, res) => {
 			const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
 
-			if (url.pathname === "/callback") {
-				const accessToken = url.searchParams.get("access_token");
-				const refreshToken = url.searchParams.get("refresh_token");
+			if (url.pathname === "/callback" && req.method === "POST") {
+				// Read POST body containing tokens
+				const body = await new Promise<string>((resolve) => {
+					let data = "";
+					req.on("data", (chunk: Buffer) => { data += chunk.toString(); });
+					req.on("end", () => resolve(data));
+				});
+				const params = new URLSearchParams(body);
+				const accessToken = params.get("access_token");
+				const refreshToken = params.get("refresh_token");
 
 				if (!accessToken) {
 					res.writeHead(200, { "Content-Type": "text/html" });
