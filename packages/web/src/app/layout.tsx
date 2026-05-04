@@ -17,11 +17,13 @@ export const metadata: Metadata = {
 		siteName: "Herzies",
 		type: "website",
 		url: "https://www.herzies.app",
+		images: [{ url: "/og.png", width: 1200, height: 630, alt: "Herzies CLI — a digital pet in your terminal" }],
 	},
 	twitter: {
-		card: "summary",
+		card: "summary_large_image",
 		title: "Herzies",
 		description: "A CLI digital pet that grows by listening to music.",
+		images: ["/og.png"],
 	},
 	robots: {
 		index: true,
