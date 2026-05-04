@@ -33,6 +33,17 @@ const COLOR_MAP: Record<ColorScheme, ChalkInstance> = {
 	red: chalk.red,
 };
 
+const ACCENT_MAP: Record<ColorScheme, ChalkInstance> = {
+	pink: chalk.cyanBright,
+	blue: chalk.yellow,
+	green: chalk.magenta,
+	purple: chalk.yellow,
+	orange: chalk.cyanBright,
+	yellow: chalk.magentaBright,
+	cyan: chalk.magenta,
+	red: chalk.yellow,
+};
+
 /** Replace EYE and MTH placeholders in head template lines */
 function injectFace(lines: string[], eyeStr: string, mouthStr: string): string[] {
 	return lines.map((line) =>
@@ -51,42 +62,49 @@ export function composeHerzie(
 	stage: Stage,
 ): string {
 	const colorFn = COLOR_MAP[appearance.colorScheme];
-	const lines: string[] = [];
+	const accentFn = ACCENT_MAP[appearance.colorScheme];
+
+	const colored = (lines: string[], fn: ChalkInstance = colorFn) =>
+		lines.map((l) => fn(l));
 
 	if (stage === 1) {
-		// Stage 1: just a head
 		const accessory = pick(s1Acc, appearance.accessoryIndex);
 		const head = pick(s1Heads, appearance.headIndex);
 		const eyeStr = pick(s1Eyes, appearance.eyesIndex);
 		const mouthStr = pick(s1Mouths, appearance.mouthIndex);
 
-		lines.push(accessory);
-		lines.push(...injectFace(head, eyeStr, mouthStr));
-	} else if (stage === 2) {
-		// Stage 2: head + limbs sprouting off it
+		return [
+			accentFn(accessory),
+			...colored(injectFace(head, eyeStr, mouthStr)),
+		].join("\n");
+	}
+
+	if (stage === 2) {
 		const accessory = pick(s2Acc, appearance.accessoryIndex);
 		const head = pick(s2Heads, appearance.headIndex);
 		const eyeStr = pick(s2Eyes, appearance.eyesIndex);
 		const mouthStr = pick(s2Mouths, appearance.mouthIndex);
 		const limbSet = pick(s2Limbs, appearance.limbsIndex);
 
-		lines.push(accessory);
-		lines.push(...injectFace(head, eyeStr, mouthStr));
-		lines.push(...limbSet);
-	} else {
-		// Stage 3: head + body + legs (full creature)
-		const accessory = pick(s3Acc, appearance.accessoryIndex);
-		const head = pick(s3Heads, appearance.headIndex);
-		const eyeStr = pick(s3Eyes, appearance.eyesIndex);
-		const mouthStr = pick(s3Mouths, appearance.mouthIndex);
-		const body = pick(s3Bodies, appearance.bodyIndex);
-		const legSet = pick(s3Legs, appearance.legsIndex);
-
-		lines.push(accessory);
-		lines.push(...injectFace(head, eyeStr, mouthStr));
-		lines.push(...body);
-		lines.push(...legSet);
+		return [
+			accentFn(accessory),
+			...colored(injectFace(head, eyeStr, mouthStr)),
+			...colored(limbSet, accentFn),
+		].join("\n");
 	}
 
-	return lines.map((line) => colorFn(line)).join("\n");
+	// Stage 3
+	const accessory = pick(s3Acc, appearance.accessoryIndex);
+	const head = pick(s3Heads, appearance.headIndex);
+	const eyeStr = pick(s3Eyes, appearance.eyesIndex);
+	const mouthStr = pick(s3Mouths, appearance.mouthIndex);
+	const body = pick(s3Bodies, appearance.bodyIndex);
+	const legSet = pick(s3Legs, appearance.legsIndex);
+
+	return [
+		accentFn(accessory),
+		...colored(injectFace(head, eyeStr, mouthStr)),
+		...colored(body, accentFn),
+		...colored(legSet),
+	].join("\n");
 }
