@@ -1,6 +1,11 @@
 {
   "name": "herzies-monorepo",
   "private": true,
+  "homepage": "https://www.herzies.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Herzies/herzies.git"
+  },
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",

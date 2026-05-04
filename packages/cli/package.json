@@ -22,6 +22,12 @@
     "digital-pet",
     "music"
   ],
+  "homepage": "https://www.herzies.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Herzies/herzies.git",
+    "directory": "packages/cli"
+  },
   "license": "MIT",
   "dependencies": {
     "@herzies/shared": "workspace:*",

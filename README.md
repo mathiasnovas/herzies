@@ -7,7 +7,7 @@
 |_| |_|\___|_|  /___|_|\___||___/
 ```
 
-A CLI pet that grows by listening to music.
+A CLI pet that grows by listening to music. **[herzies.app](https://www.herzies.app)**
 
 ## Packages
 
