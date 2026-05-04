@@ -21,7 +21,6 @@ A digital pet that lives in your terminal that grows by listening to music. **[h
 
 ```sh
 npm i -g herzies
-herzies hatch
 ```
 
 ## Requirements

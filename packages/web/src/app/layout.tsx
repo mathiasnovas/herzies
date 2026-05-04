@@ -59,6 +59,9 @@ export default function RootLayout({
 						<a href="/leaderboard" style={{ fontSize: 13, color: "var(--yellow)" }}>
 							leaderboard
 						</a>
+						<a href="/docs" style={{ fontSize: 13, color: "var(--cyan)" }}>
+							docs
+						</a>
 						<a href="/about" style={{ fontSize: 13, color: "var(--text-dim)" }}>
 							about
 						</a>

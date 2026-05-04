@@ -1,3 +1,5 @@
+import { CopyBlock } from "./docs/CopyBlock";
+
 const BANNER = `\
  _                   _
 | |                 (_)
@@ -38,76 +40,14 @@ export default function Home() {
 				</p>
 			</section>
 
-			{/* Info boxes */}
-			<div
-				style={{
-					display: "flex",
-					flexDirection: "column",
-					gap: "1rem",
-				}}
-			>
-				<div
-					style={{
-						background: "var(--bg-panel)",
-						border: "1px solid var(--border)",
-						borderRadius: 6,
-						padding: "1rem",
-					}}
-				>
-					<p style={{ color: "var(--text-dim)", fontSize: 12, marginBottom: 4 }}>
-						// how it works
-					</p>
-					<p style={{ fontSize: 13 }}>
-						Hatch your herzie, listen to music, watch it grow.
-						Each genre shapes its personality. Friends give bonus XP.
-					</p>
-				</div>
-				<div
-					style={{
-						background: "var(--bg-panel)",
-						border: "1px solid var(--border)",
-						borderRadius: 6,
-						padding: "1rem",
-					}}
-				>
-					<p style={{ color: "var(--text-dim)", fontSize: 12, marginBottom: 4 }}>
-						// evolution
-					</p>
-					<p style={{ fontSize: 13 }}>
-						<span style={{ color: "var(--yellow)" }}>Stage 1</span> — a tiny blob
-						<br />
-						<span style={{ color: "var(--cyan)" }}>Stage 2</span> — limbs sprout
-						<br />
-						<span style={{ color: "var(--purple)" }}>Stage 3</span> — full form
-					</p>
-				</div>
-			</div>
-
 			{/* Install */}
-			<div
-				style={{
-					background: "var(--bg-panel)",
-					border: "1px solid var(--border)",
-					borderRadius: 6,
-					padding: "1rem 1.25rem",
-				}}
-			>
-				<p style={{ color: "var(--text-dim)", fontSize: 12, marginBottom: 8 }}>
-					// get started
-				</p>
-				<div style={{ fontSize: 13 }}>
-					<p>
-						<span style={{ color: "var(--green)" }}>$</span> npm i -g herzies
-					</p>
-					<p>
-						<span style={{ color: "var(--green)" }}>$</span> herzies hatch
-					</p>
-					<p>
-						<span style={{ color: "var(--green)" }}>$</span> herzies register
-					</p>
-				</div>
-			</div>
+			<CopyBlock command="npm i -g herzies" />
 
+			<div style={{ textAlign: "center" }}>
+				<a href="/docs" style={{ fontSize: 13, color: "var(--cyan)" }}>
+					read more →
+				</a>
+			</div>
 		</main>
 	);
 }
