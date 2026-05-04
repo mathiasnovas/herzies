@@ -3,7 +3,7 @@ import { CliPreview } from "./CliPreview";
 import { CopyBlock } from "./docs/CopyBlock";
 
 export const metadata: Metadata = {
-  title: "Herzies — A CLI digital pet that grows by listening to music",
+  title: "Herzies — Your digital pet that grows by listening to music",
   description:
     "Hatch your herzie, play music, and watch it evolve. A terminal-based digital pet powered by your listening habits. Works with Apple Music and Spotify on macOS.",
   alternates: { canonical: "https://www.herzies.app" },
@@ -24,7 +24,7 @@ const jsonLd = {
   applicationCategory: "EntertainmentApplication",
   operatingSystem: "macOS",
   description:
-    "A CLI digital pet that lives in your terminal and grows by listening to music. Works with Apple Music and Spotify.",
+    "Your digital pet that lives in your terminal and grows by listening to music. Works with Apple Music and Spotify.",
   url: "https://www.herzies.app",
   installUrl: "https://www.npmjs.com/package/herzies",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -48,7 +48,9 @@ export default function Home() {
       />
       {/* Hero */}
       <section className="hero">
-        <h1 className="sr-only">Herzies — A CLI digital pet that grows by listening to music</h1>
+        <h1 className="sr-only">
+          Herzies — Your digital pet that grows by listening to music
+        </h1>
         <pre
           className="banner"
           aria-hidden="true"
