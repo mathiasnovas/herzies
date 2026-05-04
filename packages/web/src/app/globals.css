@@ -91,4 +91,10 @@ a:hover {
   .leaderboard-herzie {
     display: none;
   }
+  .gh-mobile {
+    display: flex !important;
+  }
+  .gh-desktop {
+    display: none !important;
+  }
 }

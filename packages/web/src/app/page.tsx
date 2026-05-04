@@ -43,8 +43,8 @@ export default function Home() {
             color: "var(--text-dim)",
           }}
         >
-          A digital pet that lives in your terminal and grows by listening to
-          music.
+          A digital pet that lives in your terminal <br /> and grows by
+          listening to music.
         </p>
       </section>
 
