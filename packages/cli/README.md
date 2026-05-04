@@ -21,13 +21,17 @@ npm i -g herzies
 ## Usage
 
 ```sh
-herzies             # start listening
-herzies hatch       # create your herzie
-herzies status      # check on your herzie
-herzies register    # create an account
-herzies login       # log in
-herzies friends     # manage friends
-herzies help        # show available commands
+herzies              # open the live dashboard
+herzies hatch        # create your herzie
+herzies status       # quick snapshot of your herzie
+herzies start        # start background listening (no terminal needed)
+herzies stop         # stop background listening
+herzies autostart    # auto-start daemon on login (on/off)
+herzies login        # log in to sync from another device
+herzies friends      # manage your friendzies
+herzies friends add  # add a friendzie by code
+herzies kill         # permanently delete your herzie
+herzies help         # show available commands
 ```
 
 ## Requirements
