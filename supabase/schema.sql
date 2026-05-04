@@ -67,6 +67,9 @@ create policy "Authenticated users can delete own herzie"
 create or replace function add_friend(my_friend_code text, their_friend_code text)
 returns void as $$
 begin
+  -- Prevent self-addition
+  if my_friend_code = their_friend_code then return; end if;
+
   -- Add my code to their friend list (if not already there)
   update public.herzies
   set friend_codes = array_append(friend_codes, my_friend_code)

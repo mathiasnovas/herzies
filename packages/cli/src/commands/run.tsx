@@ -1,38 +1,14 @@
 import { Box, Text, render, useApp, useInput } from "ink";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-	type Herzie,
-	type Stage,
-	getDailyCraving,
-	matchesCraving,
-	applyXp,
-	calculateXpGain,
-	classifyGenre,
-	recordGenreMinutes,
-} from "@herzies/shared";
+import React, { useEffect, useRef, useState } from "react";
+import type { Herzie, Stage } from "@herzies/shared";
 import { type NowPlayingInfo, getNowPlaying } from "../music/nowplaying.js";
-import { syncHerzie } from "../storage/supabase.js";
-import { loadHerzie, saveHerzie } from "../storage/state.js";
+import { loadHerzie } from "../storage/state.js";
+import { isDaemonRunning } from "../storage/pid.js";
+import { ensureDaemonRunning } from "../storage/daemon.js";
 import { HerzieDisplay } from "../ui/HerzieDisplay.js";
 import { StatsPanel } from "../ui/StatsPanel.js";
 
-const POLL_INTERVAL = 3000; // 3 seconds — native osascript call is fast
-
-interface SessionState {
-	sessionXp: number;
-	sessionMinutes: number;
-	tracksPlayed: number;
-	currentTrack: NowPlayingInfo | null;
-	connected: boolean;
-	online: boolean;
-	events: EventMessage[];
-}
-
-interface EventMessage {
-	text: string;
-	color: string;
-	time: number;
-}
+const REFRESH_INTERVAL = 3000;
 
 const STAGE_NAMES: Record<Stage, string> = {
 	1: "Baby",
@@ -40,137 +16,81 @@ const STAGE_NAMES: Record<Stage, string> = {
 	3: "Champion",
 };
 
+interface EventMessage {
+	text: string;
+	color: string;
+	time: number;
+}
+
 function RunApp() {
 	const { exit } = useApp();
 	const [herzie, setHerzie] = useState<Herzie | null>(null);
-	const [session, setSession] = useState<SessionState>({
-		sessionXp: 0,
-		sessionMinutes: 0,
-		tracksPlayed: 0,
-		currentTrack: null,
-		connected: false,
-		online: false,
-		events: [],
-	});
+	const [currentTrack, setCurrentTrack] = useState<NowPlayingInfo | null>(null);
+	const [daemonUp, setDaemonUp] = useState(false);
+	const [events, setEvents] = useState<EventMessage[]>([]);
 	const [tick, setTick] = useState(0);
-	const lastPollTime = useRef<number>(Date.now());
-	const lastTrackTitle = useRef<string>("");
-	const herzieRef = useRef<Herzie | null>(null);
 
-	const pushEvent = useCallback((text: string, color: string) => {
-		setSession((s) => ({
-			...s,
-			events: [...s.events.slice(-4), { text, color, time: Date.now() }],
-		}));
-	}, []);
+	const startXp = useRef<number>(0);
+	const prevLevel = useRef<number>(0);
+	const prevStage = useRef<Stage>(1);
 
-	const poll = useCallback(async () => {
-		const h = herzieRef.current;
-		if (!h) return;
+	const pushEvent = (text: string, color: string) => {
+		setEvents((prev) => [...prev.slice(-4), { text, color, time: Date.now() }]);
+	};
 
-		const np = await getNowPlaying();
-
-		if (!np || !np.isPlaying || !np.title || np.volume === 0) {
-			setSession((s) => ({ ...s, currentTrack: null, connected: true }));
-			lastPollTime.current = Date.now();
-			return;
-		}
-
-		const now = Date.now();
-		const minutesSinceLastPoll = (now - lastPollTime.current) / 60000;
-		lastPollTime.current = now;
-		const minutes = Math.min(minutesSinceLastPoll, 1);
-
-		// Detect new track
-		const trackKey = `${np.title}-${np.artist}`;
-		const isNewTrack = trackKey !== lastTrackTitle.current;
-		if (isNewTrack) {
-			lastTrackTitle.current = trackKey;
-		}
-
-		if (minutes > 0.01) {
-			// Use the genre from Now Playing if available, otherwise infer from genre field
-			const genreList = np.genre ? [np.genre] : [];
-			const genres = genreList.length > 0 ? classifyGenre(genreList) : classifyGenre(["pop"]);
-			const craving = getDailyCraving(h.id);
-			const isCraving = genreList.length > 0 && matchesCraving(genreList, craving);
-
-			const xp = calculateXpGain(
-				minutes,
-				h.friendCodes.length,
-				isCraving,
-			);
-
-			const events = applyXp(h, xp);
-			h.totalMinutesListened += minutes;
-			recordGenreMinutes(h.genreMinutes, genres, minutes);
-			saveHerzie(h);
-
-			if (isCraving) {
-				pushEvent(
-					`♫ Craving bonus! ${h.name} loves this ${craving}!`,
-					"yellow",
-				);
-			}
-
-			if (events.leveledUp) {
-				pushEvent(
-					`⬆ LEVEL UP! ${h.name} is now level ${h.level}!`,
-					"yellow",
-				);
-			}
-
-			if (events.evolved && events.newStage) {
-				pushEvent(
-					`✨ ${h.name} EVOLVED to ${STAGE_NAMES[events.newStage]} (Stage ${events.newStage})!`,
-					"magenta",
-				);
-			}
-
-			setHerzie({ ...h });
-			setSession((s) => ({
-				...s,
-				sessionXp: s.sessionXp + xp,
-				sessionMinutes: s.sessionMinutes + minutes,
-				tracksPlayed: isNewTrack
-					? s.tracksPlayed + 1
-					: s.tracksPlayed,
-				currentTrack: np,
-			}));
-		} else {
-			setSession((s) => ({ ...s, currentTrack: np }));
-		}
-	}, [pushEvent]);
-
-	// Load herzie on mount
+	// Auto-start daemon on mount
 	useEffect(() => {
 		const h = loadHerzie();
 		if (!h) return;
-		herzieRef.current = h;
+
+		startXp.current = h.xp;
+		prevLevel.current = h.level;
+		prevStage.current = h.stage;
 		setHerzie(h);
+
+		if (!isDaemonRunning()) {
+			ensureDaemonRunning();
+		}
+		setDaemonUp(true);
 	}, []);
 
-	// Sync to Supabase every 10 seconds
+	// Refresh loop: re-read herzie state from disk + query now playing
 	useEffect(() => {
-		if (!herzie) return;
-		const sync = async () => {
-			const h = herzieRef.current;
-			if (!h) return;
-			const ok = await syncHerzie(h);
-			setSession((s) => ({ ...s, online: ok }));
-		};
-		sync();
-		const interval = setInterval(sync, 10000);
-		return () => clearInterval(interval);
-	}, [herzie !== null]);
+		if (!daemonUp) return;
 
-	// Polling loop
-	useEffect(() => {
-		if (!herzie) return;
-		poll();
-		const interval = setInterval(poll, POLL_INTERVAL);
+		const refresh = async () => {
+			const [h, np] = await Promise.all([
+				Promise.resolve(loadHerzie()),
+				getNowPlaying(),
+			]);
+
+			if (h) {
+				// Detect level-ups and evolutions from daemon's writes
+				if (h.level > prevLevel.current) {
+					pushEvent(
+						`⬆ LEVEL UP! ${h.name} is now level ${h.level}!`,
+						"yellow",
+					);
+				}
+				if (h.stage > prevStage.current) {
+					pushEvent(
+						`✨ ${h.name} EVOLVED to ${STAGE_NAMES[h.stage]} (Stage ${h.stage})!`,
+						"magenta",
+					);
+				}
+				prevLevel.current = h.level;
+				prevStage.current = h.stage;
+				setHerzie(h);
+			}
+
+			const playing = np?.isPlaying && np.title && np.volume > 0 ? np : null;
+			setCurrentTrack(playing);
+		};
+
+		refresh();
+		const interval = setInterval(refresh, REFRESH_INTERVAL);
 		return () => clearInterval(interval);
-	}, [herzie !== null, poll]);
+	}, [daemonUp]);
 
 	// Animated tick for the idle indicator
 	useEffect(() => {
@@ -184,7 +104,6 @@ function RunApp() {
 		}
 	});
 
-	// No herzie state
 	if (!herzie) {
 		return (
 			<Box padding={1}>
@@ -195,6 +114,7 @@ function RunApp() {
 		);
 	}
 
+	const sessionXp = Math.floor(herzie.xp - startXp.current);
 	const dots = ".".repeat((tick % 3) + 1).padEnd(3);
 
 	return (
@@ -206,26 +126,17 @@ function RunApp() {
 				</Text>
 				<Text dimColor>
 					{" "}
-					— {session.currentTrack ? "listening" : `idle${dots}`}
-				</Text>
-				<Text>
-					{" "}
-					{session.online ? (
-						<Text color="green">[online]</Text>
-					) : (
-						<Text dimColor>[offline]</Text>
-					)}
+					— {currentTrack ? "listening" : `idle${dots}`}
 				</Text>
 			</Box>
 
 			{/* Main layout: Herzie art + stats */}
 			<Box marginTop={1} flexDirection="row">
-				{/* Left: ASCII art */}
 				<Box flexDirection="column" marginRight={2}>
 					<HerzieDisplay
 						appearance={herzie.appearance}
 						stage={herzie.stage}
-						dancing={session.currentTrack !== null}
+						dancing={currentTrack !== null}
 					/>
 				</Box>
 
@@ -234,20 +145,22 @@ function RunApp() {
 
 			{/* Now playing */}
 			<Box marginTop={1} flexDirection="column">
-				{session.currentTrack ? (
+				{currentTrack ? (
 					<Box>
 						<Text color="green" bold>
 							♪{" "}
 						</Text>
-						<Text bold>{session.currentTrack.title}</Text>
+						<Text bold>{currentTrack.title}</Text>
 						<Text dimColor>
 							{" "}
-							— {session.currentTrack.artist}
+							— {currentTrack.artist}
 						</Text>
-						<Text dimColor>
-							{" "}
-							| +{Math.floor(session.sessionXp)} XP this session
-						</Text>
+						{sessionXp > 0 && (
+							<Text dimColor>
+								{" "}
+								| +{sessionXp} XP this session
+							</Text>
+						)}
 					</Box>
 				) : (
 					<Text dimColor>
@@ -257,9 +170,9 @@ function RunApp() {
 			</Box>
 
 			{/* Event log */}
-			{session.events.length > 0 && (
+			{events.length > 0 && (
 				<Box marginTop={1} flexDirection="column">
-					{session.events
+					{events
 						.filter((e) => Date.now() - e.time < 30000)
 						.map((e, i) => (
 							<Text key={`${e.time}-${i}`} color={e.color}>

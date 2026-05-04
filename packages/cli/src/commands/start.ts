@@ -1,9 +1,7 @@
-import { spawn } from "node:child_process";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import chalk from "chalk";
 import { loadHerzie } from "../storage/state.js";
 import { isDaemonRunning, loadPid } from "../storage/pid.js";
+import { ensureDaemonRunning } from "../storage/daemon.js";
 
 export function runStart() {
 	if (!loadHerzie()) {
@@ -24,19 +22,11 @@ export function runStart() {
 		return;
 	}
 
-	const __dirname = dirname(fileURLToPath(import.meta.url));
-	const daemonPath = join(__dirname, "daemon.js");
-
-	const child = spawn(process.execPath, [daemonPath], {
-		detached: true,
-		stdio: "ignore",
-	});
-
-	child.unref();
+	const pid = ensureDaemonRunning();
 
 	console.log(
 		chalk.green("♫ Herzie daemon started!") +
-			chalk.dim(` (pid ${child.pid})`),
+			chalk.dim(` (pid ${pid})`),
 	);
 	console.log(
 		chalk.dim(

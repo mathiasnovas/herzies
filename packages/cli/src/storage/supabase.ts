@@ -86,7 +86,9 @@ export async function syncHerzie(
 			appearance: herzie.appearance,
 			total_minutes_listened: herzie.totalMinutesListened,
 			genre_minutes: herzie.genreMinutes,
-			friend_codes: herzie.friendCodes,
+			friend_codes: herzie.friendCodes.filter(
+				(c) => /^HERZ-[A-Z0-9]{4}$/.test(c) && c !== herzie.friendCode,
+			),
 			last_craving_date: herzie.lastCravingDate,
 			last_craving_genre: herzie.lastCravingGenre,
 			now_playing: nowPlaying ?? null,
@@ -201,26 +203,71 @@ export async function lookupHerzie(
 }
 
 /** Add my friend code to another herzie's friend list (bidirectional) */
-export async function addFriendRemote(myCode: string, theirCode: string): Promise<void> {
+export async function addFriendRemote(myCode: string, theirCode: string): Promise<boolean> {
 	try {
-		await (await getSupabase()).rpc("add_friend", {
+		await ensureFreshToken();
+		const { error } = await (await getSupabase()).rpc("add_friend", {
 			my_friend_code: myCode,
 			their_friend_code: theirCode,
 		});
+		return !error;
 	} catch {
-		// Best-effort — friend still gets added locally
+		return false;
 	}
 }
 
 /** Remove my friend code from another herzie's friend list */
-export async function removeFriendRemote(myCode: string, theirCode: string): Promise<void> {
+export async function removeFriendRemote(myCode: string, theirCode: string): Promise<boolean> {
 	try {
-		await (await getSupabase()).rpc("remove_friend", {
+		await ensureFreshToken();
+		const { error } = await (await getSupabase()).rpc("remove_friend", {
 			my_friend_code: myCode,
 			their_friend_code: theirCode,
 		});
+		return !error;
 	} catch {
-		// Best-effort
+		return false;
+	}
+}
+
+/** Pull the server's friend_codes for the current user and merge with local */
+export async function pullFriendCodes(herzie: Herzie): Promise<boolean> {
+	const session = loadSession();
+	if (!session) return false;
+	try {
+		await ensureFreshToken();
+		const sb = await getSupabase();
+		const { data, error } = await sb
+			.from("herzies")
+			.select("friend_codes")
+			.eq("user_id", session.userId)
+			.single();
+		if (error || !data) return false;
+
+		const remoteCodes: string[] = data.friend_codes ?? [];
+		const localCodes = new Set(herzie.friendCodes);
+
+		// Merge: union of local and remote, excluding own code
+		for (const code of remoteCodes) {
+			if (code !== herzie.friendCode) {
+				localCodes.add(code);
+			}
+		}
+
+		// Also remove any local codes that were removed remotely
+		// (remote is authoritative for removals by other users)
+		const remoteSet = new Set(remoteCodes);
+		for (const code of herzie.friendCodes) {
+			if (!remoteSet.has(code)) {
+				localCodes.delete(code);
+			}
+		}
+
+		herzie.friendCodes = [...localCodes];
+		saveHerzie(herzie);
+		return true;
+	} catch {
+		return false;
 	}
 }
 

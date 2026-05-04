@@ -55,7 +55,8 @@ export function LeaderboardEntry({
 	const rankColor = rank <= 3 ? rankColors[rank - 1] : "var(--text-dim)";
 
 	return (
-		<div
+		<a
+			href={`/herzie/${encodeURIComponent(name)}`}
 			style={{
 				background: "var(--bg-panel)",
 				border: rank === 1 ? "1px solid var(--yellow)" : "1px solid var(--border)",
@@ -64,6 +65,8 @@ export function LeaderboardEntry({
 				display: "flex",
 				alignItems: "center",
 				gap: "1rem",
+				textDecoration: "none",
+				color: "inherit",
 			}}
 		>
 			{/* Rank */}
@@ -129,6 +132,6 @@ export function LeaderboardEntry({
 					</div>
 				)}
 			</div>
-		</div>
+		</a>
 	);
 }

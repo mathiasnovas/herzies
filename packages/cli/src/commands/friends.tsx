@@ -2,7 +2,7 @@ import { Box, Text, render, useApp } from "ink";
 import React, { useEffect, useState } from "react";
 import { addFriend, removeFriend } from "../core/friends.js";
 import type { HerzieProfile } from "@herzies/shared";
-import { addFriendRemote, lookupHerzies, removeFriendRemote } from "../storage/supabase.js";
+import { addFriendRemote, isLoggedIn, lookupHerzies, removeFriendRemote } from "../storage/supabase.js";
 import { loadHerzie, saveHerzie } from "../storage/state.js";
 
 function FriendsListApp() {
@@ -127,10 +127,31 @@ export async function runFriendsAdd(code: string) {
 		return;
 	}
 
+	if (!isLoggedIn()) {
+		render(
+			<ResultApp
+				message="You must be logged in to add friends. Run `herzies login` first."
+				success={false}
+			/>,
+		);
+		return;
+	}
+
 	const result = await addFriend(herzie, code);
 	if (result.success) {
+		const synced = await addFriendRemote(herzie.friendCode, code.toUpperCase().trim());
+		if (!synced) {
+			// Undo local add
+			herzie.friendCodes = herzie.friendCodes.filter((c) => c !== code.toUpperCase().trim());
+			render(
+				<ResultApp
+					message="Failed to sync friend. Check your connection and try again."
+					success={false}
+				/>,
+			);
+			return;
+		}
 		saveHerzie(herzie);
-		await addFriendRemote(herzie.friendCode, code.toUpperCase().trim());
 	}
 	render(<ResultApp message={result.message} success={result.success} />);
 }
@@ -147,10 +168,32 @@ export async function runFriendsRemove(code: string) {
 		return;
 	}
 
+	if (!isLoggedIn()) {
+		render(
+			<ResultApp
+				message="You must be logged in to remove friends. Run `herzies login` first."
+				success={false}
+			/>,
+		);
+		return;
+	}
+
+	const normalized = code.toUpperCase().trim();
 	const result = removeFriend(herzie, code);
 	if (result.success) {
+		const synced = await removeFriendRemote(herzie.friendCode, normalized);
+		if (!synced) {
+			// Re-add locally since remote failed
+			herzie.friendCodes.push(normalized);
+			render(
+				<ResultApp
+					message="Failed to sync removal. Check your connection and try again."
+					success={false}
+				/>,
+			);
+			return;
+		}
 		saveHerzie(herzie);
-		await removeFriendRemote(herzie.friendCode, code.toUpperCase().trim());
 	}
 	render(<ResultApp message={result.message} success={result.success} />);
 }

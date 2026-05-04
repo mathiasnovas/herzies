@@ -15,7 +15,7 @@ import {
 	recordGenreMinutes,
 } from "@herzies/shared";
 import { getNowPlaying } from "../music/nowplaying.js";
-import { syncHerzie, syncNowPlaying } from "../storage/supabase.js";
+import { syncHerzie, syncNowPlaying, pullFriendCodes } from "../storage/supabase.js";
 import { loadHerzie, saveHerzie } from "../storage/state.js";
 import { writePid, clearPid, loadPid } from "../storage/pid.js";
 
@@ -68,6 +68,14 @@ async function poll(herzie: Herzie): Promise<void> {
 			isCraving,
 		);
 
+		// Re-read from disk to pick up changes from other commands (e.g. friends add)
+		const fresh = loadHerzie();
+		if (fresh) {
+			herzie.friendCodes = fresh.friendCodes;
+			herzie.friendCode = fresh.friendCode;
+			herzie.name = fresh.name;
+		}
+
 		const events = applyXp(herzie, xp);
 		herzie.totalMinutesListened += minutes;
 		recordGenreMinutes(herzie.genreMinutes, genres, minutes);
@@ -82,9 +90,17 @@ async function poll(herzie: Herzie): Promise<void> {
 	}
 }
 
+let syncCount = 0;
+
 async function syncLoop(herzie: Herzie) {
 	const ok = await syncHerzie(herzie, currentNowPlaying);
 	if (ok) log("synced");
+
+	// Pull friend updates every 6th sync (~60s) to pick up adds/removes by others
+	syncCount++;
+	if (syncCount % 6 === 0) {
+		await pullFriendCodes(herzie).catch(() => {});
+	}
 }
 
 async function main() {
