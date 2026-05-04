@@ -124,7 +124,7 @@ export function LeaderboardEntry({
 						style={{
 							fontSize: 11,
 							marginTop: 3,
-							color: "var(--green)",
+							color: "var(--cyan)",
 						}}
 					>
 						<span>&#9834; {nowPlaying.title}</span>
