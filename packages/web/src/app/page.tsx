@@ -45,7 +45,7 @@ export default function Home() {
 
 			<div style={{ textAlign: "center" }}>
 				<a href="/docs" style={{ fontSize: 13, color: "var(--cyan)" }}>
-					read more →
+					get started →
 				</a>
 			</div>
 		</main>
