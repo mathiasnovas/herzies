@@ -111,6 +111,30 @@ export async function lookupHerzie(
 	}
 }
 
+/** Add my friend code to another herzie's friend list (bidirectional) */
+export async function addFriendRemote(myCode: string, theirCode: string): Promise<void> {
+	try {
+		await getSupabase().rpc("add_friend", {
+			my_friend_code: myCode,
+			their_friend_code: theirCode,
+		});
+	} catch {
+		// Best-effort — friend still gets added locally
+	}
+}
+
+/** Remove my friend code from another herzie's friend list */
+export async function removeFriendRemote(myCode: string, theirCode: string): Promise<void> {
+	try {
+		await getSupabase().rpc("remove_friend", {
+			my_friend_code: myCode,
+			their_friend_code: theirCode,
+		});
+	} catch {
+		// Best-effort
+	}
+}
+
 /** Look up multiple Herzies by friend codes (public, no auth needed) */
 export async function lookupHerzies(
 	friendCodes: string[],

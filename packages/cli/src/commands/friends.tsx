@@ -2,7 +2,7 @@ import { Box, Text, render, useApp } from "ink";
 import React, { useEffect, useState } from "react";
 import { addFriend, removeFriend } from "../core/friends.js";
 import type { HerzieProfile } from "@herzies/shared";
-import { lookupHerzies } from "../storage/supabase.js";
+import { addFriendRemote, lookupHerzies, removeFriendRemote } from "../storage/supabase.js";
 import { loadHerzie, saveHerzie } from "../storage/state.js";
 
 function FriendsListApp() {
@@ -130,11 +130,12 @@ export async function runFriendsAdd(code: string) {
 	const result = await addFriend(herzie, code);
 	if (result.success) {
 		saveHerzie(herzie);
+		await addFriendRemote(herzie.friendCode, code.toUpperCase().trim());
 	}
 	render(<ResultApp message={result.message} success={result.success} />);
 }
 
-export function runFriendsRemove(code: string) {
+export async function runFriendsRemove(code: string) {
 	const herzie = loadHerzie();
 	if (!herzie) {
 		render(
@@ -149,6 +150,7 @@ export function runFriendsRemove(code: string) {
 	const result = removeFriend(herzie, code);
 	if (result.success) {
 		saveHerzie(herzie);
+		await removeFriendRemote(herzie.friendCode, code.toUpperCase().trim());
 	}
 	render(<ResultApp message={result.message} success={result.success} />);
 }

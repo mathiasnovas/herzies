@@ -22,6 +22,17 @@ function CallbackHandler() {
 		async function handleCallback() {
 			const supabase = createSupabaseClient();
 
+			// OAuth redirects include a `code` param that must be exchanged for a session
+			const code = new URLSearchParams(window.location.search).get("code");
+			if (code) {
+				const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+				if (exchangeError) {
+					setError(exchangeError.message);
+					setStatus("error");
+					return;
+				}
+			}
+
 			const { data: { session }, error } = await supabase.auth.getSession();
 
 			if (error || !session) {

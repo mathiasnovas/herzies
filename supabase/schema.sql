@@ -62,6 +62,28 @@ create policy "Authenticated users can delete own herzie"
   on public.herzies for delete
   using (auth.uid() = user_id);
 
+-- Add a friend code to another herzie's friend_codes (bidirectional friendship)
+create or replace function add_friend(my_friend_code text, their_friend_code text)
+returns void as $$
+begin
+  -- Add my code to their friend list (if not already there)
+  update public.herzies
+  set friend_codes = array_append(friend_codes, my_friend_code)
+  where friend_code = their_friend_code
+    and not (my_friend_code = any(friend_codes));
+end;
+$$ language plpgsql security definer;
+
+-- Remove a friend code from another herzie's friend_codes
+create or replace function remove_friend(my_friend_code text, their_friend_code text)
+returns void as $$
+begin
+  update public.herzies
+  set friend_codes = array_remove(friend_codes, my_friend_code)
+  where friend_code = their_friend_code;
+end;
+$$ language plpgsql security definer;
+
 -- Auto-update updated_at
 create or replace function update_updated_at()
 returns trigger as $$
