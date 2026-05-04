@@ -58,9 +58,6 @@ function StatusApp() {
 						<Text color="green" bold>♪ </Text>
 						<Text bold>{nowPlaying.title}</Text>
 						<Text dimColor> — {nowPlaying.artist}</Text>
-						{nowPlaying.genre ? (
-							<Text dimColor> [{nowPlaying.genre}]</Text>
-						) : null}
 					</Text>
 				) : (
 					<Text dimColor>♪ No music playing</Text>

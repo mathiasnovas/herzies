@@ -7,8 +7,6 @@ import {
 	matchesCraving,
 	applyXp,
 	calculateXpGain,
-	levelProgress,
-	xpToNextLevel,
 	classifyGenre,
 	recordGenreMinutes,
 } from "@herzies/shared";
@@ -16,6 +14,7 @@ import { type NowPlayingInfo, getNowPlaying } from "../music/nowplaying.js";
 import { syncHerzie } from "../storage/supabase.js";
 import { loadHerzie, saveHerzie } from "../storage/state.js";
 import { HerzieDisplay } from "../ui/HerzieDisplay.js";
+import { StatsPanel } from "../ui/StatsPanel.js";
 
 const POLL_INTERVAL = 3000; // 3 seconds — native osascript call is fast
 
@@ -40,26 +39,6 @@ const STAGE_NAMES: Record<Stage, string> = {
 	2: "Teen",
 	3: "Champion",
 };
-
-function XpBar({ progress, width = 20 }: { progress: number; width?: number }) {
-	const filled = Math.round(progress * width);
-	const empty = width - filled;
-	const bar = "█".repeat(filled) + "░".repeat(empty);
-	return (
-		<Text>
-			<Text color="green">[{bar}]</Text>{" "}
-			<Text color="yellow">{Math.round(progress * 100)}%</Text>
-		</Text>
-	);
-}
-
-function getTopGenres(
-	genreMinutes: Record<string, number>,
-): [string, number][] {
-	return Object.entries(genreMinutes)
-		.sort(([, a], [, b]) => b - a)
-		.slice(0, 3);
-}
 
 function RunApp() {
 	const { exit } = useApp();
@@ -216,11 +195,6 @@ function RunApp() {
 		);
 	}
 
-	const progress = levelProgress(herzie);
-	const toNext = xpToNextLevel(herzie);
-	const topGenres = getTopGenres(herzie.genreMinutes);
-	const craving = getDailyCraving(herzie.id);
-	const totalHours = (herzie.totalMinutesListened / 60).toFixed(1);
 	const dots = ".".repeat((tick % 3) + 1).padEnd(3);
 
 	return (
@@ -255,81 +229,7 @@ function RunApp() {
 					/>
 				</Box>
 
-				{/* Right: Stats */}
-				<Box flexDirection="column">
-					{/* Name & stage */}
-					<Box>
-						<Text bold color="cyan">
-							{herzie.name}
-						</Text>
-						<Text dimColor>
-							{" "}
-							— {STAGE_NAMES[herzie.stage]} (Stage{" "}
-							{herzie.stage})
-						</Text>
-					</Box>
-
-					{/* Level + XP */}
-					<Box marginTop={1}>
-						<Text>
-							<Text bold>Level:</Text>{" "}
-							<Text color="yellow">{herzie.level}</Text>
-						</Text>
-					</Box>
-					<Box>
-						<Text bold>XP: </Text>
-						<XpBar progress={progress} />
-						<Text dimColor> ({Math.ceil(toNext)} to next)</Text>
-					</Box>
-
-					{/* Music stats */}
-					<Box marginTop={1}>
-						<Text bold>Music: </Text>
-						<Text color="magenta">
-							{totalHours}h ({Math.floor(herzie.totalMinutesListened)} min)
-						</Text>
-					</Box>
-
-					{/* Top genres */}
-					{topGenres.length > 0 && (
-						<Box flexDirection="column">
-							<Text bold>Genres:</Text>
-							{topGenres.map(([genre, minutes], i) => (
-								<Box key={genre} paddingLeft={1}>
-									<Text>
-										{["1.", "2.", "3."][i]}{" "}
-										<Text color="white">{genre}</Text>{" "}
-										<Text dimColor>
-											({Math.floor(minutes)} min)
-										</Text>
-									</Text>
-								</Box>
-							))}
-						</Box>
-					)}
-
-					{/* Craving */}
-					<Box marginTop={1}>
-						<Text bold>Craving: </Text>
-						<Text color="yellow">"{craving}"</Text>
-						<Text dimColor> +50% XP</Text>
-					</Box>
-
-					{/* Friend code */}
-					<Box>
-						<Text bold>Code: </Text>
-						<Text color="cyan">{herzie.friendCode}</Text>
-						<Text dimColor>
-							{" "}
-							({herzie.friendCodes.length} friendzie
-							{herzie.friendCodes.length !== 1 ? "s" : ""}
-							{herzie.friendCodes.length > 0
-								? `, +${Math.min(herzie.friendCodes.length, 20) * 2}% XP`
-								: ""}
-							)
-						</Text>
-					</Box>
-				</Box>
+				<StatsPanel herzie={herzie} />
 			</Box>
 
 			{/* Now playing */}
@@ -344,12 +244,6 @@ function RunApp() {
 							{" "}
 							— {session.currentTrack.artist}
 						</Text>
-						{session.currentTrack.genre ? (
-							<Text dimColor>
-								{" "}
-								[{session.currentTrack.genre}]
-							</Text>
-						) : null}
 						<Text dimColor>
 							{" "}
 							| +{Math.floor(session.sessionXp)} XP this session
