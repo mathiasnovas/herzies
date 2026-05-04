@@ -1,5 +1,9 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
 import { Command } from "commander";
+
+const require = createRequire(import.meta.url);
+const { version } = require("../../package.json");
 import {
 	runFriendsAdd,
 	runFriendsList,
@@ -17,7 +21,7 @@ const program = new Command();
 program
 	.name("herzies")
 	.description("A CLI pet that grows by listening to music")
-	.version("0.1.0");
+	.version(version);
 
 program
 	.command("hatch")

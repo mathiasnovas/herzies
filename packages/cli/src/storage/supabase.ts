@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Herzie, HerzieProfile } from "@herzies/shared";
-import { loadSession } from "./state.js";
+import { loadSession, saveHerzie } from "./state.js";
+import { generateFriendCode } from "../core/friends.js";
 
 // Public client credentials — anon key is safe to ship, RLS protects the data
 const SUPABASE_URL = "https://ojqfqxolbjegorgoyond.supabase.co";
@@ -8,18 +9,23 @@ const SUPABASE_ANON_KEY =
 	"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qcWZxeG9sYmplZ29yZ295b25kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTcwMjgsImV4cCI6MjA5MzIzMzAyOH0.BBT77VK1ROJr57BJvMfCyra3lbycMA9u2-jxG-LhBJE";
 
 let client: SupabaseClient | null = null;
+let clientToken: string | undefined;
 
 export function getSupabase(): SupabaseClient {
-	if (!client) {
-		const session = loadSession();
+	const session = loadSession();
+	const token = session?.accessToken;
+
+	// Recreate client if token has changed (login/logout/switch account)
+	if (!client || token !== clientToken) {
+		clientToken = token;
 		client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 			auth: {
 				autoRefreshToken: true,
 				persistSession: false,
 			},
 			global: {
-				headers: session?.accessToken
-					? { Authorization: `Bearer ${session.accessToken}` }
+				headers: token
+					? { Authorization: `Bearer ${token}` }
 					: {},
 			},
 		});
@@ -37,23 +43,40 @@ export async function syncHerzie(herzie: Herzie): Promise<boolean> {
 	const session = loadSession();
 	if (!session) return false;
 	try {
-		const { error } = await getSupabase().from("herzies").upsert(
-			{
-				user_id: session.userId,
-				friend_code: herzie.friendCode,
-				name: herzie.name,
-				stage: herzie.stage,
-				level: herzie.level,
-				xp: Math.floor(herzie.xp),
-				appearance: herzie.appearance,
-				total_minutes_listened: herzie.totalMinutesListened,
-				genre_minutes: herzie.genreMinutes,
-				friend_codes: herzie.friendCodes,
-				last_craving_date: herzie.lastCravingDate,
-				last_craving_genre: herzie.lastCravingGenre,
-			},
-			{ onConflict: "user_id" },
-		);
+		const upsertData = () => ({
+			user_id: session.userId,
+			friend_code: herzie.friendCode,
+			name: herzie.name,
+			stage: herzie.stage,
+			level: herzie.level,
+			xp: Math.floor(herzie.xp),
+			appearance: herzie.appearance,
+			total_minutes_listened: herzie.totalMinutesListened,
+			genre_minutes: herzie.genreMinutes,
+			friend_codes: herzie.friendCodes,
+			last_craving_date: herzie.lastCravingDate,
+			last_craving_genre: herzie.lastCravingGenre,
+		});
+
+		const { error } = await getSupabase()
+			.from("herzies")
+			.upsert(upsertData(), { onConflict: "user_id" });
+
+		// unique constraint conflict — regenerate the conflicting field and retry
+		if (error?.code === "23505") {
+			if (error.message.includes("friend_code")) {
+				herzie.friendCode = generateFriendCode();
+			}
+			if (error.message.includes("name")) {
+				herzie.name = `${herzie.name}-${herzie.friendCode.slice(-4)}`;
+			}
+			saveHerzie(herzie);
+			const { error: retryError } = await getSupabase()
+				.from("herzies")
+				.upsert(upsertData(), { onConflict: "user_id" });
+			return !retryError;
+		}
+
 		return !error;
 	} catch {
 		return false;

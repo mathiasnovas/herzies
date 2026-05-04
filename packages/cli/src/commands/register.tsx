@@ -115,5 +115,6 @@ function RegisterApp() {
 }
 
 export function runRegister() {
-	render(<RegisterApp />);
+	const { waitUntilExit } = render(<RegisterApp />);
+	waitUntilExit().then(() => process.exit(0));
 }

@@ -150,5 +150,6 @@ function LoginApp() {
 }
 
 export function runLogin() {
-	render(<LoginApp />);
+	const { waitUntilExit } = render(<LoginApp />);
+	waitUntilExit().then(() => process.exit(0));
 }

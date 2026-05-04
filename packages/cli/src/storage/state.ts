@@ -39,7 +39,9 @@ export function loadSession(): SessionData | null {
 	ensureDir();
 	if (!existsSync(SESSION_FILE)) return null;
 	try {
-		return JSON.parse(readFileSync(SESSION_FILE, "utf-8"));
+		const data = JSON.parse(readFileSync(SESSION_FILE, "utf-8"));
+		if (!data?.accessToken || !data?.userId) return null;
+		return data;
 	} catch {
 		return null;
 	}
