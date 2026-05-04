@@ -104,7 +104,7 @@ function LoginApp() {
 
 		server.listen(CALLBACK_PORT, () => {
 			setStatus("waiting");
-			const authUrl = `${process.env.HERZIES_WEB_URL ?? "https://herzies-web.vercel.app"}/auth/cli?port=${CALLBACK_PORT}`;
+			const authUrl = `${process.env.HERZIES_WEB_URL ?? "https://www.herzies.app"}/auth/cli?port=${CALLBACK_PORT}`;
 			open(authUrl);
 		});
 
