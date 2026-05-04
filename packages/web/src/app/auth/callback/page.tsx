@@ -31,7 +31,23 @@ function CallbackHandler() {
 			}
 
 			if (cliPort) {
-				window.location.href = `http://127.0.0.1:${cliPort}/callback?access_token=${session.access_token}&refresh_token=${session.refresh_token}`;
+				// POST tokens to the local CLI server to avoid URL exposure
+				const form = document.createElement("form");
+				form.method = "POST";
+				form.action = `http://127.0.0.1:${cliPort}/callback`;
+
+				const addField = (name: string, value: string) => {
+					const input = document.createElement("input");
+					input.type = "hidden";
+					input.name = name;
+					input.value = value;
+					form.appendChild(input);
+				};
+
+				addField("access_token", session.access_token);
+				addField("refresh_token", session.refresh_token);
+				document.body.appendChild(form);
+				form.submit();
 			} else {
 				setStatus("success");
 			}
