@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
 import { authenticateRequest, isAuthError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { tradeIdSchema, parseBody, isParseError } from "@/lib/schemas";
 
 export async function POST(request: Request) {
 	const auth = await authenticateRequest(request);
 	if (isAuthError(auth)) return auth;
 
-	const body = await request.json();
-	const { tradeId } = body as { tradeId: string };
+	const body = await parseBody(request, tradeIdSchema);
+	if (isParseError(body)) return body;
 
-	if (!tradeId) {
-		return NextResponse.json({ error: "Missing tradeId" }, { status: 400 });
-	}
+	const { tradeId } = body;
 
 	const admin = createAdminClient();
 

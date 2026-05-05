@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Herzie, ActiveMultiplier, PendingTradeRequest, EventNotification } from "@herzies/shared";
@@ -13,8 +13,13 @@ const NOTIFICATIONS_FILE = join(CONFIG_DIR, "notifications.json");
 
 function ensureDir() {
 	if (!existsSync(CONFIG_DIR)) {
-		mkdirSync(CONFIG_DIR, { recursive: true });
+		mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
 	}
+}
+
+function writeSecure(path: string, data: string) {
+	writeFileSync(path, data);
+	chmodSync(path, 0o600);
 }
 
 const HMAC_SALT = "hrzs_v1_8f3a2c";
@@ -58,7 +63,7 @@ export function loadHerzie(): Herzie | null {
 export function saveHerzie(herzie: Herzie): void {
 	ensureDir();
 	const data = { ...herzie, _sig: computeSignature(herzie) };
-	writeFileSync(HERZIE_FILE, JSON.stringify(data, null, 2));
+	writeSecure(HERZIE_FILE, JSON.stringify(data, null, 2));
 }
 
 export interface SessionData {
@@ -82,13 +87,13 @@ export function loadSession(): SessionData | null {
 
 export function saveSession(session: SessionData): void {
 	ensureDir();
-	writeFileSync(SESSION_FILE, JSON.stringify(session, null, 2));
+	writeSecure(SESSION_FILE, JSON.stringify(session, null, 2));
 }
 
 export function clearSession(): void {
 	ensureDir();
 	if (existsSync(SESSION_FILE)) {
-		writeFileSync(SESSION_FILE, "{}");
+		writeSecure(SESSION_FILE, "{}");
 	}
 }
 
@@ -104,7 +109,7 @@ export function getConfigDir(): string {
 
 export function saveMultipliers(multipliers: ActiveMultiplier[]): void {
 	ensureDir();
-	writeFileSync(MULTIPLIERS_FILE, JSON.stringify(multipliers));
+	writeSecure(MULTIPLIERS_FILE, JSON.stringify(multipliers));
 }
 
 export function loadMultipliers(): ActiveMultiplier[] | null {
@@ -119,7 +124,7 @@ export function loadMultipliers(): ActiveMultiplier[] | null {
 export function savePendingTrade(pending: PendingTradeRequest | null): void {
 	ensureDir();
 	if (pending) {
-		writeFileSync(PENDING_TRADE_FILE, JSON.stringify(pending));
+		writeSecure(PENDING_TRADE_FILE, JSON.stringify(pending));
 	} else if (existsSync(PENDING_TRADE_FILE)) {
 		rmSync(PENDING_TRADE_FILE, { force: true });
 	}
@@ -137,7 +142,7 @@ export function loadPendingTrade(): PendingTradeRequest | null {
 export function saveNotifications(notifications: EventNotification[]): void {
 	ensureDir();
 	if (notifications.length > 0) {
-		writeFileSync(NOTIFICATIONS_FILE, JSON.stringify(notifications));
+		writeSecure(NOTIFICATIONS_FILE, JSON.stringify(notifications));
 	} else if (existsSync(NOTIFICATIONS_FILE)) {
 		rmSync(NOTIFICATIONS_FILE, { force: true });
 	}

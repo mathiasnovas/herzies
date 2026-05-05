@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { adminMultiplierSchema, parseBody, isParseError } from "@/lib/schemas";
 
 function verifyAdmin(request: Request): boolean {
 	const secret = request.headers.get("x-admin-secret");
@@ -31,19 +32,10 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const body = await request.json().catch(() => null);
-	if (!body) {
-		return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-	}
+	const body = await parseBody(request, adminMultiplierSchema);
+	if (isParseError(body)) return body;
 
 	const { id, name, bonus, active, startsAt, endsAt, schedule } = body;
-
-	if (!name || typeof bonus !== "number" || !startsAt || !endsAt) {
-		return NextResponse.json(
-			{ error: "name, bonus, startsAt, and endsAt are required" },
-			{ status: 400 },
-		);
-	}
 
 	const row = {
 		name,

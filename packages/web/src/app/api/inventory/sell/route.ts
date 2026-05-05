@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
 import { authenticateRequest, isAuthError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { sellItemSchema, parseBody, isParseError } from "@/lib/schemas";
 
 export async function POST(request: Request) {
 	const auth = await authenticateRequest(request);
 	if (isAuthError(auth)) return auth;
 
-	const body = await request.json();
-	const { itemId, quantity } = body as { itemId: string; quantity: number };
+	const body = await parseBody(request, sellItemSchema);
+	if (isParseError(body)) return body;
 
-	if (!itemId || !quantity || quantity < 1 || !Number.isInteger(quantity)) {
-		return NextResponse.json({ error: "Invalid itemId or quantity" }, { status: 400 });
-	}
+	const { itemId, quantity } = body;
 
 	const admin = createAdminClient();
 

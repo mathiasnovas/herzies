@@ -1,29 +1,16 @@
 import { NextResponse } from "next/server";
 import { authenticateRequest, isAuthError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-admin";
-import type { TradeOffer } from "@herzies/shared";
+import { tradeOfferSchema, parseBody, isParseError } from "@/lib/schemas";
 
 export async function POST(request: Request) {
 	const auth = await authenticateRequest(request);
 	if (isAuthError(auth)) return auth;
 
-	const body = await request.json();
-	const { tradeId, offer } = body as { tradeId: string; offer: TradeOffer };
+	const body = await parseBody(request, tradeOfferSchema);
+	if (isParseError(body)) return body;
 
-	if (!tradeId || !offer) {
-		return NextResponse.json({ error: "Missing tradeId or offer" }, { status: 400 });
-	}
-
-	// Validate offer shape
-	if (typeof offer.currency !== "number" || offer.currency < 0 || !Number.isInteger(offer.currency)) {
-		return NextResponse.json({ error: "Invalid currency in offer" }, { status: 400 });
-	}
-
-	for (const [, qty] of Object.entries(offer.items)) {
-		if (typeof qty !== "number" || qty < 1 || !Number.isInteger(qty)) {
-			return NextResponse.json({ error: "Invalid item quantity in offer" }, { status: 400 });
-		}
-	}
+	const { tradeId, offer } = body;
 
 	const admin = createAdminClient();
 

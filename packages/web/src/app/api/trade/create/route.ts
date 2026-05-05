@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
 import { authenticateRequest, isAuthError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { createTradeSchema, parseBody, isParseError } from "@/lib/schemas";
 
 export async function POST(request: Request) {
 	const auth = await authenticateRequest(request);
 	if (isAuthError(auth)) return auth;
 
-	const body = await request.json();
-	const { targetFriendCode } = body as { targetFriendCode: string };
+	const body = await parseBody(request, createTradeSchema);
+	if (isParseError(body)) return body;
 
-	if (!targetFriendCode) {
-		return NextResponse.json({ error: "Missing targetFriendCode" }, { status: 400 });
-	}
+	const { targetFriendCode } = body;
 
 	const admin = createAdminClient();
 
