@@ -51,7 +51,7 @@ function StatusApp() {
 						dancing={nowPlaying !== null}
 					/>
 				</Box>
-				<StatsPanel herzie={herzie} />
+				<StatsPanel herzie={herzie} hideBonuses />
 			</Box>
 
 			{/* Now playing */}

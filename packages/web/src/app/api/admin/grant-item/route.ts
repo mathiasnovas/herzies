@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 	const admin = createAdminClient();
 
 	// Find the herzie
-	let query = admin.from("herzies").select("user_id, inventory");
+	let query = admin.from("herzies").select("user_id, inventory_v2");
 	if (herzieName) {
 		query = query.ilike("name", herzieName);
 	} else {
@@ -44,14 +44,12 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: "Herzie not found" }, { status: 404 });
 	}
 
-	const inventory: string[] = herzie.inventory ?? [];
-	if (inventory.includes(itemId)) {
-		return NextResponse.json({ error: "Item already in inventory" }, { status: 409 });
-	}
+	const inv = (herzie.inventory_v2 ?? {}) as Record<string, number>;
+	inv[itemId] = (inv[itemId] ?? 0) + 1;
 
 	const { error } = await admin
 		.from("herzies")
-		.update({ inventory: [...inventory, itemId] })
+		.update({ inventory_v2: inv })
 		.eq("user_id", herzie.user_id);
 
 	if (error) {

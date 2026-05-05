@@ -38,6 +38,7 @@ export async function POST(request: Request) {
 			herzie: result.herzie,
 			notifications: result.notifications,
 			multipliers: result.multipliers,
+			pendingTradeRequest: result.pendingTradeRequest,
 		};
 
 		return NextResponse.json(response);

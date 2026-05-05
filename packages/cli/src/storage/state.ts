@@ -2,12 +2,14 @@ import { createHmac } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Herzie, ActiveMultiplier } from "@herzies/shared";
+import type { Herzie, ActiveMultiplier, PendingTradeRequest, EventNotification } from "@herzies/shared";
 
 const CONFIG_DIR = join(homedir(), ".config", "herzies");
 const HERZIE_FILE = join(CONFIG_DIR, "herzie.json");
 const SESSION_FILE = join(CONFIG_DIR, "session.json");
 const MULTIPLIERS_FILE = join(CONFIG_DIR, "multipliers.json");
+const PENDING_TRADE_FILE = join(CONFIG_DIR, "pending-trade.json");
+const NOTIFICATIONS_FILE = join(CONFIG_DIR, "notifications.json");
 
 function ensureDir() {
 	if (!existsSync(CONFIG_DIR)) {
@@ -26,6 +28,7 @@ function computeSignature(herzie: Herzie): string {
 		stage: herzie.stage,
 		totalMinutesListened: herzie.totalMinutesListened,
 		genreMinutes: herzie.genreMinutes,
+		currency: herzie.currency,
 	});
 	return createHmac("sha256", `${HMAC_SALT}:${herzie.id}`)
 		.update(payload)
@@ -110,5 +113,43 @@ export function loadMultipliers(): ActiveMultiplier[] | null {
 		return JSON.parse(readFileSync(MULTIPLIERS_FILE, "utf-8"));
 	} catch {
 		return null;
+	}
+}
+
+export function savePendingTrade(pending: PendingTradeRequest | null): void {
+	ensureDir();
+	if (pending) {
+		writeFileSync(PENDING_TRADE_FILE, JSON.stringify(pending));
+	} else if (existsSync(PENDING_TRADE_FILE)) {
+		rmSync(PENDING_TRADE_FILE, { force: true });
+	}
+}
+
+export function loadPendingTrade(): PendingTradeRequest | null {
+	if (!existsSync(PENDING_TRADE_FILE)) return null;
+	try {
+		return JSON.parse(readFileSync(PENDING_TRADE_FILE, "utf-8"));
+	} catch {
+		return null;
+	}
+}
+
+export function saveNotifications(notifications: EventNotification[]): void {
+	ensureDir();
+	if (notifications.length > 0) {
+		writeFileSync(NOTIFICATIONS_FILE, JSON.stringify(notifications));
+	} else if (existsSync(NOTIFICATIONS_FILE)) {
+		rmSync(NOTIFICATIONS_FILE, { force: true });
+	}
+}
+
+export function loadAndClearNotifications(): EventNotification[] {
+	if (!existsSync(NOTIFICATIONS_FILE)) return [];
+	try {
+		const data = JSON.parse(readFileSync(NOTIFICATIONS_FILE, "utf-8"));
+		rmSync(NOTIFICATIONS_FILE, { force: true });
+		return data;
+	} catch {
+		return [];
 	}
 }

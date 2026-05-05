@@ -1,14 +1,17 @@
 import { Box, Text, render, useApp, useInput } from "ink";
 import React, { useEffect, useRef, useState } from "react";
-import type { Herzie, Stage, ActiveMultiplier } from "@herzies/shared";
+import type { Herzie, Stage, ActiveMultiplier, PendingTradeRequest } from "@herzies/shared";
 import { type NowPlayingInfo, getNowPlaying } from "../music/nowplaying.js";
-import { loadHerzie, saveHerzie, loadMultipliers } from "../storage/state.js";
+import { loadHerzie, saveHerzie, loadMultipliers, loadPendingTrade, savePendingTrade, loadAndClearNotifications } from "../storage/state.js";
 import { isDaemonRunning } from "../storage/pid.js";
 import { ensureDaemonRunning } from "../storage/daemon.js";
 import { HerzieDisplay } from "../ui/HerzieDisplay.js";
 import { StatsPanel } from "../ui/StatsPanel.js";
 import { InventoryView } from "../ui/InventoryView.js";
-import { checkOnline } from "../storage/api.js";
+import { FriendSelector } from "../ui/FriendSelector.js";
+import { TradingView } from "../ui/TradingView.js";
+import { checkOnline, apiCreateTrade, apiJoinTrade } from "../storage/api.js";
+import { getItem } from "../art/items.js";
 
 const REFRESH_INTERVAL = 3000;
 
@@ -24,7 +27,7 @@ interface EventMessage {
 	time: number;
 }
 
-type View = "dashboard" | "inventory";
+type View = "dashboard" | "inventory" | "friend-select" | "trading";
 
 function RunApp() {
 	const { exit } = useApp();
@@ -35,6 +38,8 @@ function RunApp() {
 	const [tick, setTick] = useState(0);
 	const [online, setOnline] = useState<boolean | undefined>(undefined);
 	const [multipliers, setMultipliers] = useState<ActiveMultiplier[] | undefined>(undefined);
+	const [pendingTrade, setPendingTrade] = useState<PendingTradeRequest | null>(null);
+	const [activeTradeId, setActiveTradeId] = useState<string | null>(null);
 
 	// View state
 	const [view, setView] = useState<View>("dashboard");
@@ -42,6 +47,7 @@ function RunApp() {
 	const startXp = useRef<number>(0);
 	const prevLevel = useRef<number>(0);
 	const prevStage = useRef<Stage>(1);
+	const lastTradeNotified = useRef<string | null>(null);
 
 	const pushEvent = (text: string, color: string) => {
 		setEvents((prev) => [...prev.slice(-4), { text, color, time: Date.now() }]);
@@ -95,8 +101,36 @@ function RunApp() {
 				setHerzie(h);
 			}
 
+			// Pick up notifications written by the daemon
+			const notifications = loadAndClearNotifications();
+			for (const n of notifications) {
+				if (n.type === "item_granted" && n.itemId) {
+					const def = getItem(n.itemId);
+					const name = def?.name ?? n.itemId;
+					pushEvent(`You received ${n.quantity ?? 1}x ${name}`, "cyan");
+				} else {
+					pushEvent(n.message, n.type === "event_complete" ? "magenta" : "white");
+				}
+			}
+
 			const playing = np?.isPlaying && np.title && np.volume > 0 ? np : null;
 			setCurrentTrack(playing);
+
+			// Check for pending trade requests (from daemon)
+			if (isOnline) {
+				const pt = loadPendingTrade();
+				setPendingTrade(pt);
+
+				if (pt && pt.tradeId !== lastTradeNotified.current) {
+					lastTradeNotified.current = pt.tradeId;
+					pushEvent(
+						`📦 ${pt.fromName} wants to trade! Press t to respond`,
+						"green",
+					);
+					// Ring terminal bell
+					process.stdout.write("\x07");
+				}
+			}
 		};
 
 		refresh();
@@ -138,6 +172,9 @@ function RunApp() {
 		if (_input === "i" && herzie) {
 			setView("inventory");
 		}
+		if (_input === "t" && herzie && online) {
+			setView("friend-select");
+		}
 	});
 
 	if (!herzie) {
@@ -157,6 +194,54 @@ function RunApp() {
 				herzie={herzie}
 				onBack={() => setView("dashboard")}
 				online={online}
+			/>
+		);
+	}
+
+	// --- Friend selector for trading ---
+	if (view === "friend-select") {
+		return (
+			<FriendSelector
+				herzie={herzie}
+				pendingTrade={pendingTrade}
+				onSelect={async (friendCode) => {
+					const result = await apiCreateTrade(friendCode);
+					if (result) {
+						setActiveTradeId(result.tradeId);
+						setView("trading");
+					} else {
+						pushEvent("Failed to start trade.", "red");
+						setView("dashboard");
+					}
+				}}
+				onJoinTrade={async (tradeId) => {
+					const ok = await apiJoinTrade(tradeId);
+					if (ok) {
+						setActiveTradeId(tradeId);
+						savePendingTrade(null); // clear the pending trade
+						setPendingTrade(null);
+						setView("trading");
+					} else {
+						pushEvent("Failed to join trade.", "red");
+						setView("dashboard");
+					}
+				}}
+				onBack={() => setView("dashboard")}
+			/>
+		);
+	}
+
+	// --- Trading view ---
+	if (view === "trading" && activeTradeId) {
+		return (
+			<TradingView
+				herzie={herzie}
+				tradeId={activeTradeId}
+				onDone={(message, color) => {
+					if (color !== "yellow") pushEvent(message, color);
+					setActiveTradeId(null);
+					setView("dashboard");
+				}}
 			/>
 		);
 	}
@@ -243,7 +328,7 @@ function RunApp() {
 
 			{/* Footer */}
 			<Box marginTop={1}>
-				<Text dimColor>Press q to exit · i for inventory</Text>
+				<Text dimColor>Press q to exit · i for inventory · t to trade</Text>
 			</Box>
 		</Box>
 	);

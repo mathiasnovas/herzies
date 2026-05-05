@@ -9,6 +9,9 @@ export interface ItemDef {
 	rarity: Rarity;
 	art: string[];
 	frames: string[][];
+	stackable?: boolean;
+	equipable?: boolean;
+	sellPrice?: number;
 }
 
 export const RARITY_COLORS: Record<Rarity, string> = {
@@ -281,6 +284,138 @@ function generateFrames(): string[][] {
 
 const firstEditionFrames = generateFrames();
 
+// --- CD disc rendering ---
+const CD_RADIUS = 1.1;
+const CD_HOLE = 0.18; // center hole radius
+
+/** Check if a 3D point (on the XY plane) is inside the disc */
+function insideDisc(u: number, v: number): boolean {
+	const dx = u - 0.5, dy = v - 0.5;
+	const r = Math.sqrt(dx * dx + dy * dy);
+	return r <= 0.5;
+}
+
+function cdFrontTexture(u: number, v: number): number {
+	const dx = u - 0.5, dy = v - 0.5;
+	const r = Math.sqrt(dx * dx + dy * dy);
+
+	// Outside disc
+	if (r > 0.5) return -1;
+	// Center hole
+	if (r < 0.08) return -1;
+	// Hole rim
+	if (r < 0.10) return 0.9;
+
+	// Concentric ring pattern (rainbow-ish data tracks)
+	const ring = (r * 40) % 1;
+	const base = 0.3 + 0.4 * (1 - r / 0.5); // brighter toward center
+
+	// Thin shiny rings
+	if (ring < 0.15) return base + 0.2;
+	// Label area (inner ring)
+	if (r > 0.14 && r < 0.25) return 0.55;
+
+	return base;
+}
+
+function cdBackTexture(u: number, v: number): number {
+	const dx = u - 0.5, dy = v - 0.5;
+	const r = Math.sqrt(dx * dx + dy * dy);
+
+	if (r > 0.5) return -1;
+	if (r < 0.08) return -1;
+	if (r < 0.10) return 0.7;
+
+	// Plain reflective back
+	return 0.35 + 0.15 * Math.sin(r * 30);
+}
+
+// CD uses a circular bounding quad, same rendering approach
+const CD_HW = CD_RADIUS;
+const CD_HH = CD_RADIUS;
+const CD_CORNERS: V3[] = [
+	[-CD_HW, -CD_HH, 0],
+	[CD_HW, -CD_HH, 0],
+	[CD_HW, CD_HH, 0],
+	[-CD_HW, CD_HH, 0],
+];
+
+function renderCdFrame(yAngle: number): string[] {
+	const xf = CD_CORNERS.map((v) => rotY(rotZ(v, TILT), yAngle));
+
+	const e1: V3 = [xf[1][0] - xf[0][0], xf[1][1] - xf[0][1], xf[1][2] - xf[0][2]];
+	const e2: V3 = [xf[3][0] - xf[0][0], xf[3][1] - xf[0][1], xf[3][2] - xf[0][2]];
+	const faceN = norm(cross(e1, e2));
+	const front = faceN[2] < 0;
+	const diffuse = Math.abs(dot3(faceN, LIGHT));
+
+	const pr = xf.map((v) => project(v));
+
+	const bright: number[][] = Array.from({ length: SH }, () => Array(SW).fill(-1));
+
+	for (let sy = 0; sy < SH; sy++) {
+		for (let sx = 0; sx < SW; sx++) {
+			const px = sx + 0.5, py = sy + 0.5;
+
+			const uv =
+				triUV(
+					px, py,
+					pr[0][0], pr[0][1], UVS[0][0], UVS[0][1],
+					pr[1][0], pr[1][1], UVS[1][0], UVS[1][1],
+					pr[2][0], pr[2][1], UVS[2][0], UVS[2][1],
+				) ??
+				triUV(
+					px, py,
+					pr[0][0], pr[0][1], UVS[0][0], UVS[0][1],
+					pr[2][0], pr[2][1], UVS[2][0], UVS[2][1],
+					pr[3][0], pr[3][1], UVS[3][0], UVS[3][1],
+				);
+
+			if (!uv) continue;
+
+			let [u, v] = uv;
+			if (!front) u = 1 - u;
+
+			const tex = front ? cdFrontTexture(u, v) : cdBackTexture(u, v);
+			if (tex < 0) continue; // outside disc or center hole
+
+			const lit = tex * (0.2 + 0.8 * diffuse);
+			bright[sy][sx] = lit;
+		}
+	}
+
+	// Silver/iridescent color scheme
+	const s = chalk.hex("#C0C0C0");
+	const h = chalk.hex("#E8E8E8");
+	const d = chalk.hex("#808080");
+
+	return bright.map((row) =>
+		row
+			.map((val) => {
+				if (val < 0) return " ";
+				const idx = Math.min(
+					Math.floor(val * (RAMP.length - 1)),
+					RAMP.length - 1,
+				);
+				const ch = RAMP[idx];
+				if (ch === " ") return " ";
+				return val > 0.6 ? h(ch) : val > 0.35 ? s(ch) : d(ch);
+			})
+			.join(""),
+	);
+}
+
+function generateCdFrames(): string[][] {
+	const frames: string[][] = [];
+	const spinCount = 36;
+	for (let i = 0; i < spinCount; i++) {
+		frames.push(renderCdFrame((i / spinCount) * Math.PI * 2));
+	}
+	return frames;
+}
+
+const cdFrames = generateCdFrames();
+
 export const ITEMS: ItemDef[] = [
 	{
 		id: "first-edition",
@@ -289,6 +424,19 @@ export const ITEMS: ItemDef[] = [
 		rarity: "rare",
 		art: firstEditionFrames[0],
 		frames: firstEditionFrames,
+		stackable: false,
+		equipable: false,
+	},
+	{
+		id: "cd",
+		name: "CD",
+		description: "A compact disc earned by listening.",
+		rarity: "common",
+		art: cdFrames[0],
+		frames: cdFrames,
+		stackable: true,
+		equipable: false,
+		sellPrice: 10,
 	},
 ];
 
