@@ -15,7 +15,7 @@ A digital pet that lives in your terminal that grows by listening to music. **[h
 |---------|-------------|
 | [`herzies`](packages/cli) | CLI application |
 | [`@herzies/shared`](packages/shared) | Shared types and utilities |
-| [`web`](packages/web) | Landing page and auth |
+| [`web`](packages/web) | Website, game server API, and auth |
 
 ## Getting Started
 

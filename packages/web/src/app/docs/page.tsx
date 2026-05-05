@@ -20,6 +20,10 @@ const commands = [
 		description: "Quick snapshot of your herzie — level, stage, XP, top genres, and friend code.",
 	},
 	{
+		name: "herzies listen",
+		description: "Start listening in the foreground — your herzie earns XP while the command is running.",
+	},
+	{
 		name: "herzies login",
 		description: "Log in to sync your herzie across devices.",
 	},

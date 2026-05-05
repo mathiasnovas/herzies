@@ -52,11 +52,13 @@ export default function TermsPage() {
 					<li>Your herzie's name, level, stage, XP, and appearance</li>
 					<li>Total minutes listened and a breakdown by genre</li>
 					<li>Your friend code and friend list</li>
+					<li>Items and event progress</li>
+					<li>Daily streak data</li>
 				</ul>
 				<p style={{ fontSize: 13 }}>
 					We do <span style={{ fontWeight: 700 }}>not</span> store what songs or artists you listen to.
 					We do <span style={{ fontWeight: 700 }}>not</span> sell or share your data with anyone.
-					All data is stored in Supabase with row-level security enabled.
+					All data is processed by the herzies game server and stored securely.
 				</p>
 				<p style={{ fontSize: 13 }}>
 					If you don't register, everything stays local on your machine
