@@ -17,7 +17,7 @@ async function ensureFreshToken(): Promise<void> {
 	if (!session?.refreshToken) return;
 
 	// Refresh if token expires within the next 5 minutes
-	if (session.expiresAt > Date.now() + 5 * 60 * 1000) return;
+	if (session.expiresAt > Date.now() + 10 * 60 * 1000) return;
 
 	const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 		auth: { autoRefreshToken: false, persistSession: false },

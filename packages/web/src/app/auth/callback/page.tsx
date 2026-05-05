@@ -57,6 +57,7 @@ function CallbackHandler() {
 
 				addField("access_token", session.access_token);
 				addField("refresh_token", session.refresh_token);
+				addField("expires_in", String(session.expires_in ?? 3600));
 				document.body.appendChild(form);
 				form.submit();
 			} else {

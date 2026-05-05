@@ -31,6 +31,7 @@ function LoginApp() {
 				const params = new URLSearchParams(body);
 				const accessToken = params.get("access_token");
 				const refreshToken = params.get("refresh_token");
+				const expiresIn = parseInt(params.get("expires_in") ?? "3600", 10);
 
 				if (!accessToken) {
 					res.writeHead(200, { "Content-Type": "text/html" });
@@ -58,7 +59,7 @@ function LoginApp() {
 				saveSession({
 					accessToken,
 					refreshToken: refreshToken ?? "",
-					expiresAt: Date.now() + 3600000,
+					expiresAt: Date.now() + expiresIn * 1000,
 					userId: user.id,
 				});
 

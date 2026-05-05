@@ -5,17 +5,20 @@ import { isDaemonRunning } from "../storage/pid.js";
 import { type NowPlayingInfo, getNowPlaying } from "../music/nowplaying.js";
 import { HerzieDisplay } from "../ui/HerzieDisplay.js";
 import { StatsPanel } from "../ui/StatsPanel.js";
+import { checkOnline } from "../storage/api.js";
 
 function StatusApp() {
 	const { exit } = useApp();
 	const herzie = loadHerzie();
 	const daemonRunning = isDaemonRunning();
 	const [nowPlaying, setNowPlaying] = useState<NowPlayingInfo | null>(null);
+	const [online, setOnline] = useState<boolean | undefined>(undefined);
 	const [ready, setReady] = useState(false);
 
 	useEffect(() => {
-		getNowPlaying().then((np) => {
+		Promise.all([getNowPlaying(), checkOnline()]).then(([np, isOnline]) => {
 			setNowPlaying(np?.isPlaying ? np : null);
+			setOnline(isOnline);
 			setReady(true);
 		});
 	}, []);
@@ -78,6 +81,14 @@ function StatusApp() {
 						<Text bold>herzies start</Text>
 						<Text dimColor> or </Text>
 						<Text bold>herzies</Text>
+					</Text>
+				)}
+				{online !== undefined && (
+					<Text>
+						{" "}
+						<Text color={online ? "green" : "red"}>
+							[{online ? "online" : "offline"}]
+						</Text>
 					</Text>
 				)}
 			</Box>

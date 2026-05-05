@@ -3,14 +3,16 @@ import React, { useEffect, useState } from "react";
 import type { Herzie } from "@herzies/shared";
 import { getItem, RARITY_COLORS, RARITY_LABELS } from "../art/items.js";
 import { ItemDisplay } from "./ItemDisplay.js";
-import { isLoggedIn, fetchInventory } from "../storage/supabase.js";
+import { isLoggedIn } from "../storage/supabase.js";
+import { apiFetchInventory } from "../storage/api.js";
 
 interface Props {
 	herzie: Herzie;
 	onBack: () => void;
+	online?: boolean;
 }
 
-export function InventoryView({ herzie, onBack }: Props) {
+export function InventoryView({ herzie, onBack, online }: Props) {
 	const [selected, setSelected] = useState(0);
 	const [viewing, setViewing] = useState<string | null>(null);
 	const [inventory, setInventory] = useState<string[] | null>(null);
@@ -21,7 +23,7 @@ export function InventoryView({ herzie, onBack }: Props) {
 			setLoading(false);
 			return;
 		}
-		fetchInventory().then((items) => {
+		apiFetchInventory().then((items) => {
 			setInventory(items ?? []);
 			setLoading(false);
 		});
@@ -58,6 +60,19 @@ export function InventoryView({ herzie, onBack }: Props) {
 			<Box flexDirection="column" padding={1}>
 				<Text color="yellow">
 					Log in to access your inventory. Run <Text bold>herzies login</Text>
+				</Text>
+				<Box marginTop={1}>
+					<Text dimColor>Press q to go back</Text>
+				</Box>
+			</Box>
+		);
+	}
+
+	if (online === false) {
+		return (
+			<Box flexDirection="column" padding={1}>
+				<Text color="yellow">
+					Inventory is only available when online.
 				</Text>
 				<Box marginTop={1}>
 					<Text dimColor>Press q to go back</Text>

@@ -8,6 +8,7 @@ import { ensureDaemonRunning } from "../storage/daemon.js";
 import { HerzieDisplay } from "../ui/HerzieDisplay.js";
 import { StatsPanel } from "../ui/StatsPanel.js";
 import { InventoryView } from "../ui/InventoryView.js";
+import { checkOnline } from "../storage/api.js";
 
 const REFRESH_INTERVAL = 3000;
 
@@ -32,6 +33,7 @@ function RunApp() {
 	const [daemonUp, setDaemonUp] = useState(false);
 	const [events, setEvents] = useState<EventMessage[]>([]);
 	const [tick, setTick] = useState(0);
+	const [online, setOnline] = useState<boolean | undefined>(undefined);
 
 	// View state
 	const [view, setView] = useState<View>("dashboard");
@@ -65,10 +67,12 @@ function RunApp() {
 		if (!daemonUp) return;
 
 		const refresh = async () => {
-			const [h, np] = await Promise.all([
+			const [h, np, isOnline] = await Promise.all([
 				Promise.resolve(loadHerzie()),
 				getNowPlaying(),
+				checkOnline(),
 			]);
+			setOnline(isOnline);
 
 			if (h) {
 				// Detect level-ups and evolutions from daemon's writes
@@ -135,6 +139,7 @@ function RunApp() {
 			<InventoryView
 				herzie={herzie}
 				onBack={() => setView("dashboard")}
+				online={online}
 			/>
 		);
 	}
@@ -153,7 +158,13 @@ function RunApp() {
 				<Text dimColor>
 					{" "}
 					— {currentTrack ? "listening" : `idle${dots}`}
+					{" "}
 				</Text>
+				{online !== undefined && (
+					<Text color={online ? "green" : "red"}>
+						[{online ? "online" : "offline"}]
+					</Text>
+				)}
 			</Box>
 
 			{/* Main layout: Herzie art + stats */}

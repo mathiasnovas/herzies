@@ -2,7 +2,8 @@ import { Box, Text, render, useApp } from "ink";
 import React, { useEffect, useState } from "react";
 import { addFriend, removeFriend } from "../core/friends.js";
 import type { HerzieProfile } from "@herzies/shared";
-import { addFriendRemote, isLoggedIn, lookupHerzies, removeFriendRemote } from "../storage/supabase.js";
+import { isLoggedIn, lookupHerzies } from "../storage/supabase.js";
+import { apiAddFriend, apiRemoveFriend } from "../storage/api.js";
 import { loadHerzie, saveHerzie } from "../storage/state.js";
 
 function FriendsListApp() {
@@ -139,7 +140,7 @@ export async function runFriendsAdd(code: string) {
 
 	const result = await addFriend(herzie, code);
 	if (result.success) {
-		const synced = await addFriendRemote(herzie.friendCode, code.toUpperCase().trim());
+		const synced = await apiAddFriend(herzie.friendCode, code.toUpperCase().trim());
 		if (!synced) {
 			// Undo local add
 			herzie.friendCodes = herzie.friendCodes.filter((c) => c !== code.toUpperCase().trim());
@@ -181,7 +182,7 @@ export async function runFriendsRemove(code: string) {
 	const normalized = code.toUpperCase().trim();
 	const result = removeFriend(herzie, code);
 	if (result.success) {
-		const synced = await removeFriendRemote(herzie.friendCode, normalized);
+		const synced = await apiRemoveFriend(herzie.friendCode, normalized);
 		if (!synced) {
 			// Re-add locally since remote failed
 			herzie.friendCodes.push(normalized);
