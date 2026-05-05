@@ -37,6 +37,7 @@ export async function POST(request: Request) {
 		const response: SyncResponse = {
 			herzie: result.herzie,
 			notifications: result.notifications,
+			multipliers: result.multipliers,
 		};
 
 		return NextResponse.json(response);

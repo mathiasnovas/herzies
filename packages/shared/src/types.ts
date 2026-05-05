@@ -47,6 +47,10 @@ export interface Herzie {
 
 	// Boosts
 	boostUntil?: number;
+
+	// Streaks
+	streakDays: number;
+	streakLastDate: string | null;
 }
 
 export interface HerzieProfile {
@@ -72,6 +76,15 @@ export interface SyncResponse {
 	herzie: Herzie;
 	/** Event notifications triggered by this sync */
 	notifications: EventNotification[];
+	/** Active multipliers (server-authoritative, includes both time-based and admin-managed) */
+	multipliers: ActiveMultiplier[];
+}
+
+/** A multiplier that boosts XP gain */
+export interface ActiveMultiplier {
+	name: string;
+	/** Bonus as a fraction, e.g. 1.0 = +100%, 0.2 = +20% */
+	bonus: number;
 }
 
 export interface EventNotification {

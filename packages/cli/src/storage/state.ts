@@ -2,11 +2,12 @@ import { createHmac } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Herzie } from "@herzies/shared";
+import type { Herzie, ActiveMultiplier } from "@herzies/shared";
 
 const CONFIG_DIR = join(homedir(), ".config", "herzies");
 const HERZIE_FILE = join(CONFIG_DIR, "herzie.json");
 const SESSION_FILE = join(CONFIG_DIR, "session.json");
+const MULTIPLIERS_FILE = join(CONFIG_DIR, "multipliers.json");
 
 function ensureDir() {
 	if (!existsSync(CONFIG_DIR)) {
@@ -96,4 +97,18 @@ export function deleteLocalData(): void {
 
 export function getConfigDir(): string {
 	return CONFIG_DIR;
+}
+
+export function saveMultipliers(multipliers: ActiveMultiplier[]): void {
+	ensureDir();
+	writeFileSync(MULTIPLIERS_FILE, JSON.stringify(multipliers));
+}
+
+export function loadMultipliers(): ActiveMultiplier[] | null {
+	if (!existsSync(MULTIPLIERS_FILE)) return null;
+	try {
+		return JSON.parse(readFileSync(MULTIPLIERS_FILE, "utf-8"));
+	} catch {
+		return null;
+	}
 }

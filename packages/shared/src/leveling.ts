@@ -1,4 +1,6 @@
-import type { Herzie, Stage } from "./types.js";
+import type { Herzie, Stage, ActiveMultiplier } from "./types.js";
+
+export type { ActiveMultiplier };
 
 export function xpForLevel(level: number): number {
 	return Math.floor(100 * Math.pow(level, 1.5));
@@ -32,11 +34,7 @@ export function stageForLevel(level: number): Stage {
 
 const BASE_XP_PER_MINUTE = 10;
 
-export interface ActiveMultiplier {
-	name: string;
-	bonus: number; // e.g. 1.0 = +100%, 0.2 = +20%
-}
-
+/** Get the built-in time-based multipliers (Sunday, Friday, Early Bird, etc.) */
 export function getActiveMultipliers(now: Date = new Date(), boostUntil?: number): ActiveMultiplier[] {
 	const multipliers: ActiveMultiplier[] = [];
 	const day = now.getDay(); // 0 = Sunday, 5 = Friday
@@ -67,11 +65,22 @@ export function getTimeBonusMultiplier(now: Date = new Date(), boostUntil?: numb
 	return 1 + totalBonus;
 }
 
+/**
+ * Calculate XP gained for a listening period.
+ *
+ * When `multipliers` is provided (server path), those are the sole source of
+ * time/event bonuses — `boostUntil` and built-in time bonuses are ignored
+ * because they're already included in the server-provided list.
+ *
+ * When `multipliers` is omitted (offline/local path), the built-in
+ * time-based multipliers and boostUntil are used as a fallback.
+ */
 export function calculateXpGain(
 	minutes: number,
 	friendCount: number,
 	isCravingGenre: boolean,
 	boostUntil?: number,
+	multipliers?: ActiveMultiplier[],
 ): number {
 	let xp = minutes * BASE_XP_PER_MINUTE;
 	const friendBonus = Math.min(friendCount, 20) * 0.02;
@@ -79,7 +88,14 @@ export function calculateXpGain(
 	if (isCravingGenre) {
 		xp *= 1.5;
 	}
-	xp *= getTimeBonusMultiplier(undefined, boostUntil);
+	if (multipliers && multipliers.length > 0) {
+		// Server-provided multipliers (includes time-based + admin-managed + boost)
+		const totalBonus = multipliers.reduce((sum, m) => sum + m.bonus, 0);
+		xp *= 1 + totalBonus;
+	} else {
+		// Offline fallback: use built-in time-based multipliers
+		xp *= getTimeBonusMultiplier(undefined, boostUntil);
+	}
 	return xp;
 }
 

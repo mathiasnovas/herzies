@@ -51,3 +51,26 @@ create policy "Users can see own claims"
 
 -- Only service role (game server) can insert claims
 -- No INSERT policy for anon/authenticated = only service role can write
+
+-- Multipliers table (admin-managed XP bonuses)
+create table if not exists public.multipliers (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  bonus real not null check (bonus > 0),
+  active boolean not null default true,
+  starts_at timestamptz not null,
+  ends_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_multipliers_active on public.multipliers(active, starts_at, ends_at);
+
+alter table public.multipliers enable row level security;
+
+-- Anyone can see active multipliers
+drop policy if exists "Multipliers are publicly readable" on public.multipliers;
+create policy "Multipliers are publicly readable"
+  on public.multipliers for select
+  using (true);
+
+-- Only service role can write multipliers

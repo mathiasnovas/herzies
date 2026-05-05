@@ -22,7 +22,7 @@ import {
 import { getNowPlaying } from "../music/nowplaying.js";
 import { apiSync } from "../storage/api.js";
 import { syncHerzie, syncNowPlaying } from "../storage/supabase.js";
-import { loadHerzie, saveHerzie } from "../storage/state.js";
+import { loadHerzie, saveHerzie, saveMultipliers } from "../storage/state.js";
 import { writePid, clearPid, loadPid } from "../storage/pid.js";
 import { isLoggedIn } from "../storage/supabase.js";
 
@@ -134,7 +134,10 @@ async function syncLoop(herzie: Herzie) {
 			herzie.totalMinutesListened = serverHerzie.totalMinutesListened;
 			herzie.genreMinutes = serverHerzie.genreMinutes;
 			herzie.friendCodes = serverHerzie.friendCodes;
+			herzie.streakDays = serverHerzie.streakDays;
+			herzie.streakLastDate = serverHerzie.streakLastDate;
 			saveHerzie(herzie);
+			saveMultipliers(result.multipliers ?? []);
 
 			if (result.notifications.length > 0) {
 				handleNotifications(result.notifications);

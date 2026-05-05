@@ -19,5 +19,7 @@ export function createHerzie(name: string): Herzie {
 		friendCodes: [],
 		lastCravingDate: "",
 		lastCravingGenre: "",
+		streakDays: 0,
+		streakLastDate: null,
 	};
 }

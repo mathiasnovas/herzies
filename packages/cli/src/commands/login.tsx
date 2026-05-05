@@ -88,6 +88,8 @@ function LoginApp() {
 						friendCodes: herzieData.friend_codes ?? [],
 						lastCravingDate: herzieData.last_craving_date ?? "",
 						lastCravingGenre: herzieData.last_craving_genre ?? "",
+						streakDays: herzieData.streak_days ?? 0,
+						streakLastDate: herzieData.streak_last_date ?? null,
 					};
 					saveHerzie(herzie);
 					setSynced(herzie.name);

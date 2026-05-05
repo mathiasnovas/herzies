@@ -1,8 +1,8 @@
 import { Box, Text, render, useApp, useInput } from "ink";
 import React, { useEffect, useRef, useState } from "react";
-import type { Herzie, Stage } from "@herzies/shared";
+import type { Herzie, Stage, ActiveMultiplier } from "@herzies/shared";
 import { type NowPlayingInfo, getNowPlaying } from "../music/nowplaying.js";
-import { loadHerzie, saveHerzie } from "../storage/state.js";
+import { loadHerzie, saveHerzie, loadMultipliers } from "../storage/state.js";
 import { isDaemonRunning } from "../storage/pid.js";
 import { ensureDaemonRunning } from "../storage/daemon.js";
 import { HerzieDisplay } from "../ui/HerzieDisplay.js";
@@ -34,6 +34,7 @@ function RunApp() {
 	const [events, setEvents] = useState<EventMessage[]>([]);
 	const [tick, setTick] = useState(0);
 	const [online, setOnline] = useState<boolean | undefined>(undefined);
+	const [multipliers, setMultipliers] = useState<ActiveMultiplier[] | undefined>(undefined);
 
 	// View state
 	const [view, setView] = useState<View>("dashboard");
@@ -73,6 +74,7 @@ function RunApp() {
 				checkOnline(),
 			]);
 			setOnline(isOnline);
+			setMultipliers(loadMultipliers() ?? undefined);
 
 			if (h) {
 				// Detect level-ups and evolutions from daemon's writes
@@ -107,6 +109,21 @@ function RunApp() {
 		const t = setInterval(() => setTick((n) => n + 1), 1000);
 		return () => clearInterval(t);
 	}, []);
+
+	// Update terminal tab title
+	useEffect(() => {
+		const name = herzie?.name ?? "herzies";
+		const status = currentTrack
+			? `♪ ${currentTrack.title} — ${currentTrack.artist}`
+			: "idle";
+		const conn = online === false ? "offline" : "";
+		const parts = [name, status, conn].filter(Boolean);
+		process.stdout.write(`\x1b]0;${parts.join(" · ")}\x07`);
+
+		return () => {
+			process.stdout.write(`\x1b]0;\x07`);
+		};
+	}, [herzie?.name, currentTrack, online]);
 
 	useInput((_input, key) => {
 		if (view !== "dashboard") return;
@@ -161,8 +178,13 @@ function RunApp() {
 					{" "}
 				</Text>
 				{online !== undefined && (
-					<Text color={online ? "green" : "red"}>
-						[{online ? "online" : "offline"}]
+					<Text>
+						<Text color={online ? "green" : "red"}>
+							[{online ? "online" : "offline"}]
+						</Text>
+						{online === false && (
+							<Text dimColor> xp syncs when back online</Text>
+						)}
 					</Text>
 				)}
 			</Box>
@@ -177,7 +199,7 @@ function RunApp() {
 					/>
 				</Box>
 
-				<StatsPanel herzie={herzie} />
+				<StatsPanel herzie={herzie} multipliers={multipliers} />
 			</Box>
 
 			{/* Now playing */}

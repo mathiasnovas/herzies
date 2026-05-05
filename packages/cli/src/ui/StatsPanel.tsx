@@ -1,9 +1,11 @@
 import { Box, Text } from "ink";
 import React from "react";
-import { type Herzie, type Stage, levelProgress, xpToNextLevel, getActiveMultipliers, type ActiveMultiplier } from "@herzies/shared";
+import { type Herzie, type Stage, type ActiveMultiplier, levelProgress, xpToNextLevel, getActiveMultipliers } from "@herzies/shared";
 
 interface Props {
 	herzie: Herzie;
+	/** Server-provided multipliers. Falls back to local calculation if not provided. */
+	multipliers?: ActiveMultiplier[];
 }
 
 const STAGE_NAMES: Record<Stage, string> = {
@@ -24,11 +26,11 @@ function XpBar({ progress, width = 20 }: { progress: number; width?: number }) {
 	);
 }
 
-export function StatsPanel({ herzie }: Props) {
+export function StatsPanel({ herzie, multipliers }: Props) {
 	const progress = levelProgress(herzie);
 	const toNext = xpToNextLevel(herzie);
 	const totalHours = (herzie.totalMinutesListened / 60).toFixed(1);
-	const activeMultipliers = getActiveMultipliers(new Date(), herzie.boostUntil);
+	const activeMultipliers = multipliers ?? getActiveMultipliers(new Date(), herzie.boostUntil);
 
 	return (
 		<Box flexDirection="column" paddingLeft={2}>
@@ -78,6 +80,15 @@ export function StatsPanel({ herzie }: Props) {
 					)
 				</Text>
 			</Box>
+
+			{/* Streak */}
+			{herzie.streakDays > 0 && (
+				<Box>
+					<Text bold>Streak: </Text>
+					<Text color="yellow">{herzie.streakDays} day{herzie.streakDays !== 1 ? "s" : ""}</Text>
+					<Text dimColor> (+{herzie.streakDays}% XP)</Text>
+				</Box>
+			)}
 
 			{/* Active multipliers */}
 			{activeMultipliers.length > 0 && (

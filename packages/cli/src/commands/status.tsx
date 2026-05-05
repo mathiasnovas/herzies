@@ -89,6 +89,9 @@ function StatusApp() {
 						<Text color={online ? "green" : "red"}>
 							[{online ? "online" : "offline"}]
 						</Text>
+						{online === false && (
+							<Text dimColor> xp syncs when back online</Text>
+						)}
 					</Text>
 				)}
 			</Box>
