@@ -6,7 +6,9 @@
 | | | |  __/ |   / /| |  __/\__ \
 |_| |_|\___|_|  /___|_|\___||___/
 ```
-A digital pet that lives in your terminal that grows by listening to music. **[herzies.app](https://www.herzies.app)**
+A digital pet that lives in your terminal and grows by listening to music. **[herzies.app](https://www.herzies.app)**
+
+The CLI sends listening observations to the herzies game server, which calculates XP, manages events, and tracks streaks. Log in to sync across devices, compete on the leaderboard, and collect items.
 
 <p align="center">
  <img width="675" alt="herzies CLI" src="https://raw.githubusercontent.com/Herzies/herzies/main/packages/cli/assets/screenshot.png" />
@@ -24,10 +26,11 @@ npm i -g herzies
 herzies              # open the live dashboard
 herzies hatch        # create your herzie
 herzies status       # quick snapshot of your herzie
+herzies listen       # start listening in the foreground
 herzies start        # start background listening (no terminal needed)
 herzies stop         # stop background listening
 herzies autostart    # auto-start daemon on login (on/off)
-herzies login        # log in to sync from another device
+herzies login        # log in to sync across devices
 herzies friends      # manage your friendzies
 herzies friends add  # add a friendzie by code
 herzies kill         # permanently delete your herzie

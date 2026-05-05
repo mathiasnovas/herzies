@@ -3,10 +3,14 @@
  * without requiring an open terminal window.
  *
  * Spawned by `herzies start`, stopped by `herzies stop`.
+ *
+ * The daemon sends observations to the game server, which is the
+ * authority for XP calculation, leveling, and event triggers.
  */
 
 import {
 	type Herzie,
+	type EventNotification,
 	getDailyCraving,
 	matchesCraving,
 	applyXp,
@@ -15,8 +19,8 @@ import {
 	recordGenreMinutes,
 } from "@herzies/shared";
 import { getNowPlaying } from "../music/nowplaying.js";
-import { syncHerzie, syncNowPlaying, pullFriendCodes } from "../storage/supabase.js";
-import { loadHerzie, saveHerzie } from "../storage/state.js";
+import { apiSync, isLoggedIn } from "../storage/api.js";
+import { loadHerzie, saveHerzie, saveMultipliers } from "../storage/state.js";
 import { writePid, clearPid, loadPid } from "../storage/pid.js";
 
 const POLL_INTERVAL = 3000;
@@ -24,7 +28,11 @@ const SYNC_INTERVAL = 10000;
 
 let lastPollTime = Date.now();
 let lastTrackTitle = "";
-let currentNowPlaying: { title: string; artist: string } | null = null;
+let currentNowPlaying: { title: string; artist: string; genre?: string } | null = null;
+let currentGenres: string[] = [];
+
+/** Minutes accumulated since last sync — sent to server as observations */
+let pendingMinutes = 0;
 
 function log(msg: string) {
 	const ts = new Date().toISOString();
@@ -36,11 +44,13 @@ async function poll(herzie: Herzie): Promise<void> {
 
 	if (!np || !np.isPlaying || !np.title || np.volume === 0) {
 		currentNowPlaying = null;
+		currentGenres = [];
 		lastPollTime = Date.now();
 		return;
 	}
 
-	currentNowPlaying = { title: np.title, artist: np.artist };
+	currentNowPlaying = { title: np.title, artist: np.artist, genre: np.genre };
+	currentGenres = np.genre ? [np.genre] : [];
 
 	const now = Date.now();
 	const minutesSinceLastPoll = (now - lastPollTime) / 60000;
@@ -54,15 +64,15 @@ async function poll(herzie: Herzie): Promise<void> {
 	}
 
 	if (minutes > 0.01) {
+		pendingMinutes += minutes;
+
+		// Also apply XP locally for responsive UI (server is authoritative on sync)
 		const genreList = np.genre ? [np.genre] : [];
-		const genres =
-			genreList.length > 0
-				? classifyGenre(genreList)
-				: classifyGenre(["pop"]);
+		const genres = genreList.length > 0 ? classifyGenre(genreList) : classifyGenre(["pop"]);
 		const craving = getDailyCraving(herzie.id);
 		const isCraving = genreList.length > 0 && matchesCraving(genreList, craving);
 
-		// Re-read from disk to pick up changes from other commands (e.g. friends add, boost)
+		// Re-read from disk to pick up changes from other commands
 		const fresh = loadHerzie();
 		if (fresh) {
 			herzie.friendCodes = fresh.friendCodes;
@@ -71,13 +81,7 @@ async function poll(herzie: Herzie): Promise<void> {
 			herzie.boostUntil = fresh.boostUntil;
 		}
 
-		const xp = calculateXpGain(
-			minutes,
-			herzie.friendCodes.length,
-			isCraving,
-			herzie.boostUntil,
-		);
-
+		const xp = calculateXpGain(minutes, herzie.friendCodes.length, isCraving, herzie.boostUntil);
 		const events = applyXp(herzie, xp);
 		herzie.totalMinutesListened += minutes;
 		recordGenreMinutes(herzie.genreMinutes, genres, minutes);
@@ -92,29 +96,62 @@ async function poll(herzie: Herzie): Promise<void> {
 	}
 }
 
-let syncCount = 0;
-
-async function syncLoop(herzie: Herzie) {
-	const ok = await syncHerzie(herzie, currentNowPlaying);
-	if (ok) log("synced");
-
-	// Pull friend updates every 6th sync (~60s) to pick up adds/removes by others
-	syncCount++;
-	if (syncCount % 6 === 0) {
-		await pullFriendCodes(herzie).catch(() => {});
+function handleNotifications(notifications: EventNotification[]) {
+	for (const n of notifications) {
+		if (n.type === "item_granted") {
+			log(`🎁 ${n.title}: ${n.message}`);
+		} else if (n.type === "event_complete") {
+			log(`🏆 ${n.title}: ${n.message}`);
+		} else {
+			log(`ℹ ${n.title}: ${n.message}`);
+		}
 	}
 }
 
+async function syncLoop(herzie: Herzie) {
+	if (!isLoggedIn()) return;
+
+	const minutesToSync = pendingMinutes;
+	const npPayload = currentNowPlaying
+		? { title: currentNowPlaying.title, artist: currentNowPlaying.artist, genre: currentNowPlaying.genre }
+		: null;
+
+	const result = await apiSync(npPayload, minutesToSync, currentGenres);
+
+	if (result) {
+		pendingMinutes = 0;
+
+		// Server is authoritative — update local state from response
+		const serverHerzie = result.herzie;
+		herzie.xp = serverHerzie.xp;
+		herzie.level = serverHerzie.level;
+		herzie.stage = serverHerzie.stage;
+		herzie.totalMinutesListened = serverHerzie.totalMinutesListened;
+		herzie.genreMinutes = serverHerzie.genreMinutes;
+		herzie.friendCodes = serverHerzie.friendCodes;
+		herzie.streakDays = serverHerzie.streakDays;
+		herzie.streakLastDate = serverHerzie.streakLastDate;
+		saveHerzie(herzie);
+		saveMultipliers(result.multipliers ?? []);
+
+		if (result.notifications.length > 0) {
+			handleNotifications(result.notifications);
+		}
+
+		log("synced");
+	}
+	// If API unreachable, pendingMinutes keeps accumulating for next attempt
+}
+
 async function main() {
-	// Check if another daemon is already running
 	const existingPid = loadPid();
 	if (existingPid !== null) {
 		try {
-			process.kill(existingPid, 0); // test if alive
+			process.kill(existingPid, 0);
 			log(`daemon already running (pid ${existingPid}), exiting`);
 			process.exit(1);
 		} catch {
-			// stale pid file, we'll take over
+			// stale pid file
 		}
 	}
 
@@ -127,29 +164,29 @@ async function main() {
 	writePid(process.pid);
 	log(`daemon started (pid ${process.pid}) for ${herzie.name}`);
 
-	// Graceful shutdown — clear now_playing so leaderboard shows idle
 	const cleanup = async () => {
 		log("daemon stopping");
 		currentNowPlaying = null;
-		await syncNowPlaying(null).catch(() => {});
+
+		if (isLoggedIn()) {
+			await apiSync(null, 0, []).catch(() => null);
+		}
+
 		clearPid();
 		process.exit(0);
 	};
 	process.on("SIGTERM", cleanup);
 	process.on("SIGINT", cleanup);
 
-	// Music polling loop
 	setInterval(() => {
 		poll(herzie).catch((err) => log(`poll error: ${err}`));
 	}, POLL_INTERVAL);
 
-	// Sync loop
 	syncLoop(herzie).catch(() => {});
 	setInterval(() => {
 		syncLoop(herzie).catch(() => {});
 	}, SYNC_INTERVAL);
 
-	// Initial poll
 	poll(herzie).catch(() => {});
 }
 

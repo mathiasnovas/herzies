@@ -1,13 +1,14 @@
 import { Box, Text, render, useApp, useInput } from "ink";
 import React, { useEffect, useRef, useState } from "react";
-import type { Herzie, Stage } from "@herzies/shared";
+import type { Herzie, Stage, ActiveMultiplier } from "@herzies/shared";
 import { type NowPlayingInfo, getNowPlaying } from "../music/nowplaying.js";
-import { loadHerzie, saveHerzie } from "../storage/state.js";
+import { loadHerzie, saveHerzie, loadMultipliers } from "../storage/state.js";
 import { isDaemonRunning } from "../storage/pid.js";
 import { ensureDaemonRunning } from "../storage/daemon.js";
 import { HerzieDisplay } from "../ui/HerzieDisplay.js";
 import { StatsPanel } from "../ui/StatsPanel.js";
 import { InventoryView } from "../ui/InventoryView.js";
+import { checkOnline } from "../storage/api.js";
 
 const REFRESH_INTERVAL = 3000;
 
@@ -32,6 +33,8 @@ function RunApp() {
 	const [daemonUp, setDaemonUp] = useState(false);
 	const [events, setEvents] = useState<EventMessage[]>([]);
 	const [tick, setTick] = useState(0);
+	const [online, setOnline] = useState<boolean | undefined>(undefined);
+	const [multipliers, setMultipliers] = useState<ActiveMultiplier[] | undefined>(undefined);
 
 	// View state
 	const [view, setView] = useState<View>("dashboard");
@@ -65,10 +68,13 @@ function RunApp() {
 		if (!daemonUp) return;
 
 		const refresh = async () => {
-			const [h, np] = await Promise.all([
+			const [h, np, isOnline] = await Promise.all([
 				Promise.resolve(loadHerzie()),
 				getNowPlaying(),
+				checkOnline(),
 			]);
+			setOnline(isOnline);
+			setMultipliers(loadMultipliers() ?? undefined);
 
 			if (h) {
 				// Detect level-ups and evolutions from daemon's writes
@@ -104,6 +110,21 @@ function RunApp() {
 		return () => clearInterval(t);
 	}, []);
 
+	// Update terminal tab title
+	useEffect(() => {
+		const name = herzie?.name ?? "herzies";
+		const status = currentTrack
+			? `♪ ${currentTrack.title} — ${currentTrack.artist}`
+			: "idle";
+		const conn = online === false ? "offline" : "";
+		const parts = [name, status, conn].filter(Boolean);
+		process.stdout.write(`\x1b]0;${parts.join(" · ")}\x07`);
+
+		return () => {
+			process.stdout.write(`\x1b]0;\x07`);
+		};
+	}, [herzie?.name, currentTrack, online]);
+
 	useInput((_input, key) => {
 		if (view !== "dashboard") return;
 
@@ -135,6 +156,7 @@ function RunApp() {
 			<InventoryView
 				herzie={herzie}
 				onBack={() => setView("dashboard")}
+				online={online}
 			/>
 		);
 	}
@@ -153,7 +175,18 @@ function RunApp() {
 				<Text dimColor>
 					{" "}
 					— {currentTrack ? "listening" : `idle${dots}`}
+					{" "}
 				</Text>
+				{online !== undefined && (
+					<Text>
+						<Text color={online ? "green" : "red"}>
+							[{online ? "online" : "offline"}]
+						</Text>
+						{online === false && (
+							<Text dimColor> xp syncs when back online</Text>
+						)}
+					</Text>
+				)}
 			</Box>
 
 			{/* Main layout: Herzie art + stats */}
@@ -166,7 +199,7 @@ function RunApp() {
 					/>
 				</Box>
 
-				<StatsPanel herzie={herzie} />
+				<StatsPanel herzie={herzie} multipliers={multipliers} />
 			</Box>
 
 			{/* Now playing */}

@@ -5,9 +5,21 @@ import open from "open";
 import React, { useEffect, useState } from "react";
 import type { Herzie } from "@herzies/shared";
 import { saveHerzie, saveSession } from "../storage/state.js";
-import { getSupabase } from "../storage/supabase.js";
+import { apiGetMe } from "../storage/api.js";
 
 const CALLBACK_PORT = 8974;
+
+/** Extract user ID from a Supabase JWT (base64url-encoded payload) */
+function extractUserId(token: string): string | null {
+	try {
+		const payload = token.split(".")[1];
+		const json = Buffer.from(payload, "base64url").toString();
+		const data = JSON.parse(json);
+		return data.sub ?? null;
+	} catch {
+		return null;
+	}
+}
 
 function LoginApp() {
 	const { exit } = useApp();
@@ -31,6 +43,7 @@ function LoginApp() {
 				const params = new URLSearchParams(body);
 				const accessToken = params.get("access_token");
 				const refreshToken = params.get("refresh_token");
+				const expiresIn = parseInt(params.get("expires_in") ?? "3600", 10);
 
 				if (!accessToken) {
 					res.writeHead(200, { "Content-Type": "text/html" });
@@ -42,13 +55,11 @@ function LoginApp() {
 					return;
 				}
 
-				const sb = await getSupabase();
-				const { data: { user } } = await sb.auth.getUser(accessToken);
-
-				if (!user) {
+				const userId = extractUserId(accessToken);
+				if (!userId) {
 					res.writeHead(200, { "Content-Type": "text/html" });
 					res.end("<h1>Login failed. You can close this window.</h1>");
-					setError("Could not get user.");
+					setError("Could not extract user ID from token.");
 					setStatus("error");
 					server.close();
 					setTimeout(() => exit(), 100);
@@ -58,36 +69,15 @@ function LoginApp() {
 				saveSession({
 					accessToken,
 					refreshToken: refreshToken ?? "",
-					expiresAt: Date.now() + 3600000,
-					userId: user.id,
+					expiresAt: Date.now() + expiresIn * 1000,
+					userId,
 				});
 
 				setStatus("syncing");
 
-				// Pull the user's herzie from the server (re-get client now that session is saved)
-				const authedSb = await getSupabase();
-				const { data: herzieData } = await authedSb
-					.from("herzies")
-					.select("*")
-					.eq("user_id", user.id)
-					.single();
-
-				if (herzieData) {
-					const herzie: Herzie = {
-						id: herzieData.id,
-						name: herzieData.name,
-						createdAt: herzieData.created_at,
-						appearance: herzieData.appearance,
-						xp: herzieData.xp,
-						level: herzieData.level,
-						stage: herzieData.stage,
-						totalMinutesListened: herzieData.total_minutes_listened,
-						genreMinutes: herzieData.genre_minutes ?? {},
-						friendCode: herzieData.friend_code,
-						friendCodes: herzieData.friend_codes ?? [],
-						lastCravingDate: herzieData.last_craving_date ?? "",
-						lastCravingGenre: herzieData.last_craving_genre ?? "",
-					};
+				// Pull the user's herzie from the game server
+				const herzie = await apiGetMe();
+				if (herzie) {
 					saveHerzie(herzie);
 					setSynced(herzie.name);
 				}

@@ -47,6 +47,10 @@ export interface Herzie {
 
 	// Boosts
 	boostUntil?: number;
+
+	// Streaks
+	streakDays: number;
+	streakLastDate: string | null;
 }
 
 export interface HerzieProfile {
@@ -54,6 +58,60 @@ export interface HerzieProfile {
 	friendCode: string;
 	stage: number;
 	level: number;
+}
+
+// --- Game Server API types ---
+
+/** CLI → Server: heartbeat sync payload */
+export interface SyncRequest {
+	nowPlaying: { title: string; artist: string; genre?: string } | null;
+	/** Minutes listened since last sync */
+	minutesListened: number;
+	/** Raw genre strings from the music player */
+	genres: string[];
+}
+
+/** Server → CLI: sync response */
+export interface SyncResponse {
+	herzie: Herzie;
+	/** Event notifications triggered by this sync */
+	notifications: EventNotification[];
+	/** Active multipliers (server-authoritative, includes both time-based and admin-managed) */
+	multipliers: ActiveMultiplier[];
+}
+
+/** A multiplier that boosts XP gain */
+export interface ActiveMultiplier {
+	name: string;
+	/** Bonus as a fraction, e.g. 1.0 = +100%, 0.2 = +20% */
+	bonus: number;
+}
+
+export interface EventNotification {
+	type: "item_granted" | "event_complete" | "info";
+	title: string;
+	message: string;
+	itemId?: string;
+}
+
+/** A game event (secret track challenge, etc.) */
+export interface GameEvent {
+	id: string;
+	type: string;
+	title: string;
+	description: string | null;
+	active: boolean;
+	startsAt: string;
+	endsAt: string;
+	config: Record<string, unknown>;
+}
+
+/** Secret track event config shape */
+export interface SecretTrackConfig {
+	trackTitle: string;
+	trackArtist: string;
+	rewardItemId: string;
+	maxClaims: number;
 }
 
 export const GENRES = [

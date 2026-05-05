@@ -1,6 +1,6 @@
 import { createInterface } from "node:readline";
 import { loadHerzie, deleteLocalData } from "../storage/state.js";
-import { deleteHerzie, isLoggedIn } from "../storage/supabase.js";
+import { apiDeleteHerzie, isLoggedIn } from "../storage/api.js";
 import { runAutostart } from "./autostart.js";
 import { runStop } from "./stop.js";
 
@@ -35,7 +35,7 @@ export async function runKill() {
 	}
 
 	if (isLoggedIn()) {
-		const deleted = await deleteHerzie();
+		const deleted = await apiDeleteHerzie();
 		if (!deleted) {
 			console.log("\x1b[33mWarning: Could not delete server data. You may need to log in and try again.\x1b[0m");
 		}
