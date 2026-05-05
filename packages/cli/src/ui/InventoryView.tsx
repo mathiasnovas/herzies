@@ -3,8 +3,7 @@ import React, { useEffect, useState } from "react";
 import type { Herzie } from "@herzies/shared";
 import { getItem, RARITY_COLORS, RARITY_LABELS } from "../art/items.js";
 import { ItemDisplay } from "./ItemDisplay.js";
-import { isLoggedIn } from "../storage/supabase.js";
-import { apiFetchInventory } from "../storage/api.js";
+import { isLoggedIn, apiFetchInventory } from "../storage/api.js";
 
 interface Props {
 	herzie: Herzie;

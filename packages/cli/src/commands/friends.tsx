@@ -2,8 +2,7 @@ import { Box, Text, render, useApp } from "ink";
 import React, { useEffect, useState } from "react";
 import { addFriend, removeFriend } from "../core/friends.js";
 import type { HerzieProfile } from "@herzies/shared";
-import { isLoggedIn, lookupHerzies } from "../storage/supabase.js";
-import { apiAddFriend, apiRemoveFriend } from "../storage/api.js";
+import { isLoggedIn, apiLookupHerzies, apiAddFriend, apiRemoveFriend } from "../storage/api.js";
 import { loadHerzie, saveHerzie } from "../storage/state.js";
 
 function FriendsListApp() {
@@ -19,7 +18,7 @@ function FriendsListApp() {
 			setLoaded(true);
 			return;
 		}
-		lookupHerzies(herzie.friendCodes).then((p) => {
+		apiLookupHerzies(herzie.friendCodes).then((p) => {
 			setProfiles(p);
 			setLoaded(true);
 		});

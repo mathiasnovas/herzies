@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { lookupHerzie } from "../storage/supabase.js";
+import { apiLookupHerzie } from "../storage/api.js";
 import type { Herzie } from "@herzies/shared";
 
 /** Generate a unique friend code like HERZ-A7X3 */
@@ -43,7 +43,7 @@ export async function addFriend(
 	}
 
 	// Verify the friend code exists online
-	const profile = await lookupHerzie(normalized);
+	const profile = await apiLookupHerzie(normalized);
 	if (!profile) {
 		return {
 			success: false,

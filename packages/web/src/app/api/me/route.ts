@@ -20,3 +20,23 @@ export async function GET(request: Request) {
 
 	return NextResponse.json({ herzie: rowToHerzie(data) });
 }
+
+export async function DELETE(request: Request) {
+	const auth = await authenticateRequest(request);
+	if (isAuthError(auth)) return auth;
+
+	const admin = createAdminClient();
+	const { error } = await admin
+		.from("herzies")
+		.delete()
+		.eq("user_id", auth.userId);
+
+	if (error) {
+		return NextResponse.json(
+			{ error: "Failed to delete herzie" },
+			{ status: 500 },
+		);
+	}
+
+	return NextResponse.json({ ok: true });
+}

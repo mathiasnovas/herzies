@@ -1,26 +1,21 @@
 /**
  * Game server API client.
  *
- * Routes writes through the game server instead of hitting Supabase directly.
- * The server is the authority for XP, items, and events.
+ * All server communication goes through the game server API.
+ * No direct Supabase access from the CLI.
  */
 
 import type {
 	Herzie,
+	HerzieProfile,
 	SyncRequest,
 	SyncResponse,
 	EventNotification,
 	GameEvent,
 } from "@herzies/shared";
 import { loadSession, saveSession } from "./state.js";
-import { createClient } from "@supabase/supabase-js";
 
 const API_BASE = process.env.HERZIES_API_URL ?? "https://www.herzies.app/api";
-
-// Supabase credentials for token refresh (same as supabase.ts)
-const SUPABASE_URL = "https://ojqfqxolbjegorgoyond.supabase.co";
-const SUPABASE_ANON_KEY =
-	"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qcWZxeG9sYmplZ29yZ295b25kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTcwMjgsImV4cCI6MjA5MzIzMzAyOH0.BBT77VK1ROJr57BJvMfCyra3lbycMA9u2-jxG-LhBJE";
 
 /** Refresh the access token if it's near expiry */
 async function ensureFreshToken(): Promise<void> {
@@ -28,21 +23,24 @@ async function ensureFreshToken(): Promise<void> {
 	if (!session?.refreshToken) return;
 	if (session.expiresAt > Date.now() + 10 * 60 * 1000) return;
 
-	const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-		auth: { autoRefreshToken: false, persistSession: false },
-	});
+	try {
+		const res = await fetch(`${API_BASE}/auth/refresh`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ refreshToken: session.refreshToken }),
+		});
 
-	const { data, error } = await sb.auth.refreshSession({
-		refresh_token: session.refreshToken,
-	});
+		if (!res.ok) return;
 
-	if (!error && data.session) {
+		const data = await res.json();
 		saveSession({
-			accessToken: data.session.access_token,
-			refreshToken: data.session.refresh_token,
-			expiresAt: Date.now() + (data.session.expires_in ?? 3600) * 1000,
+			accessToken: data.accessToken,
+			refreshToken: data.refreshToken,
+			expiresAt: Date.now() + (data.expiresIn ?? 3600) * 1000,
 			userId: session.userId,
 		});
+	} catch {
+		// Token refresh failed — continue with existing token
 	}
 }
 
@@ -69,6 +67,11 @@ async function apiFetch(
 			...options.headers,
 		},
 	});
+}
+
+/** Check if the user is logged in */
+export function isLoggedIn(): boolean {
+	return loadSession() !== null;
 }
 
 /**
@@ -103,6 +106,16 @@ export async function apiGetMe(): Promise<Herzie | null> {
 		return data.herzie as Herzie;
 	} catch {
 		return null;
+	}
+}
+
+/** Delete the user's herzie via the game server */
+export async function apiDeleteHerzie(): Promise<boolean> {
+	try {
+		const res = await apiFetch("/me", { method: "DELETE" });
+		return res.ok;
+	} catch {
+		return false;
 	}
 }
 
@@ -165,7 +178,6 @@ export async function checkOnline(): Promise<boolean> {
 /** Fetch active events */
 export async function apiFetchActiveEvents(): Promise<GameEvent[]> {
 	try {
-		// This endpoint doesn't require auth
 		const res = await fetch(`${API_BASE}/events/active`);
 		if (!res.ok) return [];
 		const data = await res.json();
@@ -173,4 +185,55 @@ export async function apiFetchActiveEvents(): Promise<GameEvent[]> {
 	} catch {
 		return [];
 	}
+}
+
+/** Check if a herzie name is already taken */
+export async function apiIsNameTaken(name: string): Promise<boolean> {
+	try {
+		const res = await fetch(
+			`${API_BASE}/name-check?name=${encodeURIComponent(name)}`,
+		);
+		if (!res.ok) return false;
+		const data = await res.json();
+		return data.taken === true;
+	} catch {
+		return false;
+	}
+}
+
+/** Look up a single herzie by friend code (public, no auth needed) */
+export async function apiLookupHerzie(
+	friendCode: string,
+): Promise<HerzieProfile | null> {
+	try {
+		const res = await fetch(
+			`${API_BASE}/lookup?code=${encodeURIComponent(friendCode)}`,
+		);
+		if (!res.ok) return null;
+		const data = await res.json();
+		return data.herzie ?? null;
+	} catch {
+		return null;
+	}
+}
+
+/** Look up multiple herzies by friend codes (public, no auth needed) */
+export async function apiLookupHerzies(
+	friendCodes: string[],
+): Promise<Map<string, HerzieProfile>> {
+	const result = new Map<string, HerzieProfile>();
+	if (friendCodes.length === 0) return result;
+	try {
+		const res = await fetch(
+			`${API_BASE}/lookup?codes=${encodeURIComponent(friendCodes.join(","))}`,
+		);
+		if (!res.ok) return result;
+		const data = await res.json();
+		for (const h of data.herzies ?? []) {
+			result.set(h.friendCode, h);
+		}
+	} catch {
+		// Graceful degradation — works offline
+	}
+	return result;
 }

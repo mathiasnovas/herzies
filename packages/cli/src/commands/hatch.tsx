@@ -3,7 +3,7 @@ import { Box, Text, render, useApp } from "ink";
 import React, { useEffect } from "react";
 import { composeHerzie } from "../art/composer.js";
 import { createHerzie } from "../core/herzie.js";
-import { isNameTaken, syncHerzie } from "../storage/supabase.js";
+import { apiIsNameTaken, apiSync } from "../storage/api.js";
 import { loadHerzie, saveHerzie } from "../storage/state.js";
 import { validateName } from "@herzies/shared";
 import type { Herzie } from "@herzies/shared";
@@ -124,7 +124,7 @@ export async function runHatch() {
 			continue;
 		}
 
-		if (await isNameTaken(name)) {
+		if (await apiIsNameTaken(name)) {
 			console.log(`\x1b[31mThe name "${name}" is already taken. Try another!\x1b[0m`);
 			continue;
 		}
@@ -146,7 +146,7 @@ export async function runHatch() {
 	saveHerzie(herzie);
 
 	// Sync online if logged in
-	await syncHerzie(herzie);
+	await apiSync(null, 0, []);
 
 	render(<RevealApp herzie={herzie} />);
 

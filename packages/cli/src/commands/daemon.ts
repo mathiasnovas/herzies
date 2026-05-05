@@ -6,7 +6,6 @@
  *
  * The daemon sends observations to the game server, which is the
  * authority for XP calculation, leveling, and event triggers.
- * Falls back to direct Supabase sync if the game server is unreachable.
  */
 
 import {
@@ -20,11 +19,9 @@ import {
 	recordGenreMinutes,
 } from "@herzies/shared";
 import { getNowPlaying } from "../music/nowplaying.js";
-import { apiSync } from "../storage/api.js";
-import { syncHerzie, syncNowPlaying } from "../storage/supabase.js";
+import { apiSync, isLoggedIn } from "../storage/api.js";
 import { loadHerzie, saveHerzie, saveMultipliers } from "../storage/state.js";
 import { writePid, clearPid, loadPid } from "../storage/pid.js";
-import { isLoggedIn } from "../storage/supabase.js";
 
 const POLL_INTERVAL = 3000;
 const SYNC_INTERVAL = 10000;
@@ -112,53 +109,38 @@ function handleNotifications(notifications: EventNotification[]) {
 }
 
 async function syncLoop(herzie: Herzie) {
+	if (!isLoggedIn()) return;
+
 	const minutesToSync = pendingMinutes;
-
-	// Try game server first
-	if (isLoggedIn()) {
-		const npPayload = currentNowPlaying
-			? { title: currentNowPlaying.title, artist: currentNowPlaying.artist, genre: currentNowPlaying.genre }
-			: null;
-
-		const result = await apiSync(npPayload, minutesToSync, currentGenres);
-
-		if (result) {
-			// Success — clear the backlog
-			pendingMinutes = 0;
-
-			// Server is authoritative — update local state from response
-			const serverHerzie = result.herzie;
-			herzie.xp = serverHerzie.xp;
-			herzie.level = serverHerzie.level;
-			herzie.stage = serverHerzie.stage;
-			herzie.totalMinutesListened = serverHerzie.totalMinutesListened;
-			herzie.genreMinutes = serverHerzie.genreMinutes;
-			herzie.friendCodes = serverHerzie.friendCodes;
-			herzie.streakDays = serverHerzie.streakDays;
-			herzie.streakLastDate = serverHerzie.streakLastDate;
-			saveHerzie(herzie);
-			saveMultipliers(result.multipliers ?? []);
-
-			if (result.notifications.length > 0) {
-				handleNotifications(result.notifications);
-			}
-
-			log("synced (api)");
-			return;
-		}
-		// API unreachable — keep pendingMinutes for next attempt
-	}
-
-	// Fallback: direct Supabase sync (legacy path)
-	const np = currentNowPlaying
-		? { title: currentNowPlaying.title, artist: currentNowPlaying.artist }
+	const npPayload = currentNowPlaying
+		? { title: currentNowPlaying.title, artist: currentNowPlaying.artist, genre: currentNowPlaying.genre }
 		: null;
-	const ok = await syncHerzie(herzie, np);
-	if (ok) {
+
+	const result = await apiSync(npPayload, minutesToSync, currentGenres);
+
+	if (result) {
 		pendingMinutes = 0;
-		log("synced (legacy)");
+
+		// Server is authoritative — update local state from response
+		const serverHerzie = result.herzie;
+		herzie.xp = serverHerzie.xp;
+		herzie.level = serverHerzie.level;
+		herzie.stage = serverHerzie.stage;
+		herzie.totalMinutesListened = serverHerzie.totalMinutesListened;
+		herzie.genreMinutes = serverHerzie.genreMinutes;
+		herzie.friendCodes = serverHerzie.friendCodes;
+		herzie.streakDays = serverHerzie.streakDays;
+		herzie.streakLastDate = serverHerzie.streakLastDate;
+		saveHerzie(herzie);
+		saveMultipliers(result.multipliers ?? []);
+
+		if (result.notifications.length > 0) {
+			handleNotifications(result.notifications);
+		}
+
+		log("synced");
 	}
-	// If both fail, pendingMinutes keeps accumulating for next attempt
+	// If API unreachable, pendingMinutes keeps accumulating for next attempt
 }
 
 async function main() {
@@ -186,14 +168,8 @@ async function main() {
 		log("daemon stopping");
 		currentNowPlaying = null;
 
-		// Clear now_playing via API, fallback to direct Supabase
 		if (isLoggedIn()) {
-			const result = await apiSync(null, 0, []).catch(() => null);
-			if (!result) {
-				await syncNowPlaying(null).catch(() => {});
-			}
-		} else {
-			await syncNowPlaying(null).catch(() => {});
+			await apiSync(null, 0, []).catch(() => null);
 		}
 
 		clearPid();
