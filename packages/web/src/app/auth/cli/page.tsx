@@ -10,7 +10,7 @@ function AuthForm() {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
 
-	async function handleGitHubLogin() {
+	async function handleOAuthLogin(provider: "github" | "google") {
 		setError("");
 		setLoading(true);
 
@@ -20,7 +20,7 @@ function AuthForm() {
 			: `${window.location.origin}/auth/callback`;
 
 		const { error } = await supabase.auth.signInWithOAuth({
-			provider: "github",
+			provider,
 			options: { redirectTo },
 		});
 
@@ -46,7 +46,7 @@ function AuthForm() {
 					sign in to herzies
 				</h1>
 				<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-					{port ? "authorize the CLI to access your account" : "sign in with your GitHub account"}
+					{port ? "authorize the CLI to access your account" : "sign in to your account"}
 				</p>
 			</div>
 
@@ -67,7 +67,7 @@ function AuthForm() {
 
 				<button
 					type="button"
-					onClick={handleGitHubLogin}
+					onClick={() => handleOAuthLogin("google")}
 					disabled={loading}
 					style={{
 						width: "100%",
@@ -75,6 +75,37 @@ function AuthForm() {
 						background: "var(--text)",
 						color: "var(--bg)",
 						border: "none",
+						borderRadius: 4,
+						fontFamily: "inherit",
+						fontWeight: 700,
+						fontSize: 13,
+						cursor: loading ? "default" : "pointer",
+						opacity: loading ? 0.6 : 1,
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+						gap: "0.5rem",
+					}}
+				>
+					<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+						<path d="M15.68 8.18c0-.567-.05-1.113-.145-1.636H8v3.094h4.305a3.68 3.68 0 01-1.597 2.415v2.007h2.585c1.513-1.393 2.387-3.443 2.387-5.88z" fill="#4285F4"/>
+						<path d="M8 16c2.16 0 3.97-.716 5.293-1.94l-2.585-2.008c-.716.48-1.633.763-2.708.763-2.083 0-3.846-1.407-4.476-3.298H.867v2.073A7.997 7.997 0 008 16z" fill="#34A853"/>
+						<path d="M3.524 9.517A4.81 4.81 0 013.273 8c0-.526.09-1.037.251-1.517V4.41H.867A7.997 7.997 0 000 8c0 1.29.31 2.512.867 3.59l2.657-2.073z" fill="#FBBC05"/>
+						<path d="M8 3.185c1.174 0 2.229.403 3.058 1.196l2.294-2.294C11.967.792 10.157 0 8 0A7.997 7.997 0 00.867 4.41l2.657 2.073C4.154 4.592 5.917 3.185 8 3.185z" fill="#EA4335"/>
+					</svg>
+					{loading ? "redirecting..." : "sign in with Google"}
+				</button>
+
+				<button
+					type="button"
+					onClick={() => handleOAuthLogin("github")}
+					disabled={loading}
+					style={{
+						width: "100%",
+						padding: "0.6rem",
+						background: "transparent",
+						color: "var(--text)",
+						border: "1px solid var(--border)",
 						borderRadius: 4,
 						fontFamily: "inherit",
 						fontWeight: 700,
