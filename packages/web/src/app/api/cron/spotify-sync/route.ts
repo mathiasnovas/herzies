@@ -72,7 +72,7 @@ async function syncUser(
 	// Fetch recently played tracks
 	const after = connection.last_track_played_at
 		? new Date(connection.last_track_played_at).getTime()
-		: Date.now() - 15 * 60_000; // Default: last 15 minutes
+		: Date.now() - 24 * 60 * 60_000; // Default: last 24 hours
 
 	const tracks = await getRecentlyPlayed(accessToken, after);
 
