@@ -1,6 +1,10 @@
+import { createRequire } from "node:module";
 import { Box, Text, render, useApp, useInput } from "ink";
 import React, { useEffect, useRef, useState } from "react";
 import type { Herzie, Stage, ActiveMultiplier, PendingTradeRequest } from "@herzies/shared";
+
+const require = createRequire(import.meta.url);
+const { version } = require("../../../package.json");
 import { type NowPlayingInfo, getNowPlaying } from "../music/nowplaying.js";
 import { loadHerzie, saveHerzie, loadMultipliers, loadPendingTrade, savePendingTrade, loadAndClearNotifications } from "../storage/state.js";
 import { isDaemonRunning } from "../storage/pid.js";
@@ -40,6 +44,7 @@ function RunApp() {
 	const [multipliers, setMultipliers] = useState<ActiveMultiplier[] | undefined>(undefined);
 	const [pendingTrade, setPendingTrade] = useState<PendingTradeRequest | null>(null);
 	const [activeTradeId, setActiveTradeId] = useState<string | null>(null);
+	const [latestVersion, setLatestVersion] = useState<string | null>(null);
 
 	// View state
 	const [view, setView] = useState<View>("dashboard");
@@ -52,6 +57,18 @@ function RunApp() {
 	const pushEvent = (text: string, color: string) => {
 		setEvents((prev) => [...prev.slice(-4), { text, color, time: Date.now() }]);
 	};
+
+	// Check for updates on mount
+	useEffect(() => {
+		fetch("https://registry.npmjs.org/herzies/latest")
+			.then((r) => r.json())
+			.then((data) => {
+				if (data.version && data.version !== version) {
+					setLatestVersion(data.version);
+				}
+			})
+			.catch(() => {});
+	}, []);
 
 	// Auto-start daemon on mount
 	useEffect(() => {
@@ -257,6 +274,7 @@ function RunApp() {
 				<Text bold color="magenta">
 					♫ herzies
 				</Text>
+				<Text dimColor> v{version}</Text>
 				<Text dimColor>
 					{" "}
 					— {currentTrack ? "listening" : `idle${dots}`}
@@ -326,6 +344,15 @@ function RunApp() {
 								{e.text}
 							</Text>
 						))}
+				</Box>
+			)}
+
+			{/* Update nudge */}
+			{latestVersion && (
+				<Box marginTop={1}>
+					<Text color="yellow">
+						Update available: v{version} → v{latestVersion} — run <Text bold>npm i -g herzies</Text>
+					</Text>
 				</Box>
 			)}
 
