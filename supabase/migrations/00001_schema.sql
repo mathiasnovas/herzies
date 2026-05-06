@@ -1,0 +1,126 @@
+-- Herzies Supabase Schema
+-- Run this in the Supabase SQL editor to set up the database
+
+-- Create table
+create table if not exists public.herzies (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  name text not null,
+  friend_code text unique not null,
+  appearance jsonb not null default '{}',
+  xp integer not null default 0 check (xp >= 0),
+  level integer not null default 1 check (level >= 1 and level <= 100),
+  stage integer not null default 1 check (stage >= 1 and stage <= 3),
+  total_minutes_listened real not null default 0 check (total_minutes_listened >= 0),
+  genre_minutes jsonb not null default '{}',
+  friend_codes text[] not null default '{}',
+  last_craving_date text,
+  last_craving_genre text,
+  now_playing jsonb default null,
+  inventory text[] not null default '{"first-edition"}',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Items catalog
+create table if not exists public.items (
+  id text primary key,
+  name text not null,
+  description text not null default '',
+  rarity text not null default 'common' check (rarity in ('common', 'uncommon', 'rare', 'legendary')),
+  created_at timestamptz not null default now()
+);
+
+-- Seed items
+insert into public.items (id, name, description, rarity)
+values ('first-edition', 'First Edition Card', 'A token of appreciation for early adopters.', 'rare')
+on conflict (id) do nothing;
+
+-- Items are publicly readable
+alter table public.items enable row level security;
+drop policy if exists "Items are publicly readable" on public.items;
+create policy "Items are publicly readable"
+  on public.items for select
+  using (true);
+
+-- Indexes
+create unique index if not exists idx_herzies_user_id on public.herzies(user_id);
+create unique index if not exists idx_herzies_name on public.herzies(lower(name));
+create index if not exists idx_herzies_friend_code on public.herzies(friend_code);
+
+-- Enable RLS
+alter table public.herzies enable row level security;
+
+-- Drop old policies (safe to run on fresh or existing db since table now exists)
+drop policy if exists "Herzies are publicly readable" on public.herzies;
+drop policy if exists "Users can insert their own herzie" on public.herzies;
+drop policy if exists "Users can update their own herzie" on public.herzies;
+drop policy if exists "Anyone can upsert by friend code" on public.herzies;
+drop policy if exists "Public friend lookup" on public.herzies;
+drop policy if exists "Authenticated users can insert own herzie" on public.herzies;
+drop policy if exists "Authenticated users can update own herzie" on public.herzies;
+
+-- SELECT: anyone can look up friend profiles
+create policy "Public friend lookup"
+  on public.herzies for select
+  using (true);
+
+-- INSERT: authenticated users can only create their own herzie
+create policy "Authenticated users can insert own herzie"
+  on public.herzies for insert
+  with check (
+    auth.uid() = user_id
+    and auth.uid() is not null
+  );
+
+-- UPDATE: authenticated users can only update their own herzie
+create policy "Authenticated users can update own herzie"
+  on public.herzies for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- DELETE: authenticated users can only delete their own herzie
+drop policy if exists "Authenticated users can delete own herzie" on public.herzies;
+create policy "Authenticated users can delete own herzie"
+  on public.herzies for delete
+  using (auth.uid() = user_id);
+
+-- Add a friend code to another herzie's friend_codes (bidirectional friendship)
+create or replace function add_friend(my_friend_code text, their_friend_code text)
+returns void as $$
+begin
+  -- Prevent self-addition
+  if my_friend_code = their_friend_code then return; end if;
+
+  -- Add my code to their friend list (if not already there)
+  update public.herzies
+  set friend_codes = array_append(friend_codes, my_friend_code)
+  where friend_code = their_friend_code
+    and not (my_friend_code = any(friend_codes));
+end;
+$$ language plpgsql security definer;
+
+-- Remove a friend code from another herzie's friend_codes
+create or replace function remove_friend(my_friend_code text, their_friend_code text)
+returns void as $$
+begin
+  update public.herzies
+  set friend_codes = array_remove(friend_codes, my_friend_code)
+  where friend_code = their_friend_code;
+end;
+$$ language plpgsql security definer;
+
+-- Auto-update updated_at
+create or replace function update_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists herzies_updated_at on public.herzies;
+create trigger herzies_updated_at
+  before update on public.herzies
+  for each row
+  execute function update_updated_at();
