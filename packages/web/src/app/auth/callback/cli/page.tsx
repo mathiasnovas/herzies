@@ -22,16 +22,8 @@ function CallbackHandler() {
 		async function handleCallback() {
 			const supabase = createSupabaseClient();
 
-			const code = new URLSearchParams(window.location.search).get("code");
-			if (code) {
-				const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-				if (exchangeError) {
-					setError(exchangeError.message);
-					setStatus("error");
-					return;
-				}
-			}
-
+			// The code was already exchanged server-side in /auth/callback.
+			// Just read the session from cookies.
 			const { data: { session }, error } = await supabase.auth.getSession();
 
 			if (error || !session) {
