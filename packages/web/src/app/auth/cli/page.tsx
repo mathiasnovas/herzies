@@ -33,22 +33,22 @@ function AuthForm() {
 	return (
 		<main
 			style={{
-				maxWidth: 800,
-				margin: "0 auto",
-				padding: "3rem 1.5rem",
+				width: "100%",
+				maxWidth: 360,
+				padding: "0 1.5rem",
 				display: "flex",
 				flexDirection: "column",
-				gap: "1.5rem",
+				gap: "1rem",
 			}}
 		>
-			<section>
+			<div style={{ textAlign: "center", marginBottom: "0.5rem" }}>
 				<h1 style={{ fontSize: 18, color: "var(--purple)", marginBottom: 4 }}>
-					sign in
+					sign in to herzies
 				</h1>
 				<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-					// log in to your account
+					authorize the CLI to access your account
 				</p>
-			</section>
+			</div>
 
 			<div
 				style={{
@@ -56,7 +56,6 @@ function AuthForm() {
 					border: "1px solid var(--border)",
 					borderRadius: 6,
 					padding: "1.25rem",
-					maxWidth: 400,
 					display: "flex",
 					flexDirection: "column",
 					gap: "1rem",

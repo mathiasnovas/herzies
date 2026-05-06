@@ -71,24 +71,25 @@ function CallbackHandler() {
 	return (
 		<main
 			style={{
-				maxWidth: 800,
-				margin: "0 auto",
-				padding: "3rem 1.5rem",
+				width: "100%",
+				maxWidth: 360,
+				padding: "0 1.5rem",
 				display: "flex",
 				flexDirection: "column",
-				gap: "1.5rem",
+				gap: "1rem",
+				textAlign: "center",
 			}}
 		>
 			{status === "loading" && (
 				<>
-					<section>
+					<div>
 						<h1 style={{ fontSize: 18, color: "var(--purple)", marginBottom: 4 }}>
 							logging in
 						</h1>
 						<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-							// hang tight
+							hang tight...
 						</p>
-					</section>
+					</div>
 					<div style={panel}>
 						<p style={{ fontSize: 13, color: "var(--text-dim)" }}>...</p>
 					</div>
@@ -97,14 +98,14 @@ function CallbackHandler() {
 
 			{status === "error" && (
 				<>
-					<section>
+					<div>
 						<h1 style={{ fontSize: 18, color: "var(--red)", marginBottom: 4 }}>
 							something went wrong
 						</h1>
 						<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-							// login failed
+							login failed
 						</p>
-					</section>
+					</div>
 					<div style={{ ...panel, borderColor: "var(--red)" }}>
 						<p style={{ fontSize: 13, color: "var(--red)" }}>{error}</p>
 					</div>
@@ -113,14 +114,14 @@ function CallbackHandler() {
 
 			{status === "success" && (
 				<>
-					<section>
+					<div>
 						<h1 style={{ fontSize: 18, color: "var(--green)", marginBottom: 4 }}>
 							you're in
 						</h1>
 						<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-							// logged in successfully
+							logged in successfully
 						</p>
-					</section>
+					</div>
 					<div style={panel}>
 						<p style={{ fontSize: 13 }}>
 							Run{" "}
