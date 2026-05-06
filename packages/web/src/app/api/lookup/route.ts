@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 	if (singleCode) {
 		const { data, error } = await admin
 			.from("herzies")
-			.select("name, friend_code, stage, level")
+			.select("name, friend_code, stage, level, currency")
 			.eq("friend_code", singleCode.toUpperCase().trim())
 			.single();
 
@@ -38,6 +38,7 @@ export async function GET(request: Request) {
 				friendCode: data.friend_code,
 				stage: data.stage,
 				level: data.level,
+				currency: data.currency,
 			},
 		});
 	}
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
 
 	const { data, error } = await admin
 		.from("herzies")
-		.select("name, friend_code, stage, level")
+		.select("name, friend_code, stage, level, currency")
 		.in("friend_code", codes);
 
 	if (error || !data) {
@@ -67,6 +68,7 @@ export async function GET(request: Request) {
 			friendCode: row.friend_code,
 			stage: row.stage,
 			level: row.level,
+			currency: row.currency,
 		})),
 	});
 }

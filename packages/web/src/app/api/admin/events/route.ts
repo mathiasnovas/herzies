@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { adminEventSchema, parseBody, isParseError } from "@/lib/schemas";
 
 function verifyAdmin(request: Request): boolean {
 	const secret = request.headers.get("x-admin-secret");
@@ -31,19 +32,10 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const body = await request.json().catch(() => null);
-	if (!body) {
-		return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-	}
+	const body = await parseBody(request, adminEventSchema);
+	if (isParseError(body)) return body;
 
 	const { id, type, title, description, active, startsAt, endsAt, config } = body;
-
-	if (!type || !title || !startsAt || !endsAt) {
-		return NextResponse.json(
-			{ error: "type, title, startsAt, and endsAt are required" },
-			{ status: 400 },
-		);
-	}
 
 	const admin = createAdminClient();
 
@@ -52,16 +44,16 @@ export async function POST(request: Request) {
 		const { data: existingItem } = await admin
 			.from("items")
 			.select("id")
-			.eq("id", config.rewardItemId)
+			.eq("id", config.rewardItemId as string)
 			.single();
 
 		if (!existingItem) {
 			// Auto-create the item entry
 			await admin.from("items").insert({
 				id: config.rewardItemId,
-				name: config.rewardItemName ?? title,
-				description: config.rewardItemDescription ?? `Reward for: ${title}`,
-				rarity: config.rewardItemRarity ?? "legendary",
+				name: (config.rewardItemName as string) ?? title,
+				description: (config.rewardItemDescription as string) ?? `Reward for: ${title}`,
+				rarity: (config.rewardItemRarity as string) ?? "legendary",
 			});
 		}
 	}

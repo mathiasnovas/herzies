@@ -6,6 +6,8 @@ interface Props {
 	herzie: Herzie;
 	/** Server-provided multipliers. Falls back to local calculation if not provided. */
 	multipliers?: ActiveMultiplier[];
+	/** Hide the bonuses section */
+	hideBonuses?: boolean;
 }
 
 const STAGE_NAMES: Record<Stage, string> = {
@@ -26,7 +28,7 @@ function XpBar({ progress, width = 20 }: { progress: number; width?: number }) {
 	);
 }
 
-export function StatsPanel({ herzie, multipliers }: Props) {
+export function StatsPanel({ herzie, multipliers, hideBonuses }: Props) {
 	const progress = levelProgress(herzie);
 	const toNext = xpToNextLevel(herzie);
 	const totalHours = (herzie.totalMinutesListened / 60).toFixed(1);
@@ -81,6 +83,12 @@ export function StatsPanel({ herzie, multipliers }: Props) {
 				</Text>
 			</Box>
 
+			{/* Currency */}
+			<Box>
+				<Text bold>Balance: </Text>
+				<Text color="yellow">{herzie.currency} H</Text>
+			</Box>
+
 			{/* Streak */}
 			{herzie.streakDays > 0 && (
 				<Box>
@@ -91,7 +99,7 @@ export function StatsPanel({ herzie, multipliers }: Props) {
 			)}
 
 			{/* Active multipliers */}
-			{activeMultipliers.length > 0 && (
+			{!hideBonuses && activeMultipliers.length > 0 && (
 				<Box marginTop={1} flexDirection="column">
 					<Text bold color="yellow">Bonuses:</Text>
 					{activeMultipliers.map((m) => (

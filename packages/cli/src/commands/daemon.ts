@@ -20,7 +20,7 @@ import {
 } from "@herzies/shared";
 import { getNowPlaying } from "../music/nowplaying.js";
 import { apiSync, isLoggedIn } from "../storage/api.js";
-import { loadHerzie, saveHerzie, saveMultipliers } from "../storage/state.js";
+import { loadHerzie, saveHerzie, saveMultipliers, savePendingTrade, saveNotifications } from "../storage/state.js";
 import { writePid, clearPid, loadPid } from "../storage/pid.js";
 
 const POLL_INTERVAL = 3000;
@@ -131,11 +131,16 @@ async function syncLoop(herzie: Herzie) {
 		herzie.friendCodes = serverHerzie.friendCodes;
 		herzie.streakDays = serverHerzie.streakDays;
 		herzie.streakLastDate = serverHerzie.streakLastDate;
+		herzie.currency = serverHerzie.currency;
 		saveHerzie(herzie);
 		saveMultipliers(result.multipliers ?? []);
 
+		// Write pending trade request for the UI to pick up
+		savePendingTrade(result.pendingTradeRequest ?? null);
+
 		if (result.notifications.length > 0) {
 			handleNotifications(result.notifications);
+			saveNotifications(result.notifications);
 		}
 
 		log("synced");

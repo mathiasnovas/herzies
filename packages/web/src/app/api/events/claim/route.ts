@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authenticateRequest, isAuthError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { claimEventSchema, parseBody, isParseError } from "@/lib/schemas";
 
 /**
  * Manual event claim endpoint — for non-automatic events where
@@ -13,12 +14,10 @@ export async function POST(request: Request) {
 	const auth = await authenticateRequest(request);
 	if (isAuthError(auth)) return auth;
 
-	const body = await request.json().catch(() => null);
-	const eventId = body?.eventId as string | undefined;
+	const body = await parseBody(request, claimEventSchema);
+	if (isParseError(body)) return body;
 
-	if (!eventId) {
-		return NextResponse.json({ error: "eventId is required" }, { status: 400 });
-	}
+	const { eventId } = body;
 
 	const admin = createAdminClient();
 

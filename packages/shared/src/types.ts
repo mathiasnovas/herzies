@@ -51,6 +51,9 @@ export interface Herzie {
 	// Streaks
 	streakDays: number;
 	streakLastDate: string | null;
+
+	// Economy
+	currency: number;
 }
 
 export interface HerzieProfile {
@@ -58,6 +61,7 @@ export interface HerzieProfile {
 	friendCode: string;
 	stage: number;
 	level: number;
+	currency?: number;
 }
 
 // --- Game Server API types ---
@@ -78,6 +82,15 @@ export interface SyncResponse {
 	notifications: EventNotification[];
 	/** Active multipliers (server-authoritative, includes both time-based and admin-managed) */
 	multipliers: ActiveMultiplier[];
+	/** Pending trade request from another player */
+	pendingTradeRequest?: PendingTradeRequest;
+}
+
+/** Notification that another player wants to trade */
+export interface PendingTradeRequest {
+	tradeId: string;
+	fromName: string;
+	fromFriendCode: string;
 }
 
 /** A multiplier that boosts XP gain */
@@ -92,6 +105,7 @@ export interface EventNotification {
 	title: string;
 	message: string;
 	itemId?: string;
+	quantity?: number;
 }
 
 /** A game event (secret track challenge, etc.) */
@@ -133,3 +147,38 @@ export const GENRES = [
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
+
+// --- Inventory & Economy types ---
+
+/** Inventory as a map of item ID to quantity */
+export type Inventory = Record<string, number>;
+
+/** One side of a trade offer */
+export interface TradeOffer {
+	items: Record<string, number>;
+	currency: number;
+}
+
+export type TradeState =
+	| "pending"
+	| "active"
+	| "initiator_locked"
+	| "target_locked"
+	| "both_locked"
+	| "completed"
+	| "cancelled";
+
+export interface Trade {
+	id: string;
+	initiatorId: string;
+	targetId: string;
+	initiatorName: string;
+	targetName: string;
+	initiatorOffer: TradeOffer;
+	targetOffer: TradeOffer;
+	state: TradeState;
+	initiatorAccepted: boolean;
+	targetAccepted: boolean;
+	createdAt: string;
+	expiresAt: string;
+}

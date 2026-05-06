@@ -1,21 +1,16 @@
 import { NextResponse } from "next/server";
 import { authenticateRequest, isAuthError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { friendCodePairSchema, parseBody, isParseError } from "@/lib/schemas";
 
 export async function POST(request: Request) {
 	const auth = await authenticateRequest(request);
 	if (isAuthError(auth)) return auth;
 
-	const body = await request.json().catch(() => null);
-	const myCode = body?.myCode as string | undefined;
-	const theirCode = body?.theirCode as string | undefined;
+	const body = await parseBody(request, friendCodePairSchema);
+	if (isParseError(body)) return body;
 
-	if (!myCode || !theirCode) {
-		return NextResponse.json(
-			{ error: "myCode and theirCode are required" },
-			{ status: 400 },
-		);
-	}
+	const { myCode, theirCode } = body;
 
 	const admin = createAdminClient();
 

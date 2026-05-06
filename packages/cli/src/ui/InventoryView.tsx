@@ -1,9 +1,9 @@
 import { Box, Text, useInput } from "ink";
 import React, { useEffect, useState } from "react";
-import type { Herzie } from "@herzies/shared";
+import type { Herzie, Inventory } from "@herzies/shared";
 import { getItem, RARITY_COLORS, RARITY_LABELS } from "../art/items.js";
 import { ItemDisplay } from "./ItemDisplay.js";
-import { isLoggedIn, apiFetchInventory } from "../storage/api.js";
+import { isLoggedIn, apiFetchInventory, apiSellItem } from "../storage/api.js";
 
 interface Props {
 	herzie: Herzie;
@@ -11,24 +11,55 @@ interface Props {
 	online?: boolean;
 }
 
+type SellMode = null | { itemId: string; name: string; maxQty: number };
+
 export function InventoryView({ herzie, onBack, online }: Props) {
 	const [selected, setSelected] = useState(0);
 	const [viewing, setViewing] = useState<string | null>(null);
-	const [inventory, setInventory] = useState<string[] | null>(null);
+	const [inventory, setInventory] = useState<Inventory | null>(null);
+	const [currency, setCurrency] = useState(herzie.currency);
 	const [loading, setLoading] = useState(true);
+	const [sellMode, setSellMode] = useState<SellMode>(null);
+	const [sellMessage, setSellMessage] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (!isLoggedIn()) {
 			setLoading(false);
 			return;
 		}
-		apiFetchInventory().then((items) => {
-			setInventory(items ?? []);
+		apiFetchInventory().then((result) => {
+			if (result) {
+				setInventory(result.inventory);
+				setCurrency(result.currency);
+			} else {
+				setInventory({});
+			}
 			setLoading(false);
 		});
 	}, []);
 
+	// Get sorted item entries (non-zero quantities)
+	const entries = inventory
+		? Object.entries(inventory)
+				.filter(([, qty]) => qty > 0)
+				.sort((a, b) => a[0].localeCompare(b[0]))
+		: [];
+
 	useInput((_input, key) => {
+		// Sell confirmation mode
+		if (sellMode) {
+			if (_input === "1") {
+				doSell(sellMode.itemId, 1);
+			} else if (_input === "5") {
+				doSell(sellMode.itemId, Math.min(5, sellMode.maxQty));
+			} else if (_input === "a") {
+				doSell(sellMode.itemId, sellMode.maxQty);
+			} else if (key.escape || _input === "q") {
+				setSellMode(null);
+			}
+			return;
+		}
+
 		if (viewing) {
 			if (key.escape || key.return || _input === "q") {
 				setViewing(null);
@@ -41,18 +72,38 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 			return;
 		}
 
-		if (!inventory) return;
+		if (!inventory || entries.length === 0) return;
 
 		if (key.upArrow) {
 			setSelected((s) => Math.max(0, s - 1));
 		}
 		if (key.downArrow) {
-			setSelected((s) => Math.min(inventory.length - 1, s + 1));
+			setSelected((s) => Math.min(entries.length - 1, s + 1));
 		}
-		if (key.return && inventory.length > 0) {
-			setViewing(inventory[selected]);
+		if (key.return && entries.length > 0) {
+			setViewing(entries[selected][0]);
+		}
+		if (_input === "s" && entries.length > 0) {
+			const [itemId, qty] = entries[selected];
+			const item = getItem(itemId);
+			if (item?.stackable && item?.sellPrice) {
+				setSellMode({ itemId, name: item.name, maxQty: qty });
+				setSellMessage(null);
+			}
 		}
 	});
+
+	async function doSell(itemId: string, quantity: number) {
+		const result = await apiSellItem(itemId, quantity);
+		if (result) {
+			setInventory(result.inventory);
+			setCurrency(result.newCurrency);
+			setSellMessage(`Sold ${quantity}x for ${result.earned} H!`);
+		} else {
+			setSellMessage("Failed to sell.");
+		}
+		setSellMode(null);
+	}
 
 	if (!isLoggedIn()) {
 		return (
@@ -88,10 +139,34 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 		);
 	}
 
-	if (!inventory || inventory.length === 0) {
+	// Sell confirmation overlay
+	if (sellMode) {
+		const item = getItem(sellMode.itemId);
+		const price = item?.sellPrice ?? 0;
 		return (
 			<Box flexDirection="column" padding={1}>
-				<Text dimColor>No items yet — keep listening to earn some!</Text>
+				<Text bold color="yellow">
+					Sell {sellMode.name}? ({sellMode.maxQty} owned, {price} H each)
+				</Text>
+				<Box marginTop={1} flexDirection="column">
+					<Text>  <Text bold>1</Text> — Sell 1 ({price} H)</Text>
+					{sellMode.maxQty >= 5 && (
+						<Text>  <Text bold>5</Text> — Sell 5 ({price * 5} H)</Text>
+					)}
+					<Text>  <Text bold>a</Text> — Sell all {sellMode.maxQty} ({price * sellMode.maxQty} H)</Text>
+					<Text>  <Text bold>Esc</Text> — Cancel</Text>
+				</Box>
+			</Box>
+		);
+	}
+
+	if (entries.length === 0) {
+		return (
+			<Box flexDirection="column" padding={1}>
+				<Text bold color="yellow">Balance: {currency} H</Text>
+				<Box marginTop={1}>
+					<Text dimColor>No items yet — keep listening to earn some!</Text>
+				</Box>
 				<Box marginTop={1}>
 					<Text dimColor>Press q to go back</Text>
 				</Box>
@@ -102,12 +177,16 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 	// Item detail view
 	if (viewing) {
 		const item = getItem(viewing);
+		const qty = inventory?.[viewing] ?? 0;
 		return (
 			<Box flexDirection="column" padding={1}>
 				<Box>
 					<Text bold color={item ? RARITY_COLORS[item.rarity] : "magenta"}>
 						{item?.name ?? viewing}
 					</Text>
+					{qty > 1 && (
+						<Text color="yellow"> x{qty}</Text>
+					)}
 					{item && (
 						<Text color={RARITY_COLORS[item.rarity]} dimColor>
 							{" "}— {RARITY_LABELS[item.rarity]}
@@ -116,6 +195,9 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 				</Box>
 				{item?.description && (
 					<Text dimColor italic>{item.description}</Text>
+				)}
+				{item?.sellPrice && (
+					<Text dimColor>Sell price: {item.sellPrice} H each</Text>
 				)}
 				<Box marginTop={1}>
 					<ItemDisplay itemId={viewing} animate />
@@ -133,8 +215,12 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 			<Text bold color="magenta">
 				♫ {herzie.name}'s inventory
 			</Text>
+			<Text bold color="yellow">Balance: {currency} H</Text>
+			{sellMessage && (
+				<Text color="green">{sellMessage}</Text>
+			)}
 			<Box marginTop={1} flexDirection="column">
-				{inventory.map((id, i) => {
+				{entries.map(([id, qty], i) => {
 					const item = getItem(id);
 					const isSelected = i === selected;
 					return (
@@ -145,12 +231,18 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 							<Text color={item ? RARITY_COLORS[item.rarity] : undefined}>
 								{item?.name ?? id}
 							</Text>
+							{qty > 1 && (
+								<Text dimColor> x{qty}</Text>
+							)}
+							{item?.sellPrice && isSelected && (
+								<Text dimColor> ({item.sellPrice} H)</Text>
+							)}
 						</Box>
 					);
 				})}
 			</Box>
 			<Box marginTop={1}>
-				<Text dimColor>↑↓ navigate · Enter to view · q to go back</Text>
+				<Text dimColor>↑↓ navigate · Enter to view · s to sell · q to go back</Text>
 			</Box>
 		</Box>
 	);

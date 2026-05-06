@@ -3,6 +3,7 @@ import {
 	type Herzie,
 	type ActiveMultiplier,
 	type EventNotification,
+	type PendingTradeRequest,
 	type SecretTrackConfig,
 	type Stage,
 	applyXp,
@@ -56,6 +57,7 @@ export function rowToHerzie(row: Record<string, unknown>): Herzie {
 		boostUntil: row.boost_until as number | undefined,
 		streakDays: (row.streak_days ?? 0) as number,
 		streakLastDate: (row.streak_last_date ?? null) as string | null,
+		currency: (row.currency ?? 0) as number,
 	};
 }
 
@@ -72,6 +74,7 @@ function herzieToRow(herzie: Herzie, nowPlaying: { title: string; artist: string
 		now_playing: nowPlaying,
 		streak_days: herzie.streakDays,
 		streak_last_date: herzie.streakLastDate,
+		currency: herzie.currency,
 	};
 }
 
@@ -120,7 +123,7 @@ export async function processSync(
 	nowPlaying: { title: string; artist: string; genre?: string } | null,
 	minutesListened: number,
 	genres: string[],
-): Promise<{ herzie: Herzie; notifications: EventNotification[]; multipliers: ActiveMultiplier[] }> {
+): Promise<{ herzie: Herzie; notifications: EventNotification[]; multipliers: ActiveMultiplier[]; pendingTradeRequest?: PendingTradeRequest }> {
 	// 1. Fetch the herzie
 	const { data: row, error } = await admin
 		.from("herzies")
@@ -214,26 +217,79 @@ export async function processSync(
 		}
 	}
 
-	// 5. Check for secret track events
+	// 5. Grant CDs based on total listening time
+	const totalCdsEarned = Math.floor(herzie.totalMinutesListened / 10);
+	const cdsGranted = (row.cds_granted ?? 0) as number;
+	const newCds = totalCdsEarned - cdsGranted;
+
+	if (newCds > 0) {
+		const inv = ((row.inventory_v2 ?? {}) as Record<string, number>);
+		inv["cd"] = (inv["cd"] ?? 0) + newCds;
+
+		await admin
+			.from("herzies")
+			.update({
+				inventory_v2: inv,
+				cds_granted: totalCdsEarned,
+			})
+			.eq("user_id", userId);
+
+		notifications.push({
+			type: "item_granted",
+			title: "CD",
+			message: `You earned ${newCds} CD${newCds > 1 ? "s" : ""}!`,
+			itemId: "cd",
+			quantity: newCds,
+		});
+	}
+
+	// 6. Check for secret track events
 	if (nowPlaying) {
 		const eventNotifications = await checkSecretTrackEvents(
 			admin,
 			userId,
 			nowPlaying.title,
 			nowPlaying.artist,
-			herzie,
 		);
 		notifications.push(...eventNotifications);
 	}
 
-	// 6. Update the herzie in DB
+	// 7. Update the herzie in DB
 	const npPayload = nowPlaying ? { title: nowPlaying.title, artist: nowPlaying.artist } : null;
 	await admin
 		.from("herzies")
 		.update(herzieToRow(herzie, npPayload))
 		.eq("user_id", userId);
 
-	return { herzie, notifications, multipliers: allMultipliers };
+	// 8. Check for pending trade requests
+	let pendingTradeRequest: { tradeId: string; fromName: string; fromFriendCode: string } | undefined;
+	const { data: pendingTrade } = await admin
+		.from("trades")
+		.select("id, initiator_id")
+		.eq("target_id", userId)
+		.eq("state", "pending")
+		.gt("expires_at", new Date().toISOString())
+		.order("created_at", { ascending: false })
+		.limit(1)
+		.maybeSingle();
+
+	if (pendingTrade) {
+		const { data: initiator } = await admin
+			.from("herzies")
+			.select("name, friend_code")
+			.eq("user_id", pendingTrade.initiator_id)
+			.single();
+
+		if (initiator) {
+			pendingTradeRequest = {
+				tradeId: pendingTrade.id as string,
+				fromName: initiator.name as string,
+				fromFriendCode: initiator.friend_code as string,
+			};
+		}
+	}
+
+	return { herzie, notifications, multipliers: allMultipliers, pendingTradeRequest };
 
 }
 
@@ -246,7 +302,6 @@ async function checkSecretTrackEvents(
 	userId: string,
 	title: string,
 	artist: string,
-	herzie: Herzie,
 ): Promise<EventNotification[]> {
 	const notifications: EventNotification[] = [];
 	const now = new Date().toISOString();
@@ -291,22 +346,27 @@ async function checkSecretTrackEvents(
 
 		if (claimError) continue; // race condition — someone else claimed first
 
-		// Add item to inventory
-		const currentInventory = (herzie as unknown as { inventory?: string[] }).inventory ?? [];
-		if (!currentInventory.includes(config.rewardItemId)) {
-			await admin
-				.from("herzies")
-				.update({
-					inventory: [...currentInventory, config.rewardItemId],
-				})
-				.eq("user_id", userId);
-		}
+		// Add item to inventory_v2 (JSONB)
+		const { data: herzieRow } = await admin
+			.from("herzies")
+			.select("inventory_v2")
+			.eq("user_id", userId)
+			.single();
+
+		const inv = ((herzieRow?.inventory_v2 ?? {}) as Record<string, number>);
+		inv[config.rewardItemId] = (inv[config.rewardItemId] ?? 0) + 1;
+
+		await admin
+			.from("herzies")
+			.update({ inventory_v2: inv })
+			.eq("user_id", userId);
 
 		notifications.push({
 			type: "item_granted",
-			title: "Secret Track Found!",
+			title: config.rewardItemId,
 			message: `You discovered the secret track "${config.trackTitle}"! You earned a collectible!`,
 			itemId: config.rewardItemId,
+			quantity: 1,
 		});
 	}
 

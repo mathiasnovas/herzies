@@ -1,18 +1,25 @@
 import { createHmac } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Herzie, ActiveMultiplier } from "@herzies/shared";
+import type { Herzie, ActiveMultiplier, PendingTradeRequest, EventNotification } from "@herzies/shared";
 
 const CONFIG_DIR = join(homedir(), ".config", "herzies");
 const HERZIE_FILE = join(CONFIG_DIR, "herzie.json");
 const SESSION_FILE = join(CONFIG_DIR, "session.json");
 const MULTIPLIERS_FILE = join(CONFIG_DIR, "multipliers.json");
+const PENDING_TRADE_FILE = join(CONFIG_DIR, "pending-trade.json");
+const NOTIFICATIONS_FILE = join(CONFIG_DIR, "notifications.json");
 
 function ensureDir() {
 	if (!existsSync(CONFIG_DIR)) {
-		mkdirSync(CONFIG_DIR, { recursive: true });
+		mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
 	}
+}
+
+function writeSecure(path: string, data: string) {
+	writeFileSync(path, data);
+	chmodSync(path, 0o600);
 }
 
 const HMAC_SALT = "hrzs_v1_8f3a2c";
@@ -26,6 +33,7 @@ function computeSignature(herzie: Herzie): string {
 		stage: herzie.stage,
 		totalMinutesListened: herzie.totalMinutesListened,
 		genreMinutes: herzie.genreMinutes,
+		currency: herzie.currency,
 	});
 	return createHmac("sha256", `${HMAC_SALT}:${herzie.id}`)
 		.update(payload)
@@ -55,7 +63,7 @@ export function loadHerzie(): Herzie | null {
 export function saveHerzie(herzie: Herzie): void {
 	ensureDir();
 	const data = { ...herzie, _sig: computeSignature(herzie) };
-	writeFileSync(HERZIE_FILE, JSON.stringify(data, null, 2));
+	writeSecure(HERZIE_FILE, JSON.stringify(data, null, 2));
 }
 
 export interface SessionData {
@@ -79,13 +87,13 @@ export function loadSession(): SessionData | null {
 
 export function saveSession(session: SessionData): void {
 	ensureDir();
-	writeFileSync(SESSION_FILE, JSON.stringify(session, null, 2));
+	writeSecure(SESSION_FILE, JSON.stringify(session, null, 2));
 }
 
 export function clearSession(): void {
 	ensureDir();
 	if (existsSync(SESSION_FILE)) {
-		writeFileSync(SESSION_FILE, "{}");
+		writeSecure(SESSION_FILE, "{}");
 	}
 }
 
@@ -101,7 +109,7 @@ export function getConfigDir(): string {
 
 export function saveMultipliers(multipliers: ActiveMultiplier[]): void {
 	ensureDir();
-	writeFileSync(MULTIPLIERS_FILE, JSON.stringify(multipliers));
+	writeSecure(MULTIPLIERS_FILE, JSON.stringify(multipliers));
 }
 
 export function loadMultipliers(): ActiveMultiplier[] | null {
@@ -110,5 +118,43 @@ export function loadMultipliers(): ActiveMultiplier[] | null {
 		return JSON.parse(readFileSync(MULTIPLIERS_FILE, "utf-8"));
 	} catch {
 		return null;
+	}
+}
+
+export function savePendingTrade(pending: PendingTradeRequest | null): void {
+	ensureDir();
+	if (pending) {
+		writeSecure(PENDING_TRADE_FILE, JSON.stringify(pending));
+	} else if (existsSync(PENDING_TRADE_FILE)) {
+		rmSync(PENDING_TRADE_FILE, { force: true });
+	}
+}
+
+export function loadPendingTrade(): PendingTradeRequest | null {
+	if (!existsSync(PENDING_TRADE_FILE)) return null;
+	try {
+		return JSON.parse(readFileSync(PENDING_TRADE_FILE, "utf-8"));
+	} catch {
+		return null;
+	}
+}
+
+export function saveNotifications(notifications: EventNotification[]): void {
+	ensureDir();
+	if (notifications.length > 0) {
+		writeSecure(NOTIFICATIONS_FILE, JSON.stringify(notifications));
+	} else if (existsSync(NOTIFICATIONS_FILE)) {
+		rmSync(NOTIFICATIONS_FILE, { force: true });
+	}
+}
+
+export function loadAndClearNotifications(): EventNotification[] {
+	if (!existsSync(NOTIFICATIONS_FILE)) return [];
+	try {
+		const data = JSON.parse(readFileSync(NOTIFICATIONS_FILE, "utf-8"));
+		rmSync(NOTIFICATIONS_FILE, { force: true });
+		return data;
+	} catch {
+		return [];
 	}
 }

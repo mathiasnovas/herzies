@@ -12,6 +12,10 @@ import type {
 	SyncResponse,
 	EventNotification,
 	GameEvent,
+	Trade,
+	TradeOffer,
+	PendingTradeRequest,
+	Inventory,
 } from "@herzies/shared";
 import { loadSession, saveSession } from "./state.js";
 
@@ -152,12 +156,133 @@ export async function apiRemoveFriend(
 }
 
 /** Fetch inventory via game server */
-export async function apiFetchInventory(): Promise<string[] | null> {
+export async function apiFetchInventory(): Promise<{ inventory: Inventory; currency: number } | null> {
 	try {
 		const res = await apiFetch("/inventory");
 		if (!res.ok) return null;
 		const data = await res.json();
-		return data.inventory as string[];
+		return {
+			inventory: data.inventory as Inventory,
+			currency: (data.currency ?? 0) as number,
+		};
+	} catch {
+		return null;
+	}
+}
+
+/** Sell items for currency */
+export async function apiSellItem(itemId: string, quantity: number): Promise<{ earned: number; newCurrency: number; inventory: Inventory } | null> {
+	try {
+		const res = await apiFetch("/inventory/sell", {
+			method: "POST",
+			body: JSON.stringify({ itemId, quantity }),
+		});
+		if (!res.ok) return null;
+		return await res.json();
+	} catch {
+		return null;
+	}
+}
+
+/** Create a trade request */
+export async function apiCreateTrade(targetFriendCode: string): Promise<{ tradeId: string } | null> {
+	try {
+		const res = await apiFetch("/trade/create", {
+			method: "POST",
+			body: JSON.stringify({ targetFriendCode }),
+		});
+		if (!res.ok) return null;
+		return await res.json();
+	} catch {
+		return null;
+	}
+}
+
+/** Join a pending trade */
+export async function apiJoinTrade(tradeId: string): Promise<boolean> {
+	try {
+		const res = await apiFetch("/trade/join", {
+			method: "POST",
+			body: JSON.stringify({ tradeId }),
+		});
+		return res.ok;
+	} catch {
+		return false;
+	}
+}
+
+/** Update your trade offer */
+export async function apiUpdateTradeOffer(tradeId: string, offer: TradeOffer): Promise<boolean> {
+	try {
+		const res = await apiFetch("/trade/offer", {
+			method: "POST",
+			body: JSON.stringify({ tradeId, offer }),
+		});
+		return res.ok;
+	} catch {
+		return false;
+	}
+}
+
+/** Lock your side of the trade */
+export async function apiLockTrade(tradeId: string): Promise<boolean> {
+	try {
+		const res = await apiFetch("/trade/lock", {
+			method: "POST",
+			body: JSON.stringify({ tradeId }),
+		});
+		return res.ok;
+	} catch {
+		return false;
+	}
+}
+
+/** Accept the trade (after both locked) */
+export async function apiAcceptTrade(tradeId: string): Promise<{ completed: boolean } | null> {
+	try {
+		const res = await apiFetch("/trade/accept", {
+			method: "POST",
+			body: JSON.stringify({ tradeId }),
+		});
+		if (!res.ok) return null;
+		return await res.json();
+	} catch {
+		return null;
+	}
+}
+
+/** Cancel a trade */
+export async function apiCancelTrade(tradeId: string): Promise<boolean> {
+	try {
+		const res = await apiFetch("/trade/cancel", {
+			method: "POST",
+			body: JSON.stringify({ tradeId }),
+		});
+		return res.ok;
+	} catch {
+		return false;
+	}
+}
+
+/** Poll trade status */
+export async function apiPollTrade(tradeId: string): Promise<Trade | null> {
+	try {
+		const res = await apiFetch(`/trade/status?tradeId=${encodeURIComponent(tradeId)}`);
+		if (!res.ok) return null;
+		const data = await res.json();
+		return data.trade as Trade;
+	} catch {
+		return null;
+	}
+}
+
+/** Check for pending incoming trade requests */
+export async function apiCheckPendingTrades(): Promise<PendingTradeRequest | null> {
+	try {
+		const res = await apiFetch("/trade/pending");
+		if (!res.ok) return null;
+		const data = await res.json();
+		return data.pending ?? null;
 	} catch {
 		return null;
 	}

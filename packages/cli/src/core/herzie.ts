@@ -21,5 +21,6 @@ export function createHerzie(name: string): Herzie {
 		lastCravingGenre: "",
 		streakDays: 0,
 		streakLastDate: null,
+		currency: 0,
 	};
 }

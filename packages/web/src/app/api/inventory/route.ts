@@ -9,7 +9,7 @@ export async function GET(request: Request) {
 	const admin = createAdminClient();
 	const { data, error } = await admin
 		.from("herzies")
-		.select("inventory")
+		.select("inventory_v2, currency")
 		.eq("user_id", auth.userId)
 		.single();
 
@@ -17,15 +17,18 @@ export async function GET(request: Request) {
 		return NextResponse.json({ error: "Herzie not found" }, { status: 404 });
 	}
 
-	// Also fetch item details
-	const inventory: string[] = data.inventory ?? [];
+	const inventory: Record<string, number> = data.inventory_v2 ?? {};
+
+	// Fetch item details for all owned items
+	const itemIds = Object.keys(inventory).filter((id) => inventory[id] > 0);
 	const { data: items } = await admin
 		.from("items")
 		.select("*")
-		.in("id", inventory.length > 0 ? inventory : ["__none__"]);
+		.in("id", itemIds.length > 0 ? itemIds : ["__none__"]);
 
 	return NextResponse.json({
 		inventory,
+		currency: data.currency ?? 0,
 		items: items ?? [],
 	});
 }
