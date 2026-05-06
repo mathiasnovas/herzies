@@ -74,7 +74,6 @@ function herzieToRow(herzie: Herzie, nowPlaying: { title: string; artist: string
 		now_playing: nowPlaying,
 		streak_days: herzie.streakDays,
 		streak_last_date: herzie.streakLastDate,
-		currency: herzie.currency,
 	};
 }
 
@@ -223,16 +222,11 @@ export async function processSync(
 	const newCds = totalCdsEarned - cdsGranted;
 
 	if (newCds > 0) {
-		const inv = ((row.inventory_v2 ?? {}) as Record<string, number>);
-		inv["cd"] = (inv["cd"] ?? 0) + newCds;
-
-		await admin
-			.from("herzies")
-			.update({
-				inventory_v2: inv,
-				cds_granted: totalCdsEarned,
-			})
-			.eq("user_id", userId);
+		await admin.rpc("grant_cds", {
+			p_user_id: userId,
+			p_quantity: newCds,
+			p_cds_granted: totalCdsEarned,
+		});
 
 		notifications.push({
 			type: "item_granted",
@@ -346,20 +340,12 @@ async function checkSecretTrackEvents(
 
 		if (claimError) continue; // race condition — someone else claimed first
 
-		// Add item to inventory_v2 (JSONB)
-		const { data: herzieRow } = await admin
-			.from("herzies")
-			.select("inventory_v2")
-			.eq("user_id", userId)
-			.single();
-
-		const inv = ((herzieRow?.inventory_v2 ?? {}) as Record<string, number>);
-		inv[config.rewardItemId] = (inv[config.rewardItemId] ?? 0) + 1;
-
-		await admin
-			.from("herzies")
-			.update({ inventory_v2: inv })
-			.eq("user_id", userId);
+		// Add item to inventory_v2 atomically
+		await admin.rpc("grant_inventory_item", {
+			p_user_id: userId,
+			p_item_id: config.rewardItemId,
+			p_quantity: 1,
+		});
 
 		notifications.push({
 			type: "item_granted",
