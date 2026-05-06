@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import { createServerClient } from "@/lib/supabase-server";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -46,11 +47,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
   return (
     <html lang="en">
       <body>
@@ -94,6 +97,15 @@ export default function RootLayout({
             <a href="/about" style={{ fontSize: 13, color: "var(--text-dim)" }}>
               about
             </a>
+            {user ? (
+              <a href="/dashboard" style={{ fontSize: 13, color: "var(--green)" }}>
+                dashboard
+              </a>
+            ) : (
+              <a href="/login" style={{ fontSize: 13, color: "var(--green)" }}>
+                sign in
+              </a>
+            )}
           </div>
         </nav>
         {children}

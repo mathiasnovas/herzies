@@ -117,13 +117,20 @@ async function fetchServerMultipliers(admin: SupabaseClient, now: Date): Promise
 		.map((m) => ({ name: m.name as string, bonus: m.bonus as number }));
 }
 
+interface SyncOptions {
+	/** "cli" (default) applies wall-clock and per-sync caps. "spotify" skips them (dedup via play log). */
+	source?: "cli" | "spotify";
+}
+
 export async function processSync(
 	admin: SupabaseClient,
 	userId: string,
 	nowPlaying: { title: string; artist: string; genre?: string } | null,
 	minutesListened: number,
 	genres: string[],
+	options: SyncOptions = {},
 ): Promise<{ herzie: Herzie; notifications: EventNotification[]; multipliers: ActiveMultiplier[]; pendingTradeRequest?: PendingTradeRequest }> {
+	const source = options.source ?? "cli";
 	// 1. Fetch the herzie
 	const { data: row, error } = await admin
 		.from("herzies")
@@ -186,17 +193,22 @@ export async function processSync(
 		const craving = getDailyCraving(herzie.id);
 		const isCraving = genres.length > 0 && matchesCraving(genres, craving);
 
-		// Cap at 10 minutes per sync hard limit
-		let minutes = Math.min(minutesListened, 10);
+		let minutes = minutesListened;
 
-		// Cap to actual elapsed wall-clock time since last sync (+1 min grace)
-		// to prevent abuse via rapid curl requests
-		const lastSyncedAt = row.last_synced_at as string | null;
-		if (lastSyncedAt) {
-			const elapsedMs = now.getTime() - new Date(lastSyncedAt).getTime();
-			const elapsedMinutes = Math.max(0, elapsedMs / 60_000);
-			minutes = Math.min(minutes, elapsedMinutes + 1);
+		// CLI sync: cap to prevent abuse via rapid requests
+		if (source === "cli") {
+			// Cap at 10 minutes per sync hard limit
+			minutes = Math.min(minutes, 10);
+
+			// Cap to actual elapsed wall-clock time since last sync (+1 min grace)
+			const lastSyncedAt = row.last_synced_at as string | null;
+			if (lastSyncedAt) {
+				const elapsedMs = now.getTime() - new Date(lastSyncedAt).getTime();
+				const elapsedMinutes = Math.max(0, elapsedMs / 60_000);
+				minutes = Math.min(minutes, elapsedMinutes + 1);
+			}
 		}
+		// Spotify source: no caps — deduplication handled by spotify_play_log
 
 		const xp = calculateXpGain(
 			minutes,
@@ -247,8 +259,8 @@ export async function processSync(
 		});
 	}
 
-	// 6. Check for secret track events
-	if (nowPlaying) {
+	// 6. Check for secret track events (CLI only — requires real-time now_playing)
+	if (source === "cli" && nowPlaying) {
 		const eventNotifications = await checkSecretTrackEvents(
 			admin,
 			userId,
@@ -259,10 +271,18 @@ export async function processSync(
 	}
 
 	// 7. Update the herzie in DB
-	const npPayload = nowPlaying ? { title: nowPlaying.title, artist: nowPlaying.artist } : null;
+	// Spotify catch-up: don't overwrite now_playing (it may be stale)
+	const npPayload = source === "cli" && nowPlaying
+		? { title: nowPlaying.title, artist: nowPlaying.artist }
+		: null;
+	const updateData = herzieToRow(herzie, npPayload);
+	if (source === "spotify") {
+		// Don't overwrite now_playing for spotify catch-up
+		delete (updateData as Record<string, unknown>).now_playing;
+	}
 	await admin
 		.from("herzies")
-		.update(herzieToRow(herzie, npPayload))
+		.update(updateData)
 		.eq("user_id", userId);
 
 	// 8. Check for pending trade requests
