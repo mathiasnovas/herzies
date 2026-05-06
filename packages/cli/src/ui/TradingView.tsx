@@ -89,7 +89,7 @@ export function TradingView({ herzie, tradeId, onDone }: Props) {
 				return;
 			}
 			if (t.state !== "pending") {
-				setPhase("trading");
+				setPhase((prev) => prev === "waiting" ? "trading" : prev);
 			}
 		};
 

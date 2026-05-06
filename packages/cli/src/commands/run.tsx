@@ -10,7 +10,7 @@ import { StatsPanel } from "../ui/StatsPanel.js";
 import { InventoryView } from "../ui/InventoryView.js";
 import { FriendSelector } from "../ui/FriendSelector.js";
 import { TradingView } from "../ui/TradingView.js";
-import { checkOnline, apiCreateTrade, apiJoinTrade } from "../storage/api.js";
+import { checkOnline, apiCreateTrade, apiJoinTrade, type OnlineStatus } from "../storage/api.js";
 import { getItem } from "../art/items.js";
 
 const REFRESH_INTERVAL = 3000;
@@ -36,7 +36,7 @@ function RunApp() {
 	const [daemonUp, setDaemonUp] = useState(false);
 	const [events, setEvents] = useState<EventMessage[]>([]);
 	const [tick, setTick] = useState(0);
-	const [online, setOnline] = useState<boolean | undefined>(undefined);
+	const [online, setOnline] = useState<OnlineStatus | undefined>(undefined);
 	const [multipliers, setMultipliers] = useState<ActiveMultiplier[] | undefined>(undefined);
 	const [pendingTrade, setPendingTrade] = useState<PendingTradeRequest | null>(null);
 	const [activeTradeId, setActiveTradeId] = useState<string | null>(null);
@@ -117,7 +117,7 @@ function RunApp() {
 			setCurrentTrack(playing);
 
 			// Check for pending trade requests (from daemon)
-			if (isOnline) {
+			if (isOnline === "online") {
 				const pt = loadPendingTrade();
 				setPendingTrade(pt);
 
@@ -150,7 +150,7 @@ function RunApp() {
 		const status = currentTrack
 			? `♪ ${currentTrack.title} — ${currentTrack.artist}`
 			: "idle";
-		const conn = online === false ? "offline" : "";
+		const conn = online && online !== "online" ? online : "";
 		const parts = [name, status, conn].filter(Boolean);
 		process.stdout.write(`\x1b]0;${parts.join(" · ")}\x07`);
 
@@ -172,7 +172,7 @@ function RunApp() {
 		if (_input === "i" && herzie) {
 			setView("inventory");
 		}
-		if (_input === "t" && herzie && online) {
+		if (_input === "t" && herzie && online === "online") {
 			setView("friend-select");
 		}
 	});
@@ -264,11 +264,14 @@ function RunApp() {
 				</Text>
 				{online !== undefined && (
 					<Text>
-						<Text color={online ? "green" : "red"}>
-							[{online ? "online" : "offline"}]
+						<Text color={online === "online" ? "green" : "red"}>
+							[{online}]
 						</Text>
-						{online === false && (
+						{online === "offline" && (
 							<Text dimColor> xp syncs when back online</Text>
+						)}
+						{online === "unauthorized" && (
+							<Text dimColor> run <Text bold>herzies login</Text> to re-authenticate</Text>
 						)}
 					</Text>
 				)}

@@ -5,14 +5,14 @@ import { isDaemonRunning } from "../storage/pid.js";
 import { type NowPlayingInfo, getNowPlaying } from "../music/nowplaying.js";
 import { HerzieDisplay } from "../ui/HerzieDisplay.js";
 import { StatsPanel } from "../ui/StatsPanel.js";
-import { checkOnline } from "../storage/api.js";
+import { checkOnline, type OnlineStatus } from "../storage/api.js";
 
 function StatusApp() {
 	const { exit } = useApp();
 	const herzie = loadHerzie();
 	const daemonRunning = isDaemonRunning();
 	const [nowPlaying, setNowPlaying] = useState<NowPlayingInfo | null>(null);
-	const [online, setOnline] = useState<boolean | undefined>(undefined);
+	const [online, setOnline] = useState<OnlineStatus | undefined>(undefined);
 	const [ready, setReady] = useState(false);
 
 	useEffect(() => {
@@ -86,11 +86,14 @@ function StatusApp() {
 				{online !== undefined && (
 					<Text>
 						{" "}
-						<Text color={online ? "green" : "red"}>
-							[{online ? "online" : "offline"}]
+						<Text color={online === "online" ? "green" : "red"}>
+							[{online}]
 						</Text>
-						{online === false && (
+						{online === "offline" && (
 							<Text dimColor> xp syncs when back online</Text>
+						)}
+						{online === "unauthorized" && (
+							<Text dimColor> run <Text bold>herzies login</Text> to re-authenticate</Text>
 						)}
 					</Text>
 				)}

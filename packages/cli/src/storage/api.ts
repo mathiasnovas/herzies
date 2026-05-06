@@ -307,15 +307,17 @@ export async function apiCheckPendingTrades(): Promise<PendingTradeRequest | nul
 	}
 }
 
-/** Quick connectivity check */
-export async function checkOnline(): Promise<boolean> {
+export type OnlineStatus = "online" | "offline" | "unauthorized";
+
+/** Check if the user is authenticated and the server is reachable */
+export async function checkOnline(): Promise<OnlineStatus> {
 	try {
-		const res = await fetch(`${API_BASE}/health`, {
-			signal: AbortSignal.timeout(3000),
-		});
-		return res.ok;
+		const res = await apiFetch("/me");
+		if (res.ok) return "online";
+		if (res.status === 401 || res.status === 403) return "unauthorized";
+		return "offline";
 	} catch {
-		return false;
+		return "offline";
 	}
 }
 

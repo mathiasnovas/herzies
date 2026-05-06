@@ -8,7 +8,7 @@ import { isLoggedIn, apiFetchInventory, apiSellItem } from "../storage/api.js";
 interface Props {
 	herzie: Herzie;
 	onBack: () => void;
-	online?: boolean;
+	online?: string;
 }
 
 type SellMode = null | { itemId: string; name: string; maxQty: number };
@@ -118,7 +118,7 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 		);
 	}
 
-	if (online === false) {
+	if (online && online !== "online") {
 		return (
 			<Box flexDirection="column" padding={1}>
 				<Text color="yellow">
