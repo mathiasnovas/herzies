@@ -74,6 +74,7 @@ function herzieToRow(herzie: Herzie, nowPlaying: { title: string; artist: string
 		now_playing: nowPlaying,
 		streak_days: herzie.streakDays,
 		streak_last_date: herzie.streakLastDate,
+		last_synced_at: new Date().toISOString(),
 	};
 }
 
@@ -185,8 +186,17 @@ export async function processSync(
 		const craving = getDailyCraving(herzie.id);
 		const isCraving = genres.length > 0 && matchesCraving(genres, craving);
 
-		// Cap at 10 minutes per sync to prevent abuse, but allow offline backlog
-		const minutes = Math.min(minutesListened, 10);
+		// Cap at 10 minutes per sync hard limit
+		let minutes = Math.min(minutesListened, 10);
+
+		// Cap to actual elapsed wall-clock time since last sync (+1 min grace)
+		// to prevent abuse via rapid curl requests
+		const lastSyncedAt = row.last_synced_at as string | null;
+		if (lastSyncedAt) {
+			const elapsedMs = now.getTime() - new Date(lastSyncedAt).getTime();
+			const elapsedMinutes = Math.max(0, elapsedMs / 60_000);
+			minutes = Math.min(minutes, elapsedMinutes + 1);
+		}
 
 		const xp = calculateXpGain(
 			minutes,

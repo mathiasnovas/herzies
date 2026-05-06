@@ -85,6 +85,14 @@ describe("Sync flow", () => {
 	});
 
 	it("grants XP for listening time", async () => {
+		// Backdate last_synced_at so the elapsed-time cap allows 5 minutes
+		const admin = getAdminClient();
+		const tenMinAgo = new Date(Date.now() - 10 * 60_000).toISOString();
+		await admin
+			.from("herzies")
+			.update({ last_synced_at: tenMinAgo })
+			.eq("user_id", user.userId);
+
 		const res = await syncRoute(
 			authenticatedRequest("/sync", user.accessToken, {
 				nowPlaying: { title: "Test Song", artist: "Test Artist" },
@@ -99,6 +107,14 @@ describe("Sync flow", () => {
 	});
 
 	it("grants CDs based on listening time", async () => {
+		// Backdate last_synced_at so the elapsed-time cap allows 5 minutes
+		const admin = getAdminClient();
+		const tenMinAgo = new Date(Date.now() - 10 * 60_000).toISOString();
+		await admin
+			.from("herzies")
+			.update({ last_synced_at: tenMinAgo })
+			.eq("user_id", user.userId);
+
 		// Sync with enough minutes to earn CDs (10 min = 1 CD)
 		// We already have 5 minutes, add 5 more
 		const res = await syncRoute(
@@ -113,7 +129,6 @@ describe("Sync flow", () => {
 		expect(body.herzie.totalMinutesListened).toBe(10);
 
 		// Check inventory for CD
-		const admin = getAdminClient();
 		const { data } = await admin
 			.from("herzies")
 			.select("inventory_v2, cds_granted")
@@ -122,6 +137,70 @@ describe("Sync flow", () => {
 
 		expect(data!.cds_granted).toBe(1);
 		expect((data!.inventory_v2 as Record<string, number>).cd).toBeGreaterThanOrEqual(1);
+	});
+
+	it("caps minutesListened to elapsed time since last sync", async () => {
+		const admin = getAdminClient();
+
+		// Set last_synced_at to 2 seconds ago — so at most ~0.03 min + 1 min grace ≈ 1.03 min allowed
+		const twoSecondsAgo = new Date(Date.now() - 2000).toISOString();
+		await admin
+			.from("herzies")
+			.update({ last_synced_at: twoSecondsAgo })
+			.eq("user_id", user.userId);
+
+		// Fetch current minutes before sync
+		const { data: before } = await admin
+			.from("herzies")
+			.select("total_minutes_listened")
+			.eq("user_id", user.userId)
+			.single();
+
+		const minutesBefore = before!.total_minutes_listened as number;
+
+		// Try to claim 10 minutes — should be capped to ~1 min (elapsed + grace)
+		const res = await syncRoute(
+			authenticatedRequest("/sync", user.accessToken, {
+				nowPlaying: { title: "Cheat Song", artist: "Cheat Artist" },
+				minutesListened: 10,
+				genres: ["rock"],
+			}),
+		);
+		expect(res.status).toBe(200);
+		const body = await res.json();
+
+		// Should have gained at most ~1.04 minutes (0.03 elapsed + 1 grace), not 10
+		const gained = body.herzie.totalMinutesListened - minutesBefore;
+		expect(gained).toBeLessThanOrEqual(1.1);
+		expect(gained).toBeGreaterThan(0);
+	});
+
+	it("allows first sync without last_synced_at using 10-min cap", async () => {
+		// Create a fresh user/herzie with no last_synced_at
+		const freshUser = await createTestUser();
+		const admin = getAdminClient();
+
+		// Register a herzie for this fresh user
+		const regRes = await registerHerzie(
+			authenticatedRequest("/herzie", freshUser.accessToken, {
+				name: `Fresh-${Date.now().toString(36)}`,
+				appearance: { headIndex: 0, eyesIndex: 0, mouthIndex: 0, accessoryIndex: 0, limbsIndex: 0, bodyIndex: 0, legsIndex: 0, colorScheme: "green" },
+				friendCode: `HERZ-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+			}),
+		);
+		expect(regRes.status).toBe(201);
+
+		// Sync with 8 minutes — should be accepted (under 10-min hard cap)
+		const res = await syncRoute(
+			authenticatedRequest("/sync", freshUser.accessToken, {
+				nowPlaying: { title: "First Song", artist: "First Artist" },
+				minutesListened: 8,
+				genres: ["pop"],
+			}),
+		);
+		expect(res.status).toBe(200);
+		const body = await res.json();
+		expect(body.herzie.totalMinutesListened).toBe(8);
 	});
 
 	it("sync does not wipe inventory changes from other operations", async () => {
