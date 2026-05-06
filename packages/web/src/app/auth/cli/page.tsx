@@ -16,7 +16,7 @@ function AuthForm() {
 
 		const supabase = createSupabaseClient();
 		const redirectTo = port
-			? `${window.location.origin}/auth/callback?cli_port=${port}`
+			? `${window.location.origin}/auth/callback/cli?cli_port=${port}`
 			: `${window.location.origin}/auth/callback`;
 
 		const { error } = await supabase.auth.signInWithOAuth({
@@ -46,7 +46,7 @@ function AuthForm() {
 					sign in to herzies
 				</h1>
 				<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-					authorize the CLI to access your account
+					{port ? "authorize the CLI to access your account" : "sign in with your GitHub account"}
 				</p>
 			</div>
 

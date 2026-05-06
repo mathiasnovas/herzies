@@ -22,7 +22,6 @@ function CallbackHandler() {
 		async function handleCallback() {
 			const supabase = createSupabaseClient();
 
-			// OAuth redirects include a `code` param that must be exchanged for a session
 			const code = new URLSearchParams(window.location.search).get("code");
 			if (code) {
 				const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
@@ -42,7 +41,6 @@ function CallbackHandler() {
 			}
 
 			if (cliPort) {
-				// POST tokens to the local CLI server to avoid URL exposure
 				const form = document.createElement("form");
 				form.method = "POST";
 				form.action = `http://127.0.0.1:${cliPort}/callback`;
@@ -142,7 +140,7 @@ function CallbackHandler() {
 	);
 }
 
-export default function AuthCallbackPage() {
+export default function CLICallbackPage() {
 	return (
 		<Suspense fallback={<p style={{ padding: "2rem" }}>Loading...</p>}>
 			<CallbackHandler />
