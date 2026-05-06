@@ -13,6 +13,7 @@ import { runHatch } from "../src/commands/hatch.js";
 import { runLogin } from "../src/commands/login.js";
 import { runKill } from "../src/commands/kill.js";
 import { runApp } from "../src/commands/run.js";
+import { runOnboard } from "../src/commands/onboard.js";
 import { runAutostart } from "../src/commands/autostart.js";
 import { runStart } from "../src/commands/start.js";
 import { runStop } from "../src/commands/stop.js";
@@ -110,9 +111,14 @@ program
 		program.outputHelp();
 	});
 
-// Default: launch the live dashboard
-program.action(() => {
-	runApp();
+// Default: launch the live dashboard, or onboard if first time
+program.action(async () => {
+	const { loadHerzie } = await import("../src/storage/state.js");
+	if (!loadHerzie()) {
+		await runOnboard();
+	} else {
+		runApp();
+	}
 });
 
 program.parse();

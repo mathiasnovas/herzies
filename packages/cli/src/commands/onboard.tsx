@@ -1,24 +1,22 @@
 import { createInterface } from "node:readline";
 import { Box, Text, render, useApp } from "ink";
 import React, { useEffect } from "react";
+import type { Herzie } from "@herzies/shared";
+import { validateName } from "@herzies/shared";
 import { composeHerzie } from "../art/composer.js";
 import { createHerzie } from "../core/herzie.js";
 import { waitForLogin } from "../auth/login-flow.js";
-import { apiIsNameTaken, apiRegisterHerzie, isLoggedIn } from "../storage/api.js";
-import { loadHerzie, saveHerzie } from "../storage/state.js";
-import { validateName } from "@herzies/shared";
-import type { Herzie } from "@herzies/shared";
+import { saveHerzie } from "../storage/state.js";
+import { apiGetMe, apiRegisterHerzie, apiIsNameTaken } from "../storage/api.js";
 
 const EGG_FRAMES = [
 	`
-
   ╭─╮
   │ │
   │ │
   ╰─╯
 `,
 	`
-
   ╭─╮
   │∙│
   │ │
@@ -52,6 +50,19 @@ function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function prompt(question: string): Promise<string> {
+	const rl = createInterface({
+		input: process.stdin,
+		output: process.stdout,
+	});
+	return new Promise((resolve) => {
+		rl.question(question, (answer) => {
+			rl.close();
+			resolve(answer.trim());
+		});
+	});
+}
+
 function RevealApp({ herzie }: { herzie: Herzie }) {
 	const { exit } = useApp();
 	const art = composeHerzie(herzie.appearance, herzie.stage);
@@ -64,7 +75,7 @@ function RevealApp({ herzie }: { herzie: Herzie }) {
 	return (
 		<Box flexDirection="column" padding={1}>
 			<Text color="green" bold>
-				✨ {herzie.name} has hatched! ✨
+				{herzie.name} has hatched!
 			</Text>
 			<Box marginTop={1}>
 				<Text>{art}</Text>
@@ -78,60 +89,17 @@ function RevealApp({ herzie }: { herzie: Herzie }) {
 					Share this code so others can add you as a friendzie!
 				</Text>
 			</Box>
-			<Box marginTop={1}>
-				<Text dimColor>
-					Run <Text bold>herzies status</Text> to check on your Herzie,{" "}
-					<Text bold>herzies listen</Text> to start growing!
-				</Text>
-			</Box>
 		</Box>
 	);
 }
 
-async function prompt(question: string): Promise<string> {
-	const rl = createInterface({
-		input: process.stdin,
-		output: process.stdout,
-	});
-
-	return new Promise((resolve) => {
-		rl.question(question, (answer) => {
-			rl.close();
-			resolve(answer.trim());
-		});
-	});
-}
-
-export async function runHatch() {
-	const existing = loadHerzie();
-	if (existing) {
-		console.log(
-			`\nYou already have a Herzie named \x1b[1m${existing.name}\x1b[0m!`,
-		);
-		console.log("Run `herzies status` to see them.\n");
-		return;
-	}
-
-	// Require login before hatching
-	if (!isLoggedIn()) {
-		console.log("\n\x1b[2mYou must log in before hatching.\x1b[0m\n");
-		await prompt("Press enter to log in ");
-		console.log("\x1b[33mOpening browser...\x1b[0m");
-		console.log("\x1b[2mWaiting for login in your browser...\x1b[0m");
-		const loggedIn = await waitForLogin();
-		if (!loggedIn) {
-			console.log("\n\x1b[31mLogin failed or timed out. Try again with: herzies login\x1b[0m\n");
-			return;
-		}
-		console.log("\x1b[32mLogged in!\x1b[0m\n");
-	}
-
-	console.log("\n\x1b[35m\x1b[1m🥚 A mysterious egg has appeared!\x1b[0m\n");
+async function hatchFlow(): Promise<Herzie> {
+	console.log("\n\x1b[35m\x1b[1mA mysterious egg has appeared!\x1b[0m\n");
 	console.log(EGG_FRAMES[0]);
 
 	let name = "";
 	while (true) {
-		name = await prompt("Give your Herzie a name: ");
+		name = await prompt("Give your herzie a name: ");
 
 		const validationError = validateName(name);
 		if (validationError) {
@@ -149,26 +117,59 @@ export async function runHatch() {
 
 	// Hatching animation
 	for (let i = 1; i < EGG_FRAMES.length; i++) {
-		process.stdout.write("\x1b[2J\x1b[H"); // clear screen
+		process.stdout.write("\x1b[2J\x1b[H");
 		console.log(`\n\x1b[33m\x1b[1mThe egg is hatching...!\x1b[0m\n`);
 		console.log(EGG_FRAMES[i]);
 		await sleep(400);
 	}
 
-	process.stdout.write("\x1b[2J\x1b[H"); // clear screen
+	process.stdout.write("\x1b[2J\x1b[H");
 
 	const herzie = createHerzie(name);
 	saveHerzie(herzie);
 
-	// Register with server if logged in
-	await apiRegisterHerzie(herzie);
+	// Register with server (user is logged in at this point)
+	const registered = await apiRegisterHerzie(herzie);
+	if (registered) {
+		saveHerzie(registered);
+		return registered;
+	}
 
-	render(<RevealApp herzie={herzie} />);
+	return herzie;
+}
 
-	// Give Ink a moment to flush output
-	await sleep(200);
+export async function runOnboard() {
+	console.log("\n\x1b[35m\x1b[1mHi, looks like you're new. Let's get you started!\x1b[0m");
+	console.log("\x1b[2mYou must log in to hatch your herzie.\x1b[0m\n");
 
-	// Offer to enable autostart
+	await prompt("Press enter to log in ");
+
+	console.log("\x1b[33mOpening browser...\x1b[0m");
+	console.log("\x1b[2mWaiting for login in your browser...\x1b[0m");
+
+	const loggedIn = await waitForLogin();
+
+	if (!loggedIn) {
+		console.log("\n\x1b[31mLogin failed or timed out. Try again with: herzies login\x1b[0m\n");
+		return;
+	}
+
+	console.log("\x1b[32mLogged in!\x1b[0m\n");
+
+	// Check if user already has a herzie on the server
+	const existing = await apiGetMe();
+	if (existing) {
+		saveHerzie(existing);
+		console.log(`\x1b[32m\x1b[1mWelcome back!\x1b[0m Your herzie \x1b[1m${existing.name}\x1b[0m has been synced.`);
+	} else {
+		// Hatch a new herzie
+		const herzie = await hatchFlow();
+
+		render(<RevealApp herzie={herzie} />);
+		await sleep(200);
+	}
+
+	// Offer autostart (macOS)
 	if (process.platform === "darwin") {
 		const answer = await prompt(
 			"\nStart listening automatically on login? (Y/n) ",
@@ -176,8 +177,9 @@ export async function runHatch() {
 		if (answer === "" || answer.toLowerCase() === "y") {
 			const { runAutostart } = await import("./autostart.js");
 			runAutostart("on");
-			const { runStart } = await import("./start.js");
-			runStart();
 		}
 	}
+
+	console.log("\nYou're all set. Run \x1b[1mherzies\x1b[0m and listen to some music!\n");
+	process.exit(0);
 }
