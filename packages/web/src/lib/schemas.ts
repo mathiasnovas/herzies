@@ -6,6 +6,12 @@ const tradeIdBody = z.object({ tradeId: z.string().min(1) });
 
 // --- Schemas ---
 
+export const registerHerzieSchema = z.object({
+	name: z.string().min(1).max(20).regex(/^[a-zA-Z0-9 _-]+$/),
+	appearance: z.record(z.string(), z.unknown()),
+	friendCode: z.string().min(1),
+});
+
 export const syncRequestSchema = z.object({
 	nowPlaying: z
 		.object({

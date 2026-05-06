@@ -4,8 +4,8 @@ import { Box, Text, render, useApp } from "ink";
 import open from "open";
 import React, { useEffect, useState } from "react";
 import type { Herzie } from "@herzies/shared";
-import { saveHerzie, saveSession } from "../storage/state.js";
-import { apiGetMe } from "../storage/api.js";
+import { loadHerzie, saveHerzie, saveSession } from "../storage/state.js";
+import { apiGetMe, apiRegisterHerzie } from "../storage/api.js";
 
 const CALLBACK_PORT = 8974;
 
@@ -76,7 +76,14 @@ function LoginApp() {
 				setStatus("syncing");
 
 				// Pull the user's herzie from the game server
-				const herzie = await apiGetMe();
+				let herzie = await apiGetMe();
+				if (!herzie) {
+					// No server-side herzie — register the local one
+					const local = loadHerzie();
+					if (local) {
+						herzie = await apiRegisterHerzie(local);
+					}
+				}
 				if (herzie) {
 					saveHerzie(herzie);
 					setSynced(herzie.name);

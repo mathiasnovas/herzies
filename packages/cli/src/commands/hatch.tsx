@@ -3,7 +3,7 @@ import { Box, Text, render, useApp } from "ink";
 import React, { useEffect } from "react";
 import { composeHerzie } from "../art/composer.js";
 import { createHerzie } from "../core/herzie.js";
-import { apiIsNameTaken, apiSync } from "../storage/api.js";
+import { apiIsNameTaken, apiRegisterHerzie } from "../storage/api.js";
 import { loadHerzie, saveHerzie } from "../storage/state.js";
 import { validateName } from "@herzies/shared";
 import type { Herzie } from "@herzies/shared";
@@ -145,8 +145,8 @@ export async function runHatch() {
 	const herzie = createHerzie(name);
 	saveHerzie(herzie);
 
-	// Sync online if logged in
-	await apiSync(null, 0, []);
+	// Register with server if logged in
+	await apiRegisterHerzie(herzie);
 
 	render(<RevealApp herzie={herzie} />);
 

@@ -101,6 +101,25 @@ export async function apiSync(
 	}
 }
 
+/** Register a local herzie with the game server (creates DB row) */
+export async function apiRegisterHerzie(herzie: Herzie): Promise<Herzie | null> {
+	try {
+		const res = await apiFetch("/herzie", {
+			method: "POST",
+			body: JSON.stringify({
+				name: herzie.name,
+				appearance: herzie.appearance,
+				friendCode: herzie.friendCode,
+			}),
+		});
+		if (!res.ok) return null;
+		const data = await res.json();
+		return data.herzie as Herzie;
+	} catch {
+		return null;
+	}
+}
+
 /** Fetch own herzie from the game server */
 export async function apiGetMe(): Promise<Herzie | null> {
 	try {
