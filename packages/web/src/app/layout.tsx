@@ -97,13 +97,9 @@ export default async function RootLayout({
             <a href="/about" style={{ fontSize: 13, color: "var(--text-dim)" }}>
               about
             </a>
-            {user ? (
+            {user && (
               <a href="/dashboard" style={{ fontSize: 13, color: "var(--green)" }}>
                 dashboard
-              </a>
-            ) : (
-              <a href="/login" style={{ fontSize: 13, color: "var(--green)" }}>
-                sign in
               </a>
             )}
           </div>
