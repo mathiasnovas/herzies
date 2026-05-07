@@ -10,6 +10,7 @@ import {
 	setLocalEnv,
 	authenticatedRequest,
 	getAdminClient,
+	getAnonClient,
 } from "./integration-helpers";
 
 import { POST as syncRoute } from "@/app/api/sync/route";
@@ -145,12 +146,7 @@ describe("Listen log", () => {
 	});
 
 	it("RLS prevents anon inserts", async () => {
-		const { createClient } = await import("@supabase/supabase-js");
-		const anon = createClient(
-			"http://127.0.0.1:54321",
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0",
-			{ auth: { autoRefreshToken: false, persistSession: false } },
-		);
+		const anon = getAnonClient();
 
 		const { error } = await anon
 			.from("listen_log")
@@ -162,5 +158,67 @@ describe("Listen log", () => {
 
 		// Should fail — anon role can't insert
 		expect(error).not.toBeNull();
+	});
+
+	it("anon client can read listen_log (public SELECT policy)", async () => {
+		const anon = getAnonClient();
+
+		const { data, error } = await anon
+			.from("listen_log")
+			.select("track_name, artist_name, listened_at")
+			.eq("user_id", user.userId)
+			.order("listened_at", { ascending: false })
+			.limit(3);
+
+		expect(error).toBeNull();
+		expect(data).not.toBeNull();
+		expect(data!.length).toBe(3);
+		// Most recent first
+		expect(data![0].track_name).toBe("Bohemian Rhapsody");
+		expect(data![1].track_name).toBe("Stairway to Heaven");
+		expect(data![2].track_name).toBe("Bohemian Rhapsody");
+	});
+
+	it("anon client can query top artists by play count", async () => {
+		const anon = getAnonClient();
+
+		// Insert extra plays via admin to create a clear ranking
+		const admin = getAdminClient();
+		for (let i = 0; i < 5; i++) {
+			await admin.from("listen_log").insert({
+				user_id: user.userId,
+				track_name: `Song ${i}`,
+				artist_name: "The Beatles",
+				source: "cli",
+			});
+		}
+
+		// Query: count plays grouped by artist, ordered by count desc
+		// Supabase doesn't support group-by directly, so we fetch all and aggregate client-side
+		// (or use an RPC — but for now, fetch recent and aggregate)
+		const { data, error } = await anon
+			.from("listen_log")
+			.select("artist_name")
+			.eq("user_id", user.userId);
+
+		expect(error).toBeNull();
+		expect(data).not.toBeNull();
+
+		// Aggregate by artist
+		const counts: Record<string, number> = {};
+		for (const row of data!) {
+			counts[row.artist_name] = (counts[row.artist_name] ?? 0) + 1;
+		}
+
+		const sorted = Object.entries(counts)
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 3);
+
+		// The Beatles should be #1 with 5 plays
+		expect(sorted[0][0]).toBe("The Beatles");
+		expect(sorted[0][1]).toBe(5);
+		// Queen should be #2 with 2 plays (from earlier tests)
+		expect(sorted[1][0]).toBe("Queen");
+		expect(sorted[1][1]).toBe(2);
 	});
 });

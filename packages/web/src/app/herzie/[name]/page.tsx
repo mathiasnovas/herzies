@@ -35,7 +35,7 @@ export default async function HerziePage({ params }: Props) {
 	const supabase = createSupabaseClient();
 	const { data } = await supabase
 		.from("herzies")
-		.select("name, stage, level, xp, appearance, total_minutes_listened, genre_minutes, friend_code, friend_codes, now_playing, created_at")
+		.select("user_id, name, stage, level, xp, appearance, total_minutes_listened, genre_minutes, friend_code, friend_codes, now_playing, created_at")
 		.ilike("name", decoded)
 		.single();
 
@@ -56,5 +56,35 @@ export default async function HerziePage({ params }: Props) {
 		);
 	}
 
-	return <HerzieDetail herzie={data} />;
+	// Fetch recent tracks and all listen log for top artists
+	const [{ data: recentTracks }, { data: allPlays }] = await Promise.all([
+		supabase
+			.from("listen_log")
+			.select("track_name, artist_name, listened_at")
+			.eq("user_id", data.user_id)
+			.order("listened_at", { ascending: false })
+			.limit(3),
+		supabase
+			.from("listen_log")
+			.select("artist_name")
+			.eq("user_id", data.user_id),
+	]);
+
+	// Aggregate top 3 artists client-side
+	const artistCounts: Record<string, number> = {};
+	for (const row of allPlays ?? []) {
+		artistCounts[row.artist_name] = (artistCounts[row.artist_name] ?? 0) + 1;
+	}
+	const topArtists = Object.entries(artistCounts)
+		.sort((a, b) => b[1] - a[1])
+		.slice(0, 3)
+		.map(([name, plays]) => ({ name, plays }));
+
+	return (
+		<HerzieDetail
+			herzie={data}
+			recentTracks={recentTracks ?? []}
+			topArtists={topArtists}
+		/>
+	);
 }

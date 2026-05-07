@@ -41,6 +41,17 @@ interface HerzieRow {
 	created_at: string;
 }
 
+interface RecentTrack {
+	track_name: string;
+	artist_name: string;
+	listened_at: string;
+}
+
+interface TopArtist {
+	name: string;
+	plays: number;
+}
+
 interface FriendProfile {
 	name: string;
 	friend_code: string;
@@ -60,7 +71,26 @@ function daysSince(dateStr: string): number {
 	return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
 }
 
-export function HerzieDetail({ herzie: initial }: { herzie: HerzieRow }) {
+function formatTimeAgo(dateStr: string): string {
+	const diff = Date.now() - new Date(dateStr).getTime();
+	const mins = Math.floor(diff / 60_000);
+	if (mins < 1) return "just now";
+	if (mins < 60) return `${mins}m ago`;
+	const hours = Math.floor(mins / 60);
+	if (hours < 24) return `${hours}h ago`;
+	const days = Math.floor(hours / 24);
+	return `${days}d ago`;
+}
+
+export function HerzieDetail({
+	herzie: initial,
+	recentTracks,
+	topArtists,
+}: {
+	herzie: HerzieRow;
+	recentTracks: RecentTrack[];
+	topArtists: TopArtist[];
+}) {
 	const [herzie, setHerzie] = useState(initial);
 	const [friends, setFriends] = useState<FriendProfile[]>([]);
 
@@ -167,6 +197,76 @@ export function HerzieDetail({ herzie: initial }: { herzie: HerzieRow }) {
 					)}
 				</div>
 			</div>
+
+			{/* Recently Played */}
+			<Panel title="recently played">
+				{recentTracks.length === 0 ? (
+					<p style={{ color: "var(--text-dim)", fontSize: 13, margin: 0 }}>
+						no listening activity yet.
+					</p>
+				) : (
+					<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+						{recentTracks.map((track, i) => (
+							<div
+								key={`${track.listened_at}-${i}`}
+								style={{
+									display: "flex",
+									justifyContent: "space-between",
+									alignItems: "center",
+									fontSize: 13,
+									padding: "6px 8px",
+									borderRadius: 4,
+									background: "var(--bg)",
+								}}
+							>
+								<span>
+									<span style={{ color: "var(--cyan)" }}>&#9834; {track.track_name}</span>
+									<span style={{ color: "var(--text-dim)" }}> — {track.artist_name}</span>
+								</span>
+								<span style={{ color: "var(--text-dim)", fontSize: 11, flexShrink: 0, marginLeft: 12 }}>
+									{formatTimeAgo(track.listened_at)}
+								</span>
+							</div>
+						))}
+					</div>
+				)}
+			</Panel>
+
+			{/* Top Artists */}
+			<Panel title="top artists">
+				{topArtists.length === 0 ? (
+					<p style={{ color: "var(--text-dim)", fontSize: 13, margin: 0 }}>
+						no listening activity yet.
+					</p>
+				) : (
+					<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+						{topArtists.map((artist, i) => (
+							<div
+								key={artist.name}
+								style={{
+									display: "flex",
+									justifyContent: "space-between",
+									alignItems: "center",
+									fontSize: 13,
+									padding: "6px 8px",
+									borderRadius: 4,
+									background: "var(--bg)",
+								}}
+							>
+								<span>
+									<span style={{ color: "var(--yellow)", marginRight: 8 }}>
+										{i === 0 ? "♛" : i === 1 ? "♕" : "♙"}
+									</span>
+									<span style={{ color: "var(--green)" }}>{artist.name}</span>
+								</span>
+								<span style={{ color: "var(--text-dim)", fontSize: 11 }}>
+									{artist.plays} {artist.plays === 1 ? "play" : "plays"}
+								</span>
+							</div>
+						))}
+					</div>
+				)}
+			</Panel>
 
 			{/* Friends */}
 			<Panel title={`friendzies (${herzie.friend_codes.length})`}>
