@@ -50,53 +50,60 @@ function getIp(request: NextRequest): string {
 export async function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl;
 
-	// Refresh session for dashboard routes (also protects them)
-	if (pathname.startsWith("/dashboard")) {
-		const { supabase, response } = createMiddlewareClient(request);
-		const { data: { user } } = await supabase.auth.getUser();
+	// Rate-limit API routes
+	if (pathname.startsWith("/api/")) {
+		const ip = getIp(request);
+		let bucket: string;
+		let config: [number, number];
 
-		if (!user) {
-			return NextResponse.redirect(new URL("/login", request.url));
+		if (pathname.startsWith("/api/admin/")) {
+			bucket = "admin";
+			config = LIMITS.admin;
+		} else if (pathname === "/api/sync") {
+			bucket = "sync";
+			config = LIMITS.sync;
+		} else if (pathname.startsWith("/api/auth/")) {
+			bucket = "auth";
+			config = LIMITS.auth;
+		} else if (pathname.startsWith("/api/spotify/")) {
+			bucket = "spotify";
+			config = LIMITS.spotify;
+		} else {
+			bucket = "api";
+			config = LIMITS.api;
 		}
 
-		return response;
+		const key = `${bucket}:${ip}`;
+		if (!checkRate(key, config[0], config[1])) {
+			return NextResponse.json(
+				{ error: "Too many requests" },
+				{ status: 429 },
+			);
+		}
+
+		return NextResponse.next();
 	}
 
-	// Only rate-limit API routes
-	if (!pathname.startsWith("/api/")) return NextResponse.next();
+	// Refresh Supabase session on all page routes so tokens stay fresh
+	const { supabase, response } = createMiddlewareClient(request);
+	const { data: { user } } = await supabase.auth.getUser();
 
-	const ip = getIp(request);
-	let bucket: string;
-	let config: [number, number];
-
-	if (pathname.startsWith("/api/admin/")) {
-		bucket = "admin";
-		config = LIMITS.admin;
-	} else if (pathname === "/api/sync") {
-		bucket = "sync";
-		config = LIMITS.sync;
-	} else if (pathname.startsWith("/api/auth/")) {
-		bucket = "auth";
-		config = LIMITS.auth;
-	} else if (pathname.startsWith("/api/spotify/")) {
-		bucket = "spotify";
-		config = LIMITS.spotify;
-	} else {
-		bucket = "api";
-		config = LIMITS.api;
+	// Protect dashboard routes
+	if (pathname.startsWith("/dashboard") && !user) {
+		return NextResponse.redirect(new URL("/login", request.url));
 	}
 
-	const key = `${bucket}:${ip}`;
-	if (!checkRate(key, config[0], config[1])) {
-		return NextResponse.json(
-			{ error: "Too many requests" },
-			{ status: 429 },
-		);
-	}
-
-	return NextResponse.next();
+	return response;
 }
 
 export const config = {
-	matcher: ["/api/:path*", "/dashboard/:path*"],
+	matcher: [
+		/*
+		 * Match all request paths except static files and images:
+		 * - _next/static (static files)
+		 * - _next/image (image optimization)
+		 * - favicon.ico, sitemap.xml, robots.txt
+		 */
+		"/((?!_next/static|_next/image|favicon\\.ico|sitemap\\.xml|robots\\.txt).*)",
+	],
 };
