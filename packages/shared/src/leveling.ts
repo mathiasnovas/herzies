@@ -1,7 +1,5 @@
 import type { Herzie, Stage, ActiveMultiplier } from "./types.js";
 
-export type { ActiveMultiplier };
-
 export function xpForLevel(level: number): number {
 	return Math.floor(100 * Math.pow(level, 1.5));
 }
@@ -34,53 +32,15 @@ export function stageForLevel(level: number): Stage {
 
 const BASE_XP_PER_MINUTE = 10;
 
-/** Get the built-in time-based multipliers (Sunday, Friday, Early Bird, etc.) */
-export function getActiveMultipliers(now: Date = new Date(), boostUntil?: number): ActiveMultiplier[] {
-	const multipliers: ActiveMultiplier[] = [];
-	const day = now.getDay(); // 0 = Sunday, 5 = Friday
-	const hour = now.getHours();
-
-	if (day === 0) {
-		multipliers.push({ name: "Sunday is Funday", bonus: 2.0 });
-	}
-	if (day === 5) {
-		multipliers.push({ name: "Release Friday", bonus: 1.0 });
-	}
-	if (hour < 9) {
-		multipliers.push({ name: "Early Bird", bonus: 0.2 });
-	}
-	if (hour >= 16) {
-		multipliers.push({ name: "After Hours", bonus: 0.2 });
-	}
-	if (boostUntil && now.getTime() < boostUntil) {
-		multipliers.push({ name: "BOOST", bonus: 10.0 });
-	}
-
-	return multipliers;
-}
-
-export function getTimeBonusMultiplier(now: Date = new Date(), boostUntil?: number): number {
-	const multipliers = getActiveMultipliers(now, boostUntil);
-	const totalBonus = multipliers.reduce((sum, m) => sum + m.bonus, 0);
-	return 1 + totalBonus;
-}
-
 /**
  * Calculate XP gained for a listening period.
- *
- * When `multipliers` is provided (server path), those are the sole source of
- * time/event bonuses — `boostUntil` and built-in time bonuses are ignored
- * because they're already included in the server-provided list.
- *
- * When `multipliers` is omitted (offline/local path), the built-in
- * time-based multipliers and boostUntil are used as a fallback.
+ * Multipliers are always provided by the server (or loaded from cache).
  */
 export function calculateXpGain(
 	minutes: number,
 	friendCount: number,
 	isCravingGenre: boolean,
-	boostUntil?: number,
-	multipliers?: ActiveMultiplier[],
+	multipliers: ActiveMultiplier[],
 ): number {
 	let xp = minutes * BASE_XP_PER_MINUTE;
 	const friendBonus = Math.min(friendCount, 20) * 0.02;
@@ -88,13 +48,9 @@ export function calculateXpGain(
 	if (isCravingGenre) {
 		xp *= 1.5;
 	}
-	if (multipliers && multipliers.length > 0) {
-		// Server-provided multipliers (includes time-based + admin-managed + boost)
+	if (multipliers.length > 0) {
 		const totalBonus = multipliers.reduce((sum, m) => sum + m.bonus, 0);
 		xp *= 1 + totalBonus;
-	} else {
-		// Offline fallback: use built-in time-based multipliers
-		xp *= getTimeBonusMultiplier(undefined, boostUntil);
 	}
 	return xp;
 }

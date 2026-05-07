@@ -97,7 +97,7 @@ function RunApp() {
 				checkOnline(),
 			]);
 			setOnline(isOnline);
-			setMultipliers(loadMultipliers() ?? undefined);
+			setMultipliers(isOnline === "online" ? (loadMultipliers() ?? undefined) : undefined);
 
 			if (h) {
 				// Detect level-ups and evolutions from daemon's writes

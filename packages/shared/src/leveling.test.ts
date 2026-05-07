@@ -5,8 +5,6 @@ import {
 	xpToNextLevel,
 	levelProgress,
 	stageForLevel,
-	getActiveMultipliers,
-	getTimeBonusMultiplier,
 	calculateXpGain,
 	applyXp,
 } from "./leveling.js";
@@ -110,83 +108,37 @@ describe("stageForLevel", () => {
 	});
 });
 
-describe("getActiveMultipliers", () => {
-	it("includes Sunday is Funday on Sundays", () => {
-		const sunday = new Date("2026-01-04T12:00:00"); // Sunday
-		const mults = getActiveMultipliers(sunday);
-		expect(mults).toContainEqual({ name: "Sunday is Funday", bonus: 2.0 });
-	});
-
-	it("includes Release Friday on Fridays", () => {
-		const friday = new Date("2026-01-02T12:00:00"); // Friday
-		const mults = getActiveMultipliers(friday);
-		expect(mults).toContainEqual({ name: "Release Friday", bonus: 1.0 });
-	});
-
-	it("includes Early Bird before 9am", () => {
-		const early = new Date("2026-01-05T07:00:00"); // Monday 7am
-		const mults = getActiveMultipliers(early);
-		expect(mults).toContainEqual({ name: "Early Bird", bonus: 0.2 });
-	});
-
-	it("includes After Hours at 4pm+", () => {
-		const evening = new Date("2026-01-05T18:00:00"); // Monday 6pm
-		const mults = getActiveMultipliers(evening);
-		expect(mults).toContainEqual({ name: "After Hours", bonus: 0.2 });
-	});
-
-	it("includes BOOST when boostUntil is in the future", () => {
-		const now = new Date("2026-01-05T12:00:00");
-		const boostUntil = now.getTime() + 60000;
-		const mults = getActiveMultipliers(now, boostUntil);
-		expect(mults).toContainEqual({ name: "BOOST", bonus: 10.0 });
-	});
-
-	it("excludes BOOST when boostUntil is in the past", () => {
-		const now = new Date("2026-01-05T12:00:00");
-		const boostUntil = now.getTime() - 60000;
-		const mults = getActiveMultipliers(now, boostUntil);
-		expect(mults.find((m) => m.name === "BOOST")).toBeUndefined();
-	});
-
-	it("returns empty on a weekday midday with no boost", () => {
-		const wednesday = new Date("2026-01-07T12:00:00"); // Wednesday noon
-		const mults = getActiveMultipliers(wednesday);
-		expect(mults).toHaveLength(0);
-	});
-});
-
 describe("calculateXpGain", () => {
 	it("returns base XP for 1 minute with no bonuses", () => {
-		expect(calculateXpGain(1, 0, false)).toBe(10);
+		expect(calculateXpGain(1, 0, false, [])).toBe(10);
 	});
 
 	it("scales linearly with minutes", () => {
-		expect(calculateXpGain(5, 0, false)).toBe(50);
+		expect(calculateXpGain(5, 0, false, [])).toBe(50);
 	});
 
 	it("applies craving bonus (1.5x)", () => {
-		expect(calculateXpGain(1, 0, true)).toBe(15);
+		expect(calculateXpGain(1, 0, true, [])).toBe(15);
 	});
 
 	it("applies friend bonus capped at 20 friends", () => {
-		const with10 = calculateXpGain(1, 10, false);
-		const with20 = calculateXpGain(1, 20, false);
-		const with30 = calculateXpGain(1, 30, false); // capped at 20
+		const with10 = calculateXpGain(1, 10, false, []);
+		const with20 = calculateXpGain(1, 20, false, []);
+		const with30 = calculateXpGain(1, 30, false, []); // capped at 20
 		expect(with10).toBe(10 * (1 + 10 * 0.02));
 		expect(with20).toBe(10 * (1 + 20 * 0.02));
 		expect(with30).toBe(with20); // cap at 20
 	});
 
-	it("uses server-provided multipliers when given", () => {
+	it("applies multipliers", () => {
 		const multipliers = [{ name: "test", bonus: 1.0 }]; // +100%
-		const xp = calculateXpGain(1, 0, false, undefined, multipliers);
+		const xp = calculateXpGain(1, 0, false, multipliers);
 		expect(xp).toBe(20); // 10 * (1 + 1.0)
 	});
 
 	it("stacks craving and multipliers", () => {
 		const multipliers = [{ name: "test", bonus: 1.0 }];
-		const xp = calculateXpGain(1, 0, true, undefined, multipliers);
+		const xp = calculateXpGain(1, 0, true, multipliers);
 		expect(xp).toBe(30); // 10 * 1.5 craving * 2.0 multiplier
 	});
 });

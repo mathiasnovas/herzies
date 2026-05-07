@@ -235,7 +235,6 @@ export async function processSync(
 			minutes,
 			herzie.friendCodes.length,
 			isCraving,
-			undefined, // no boostUntil — it's in allMultipliers now
 			allMultipliers,
 		);
 

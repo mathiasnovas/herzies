@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
 import React from "react";
-import { type Herzie, type Stage, type ActiveMultiplier, levelProgress, xpToNextLevel, getActiveMultipliers } from "@herzies/shared";
+import { type Herzie, type Stage, type ActiveMultiplier, levelProgress, xpToNextLevel } from "@herzies/shared";
 
 interface Props {
 	herzie: Herzie;
@@ -32,7 +32,7 @@ export function StatsPanel({ herzie, multipliers, hideBonuses }: Props) {
 	const progress = levelProgress(herzie);
 	const toNext = xpToNextLevel(herzie);
 	const totalHours = (herzie.totalMinutesListened / 60).toFixed(1);
-	const activeMultipliers = multipliers ?? getActiveMultipliers(new Date(), herzie.boostUntil);
+	const activeMultipliers = multipliers ?? [];
 
 	return (
 		<Box flexDirection="column" paddingLeft={2}>
@@ -99,6 +99,12 @@ export function StatsPanel({ herzie, multipliers, hideBonuses }: Props) {
 			)}
 
 			{/* Active multipliers */}
+			{!hideBonuses && !multipliers && (
+				<Box marginTop={1}>
+					<Text bold color="yellow">Bonuses:</Text>
+					<Text dimColor> Log in to get bonuses</Text>
+				</Box>
+			)}
 			{!hideBonuses && activeMultipliers.length > 0 && (
 				<Box marginTop={1} flexDirection="column">
 					<Text bold color="yellow">Bonuses:</Text>

@@ -81,7 +81,7 @@ async function poll(herzie: Herzie): Promise<void> {
 			herzie.boostUntil = fresh.boostUntil;
 		}
 
-		const xp = calculateXpGain(minutes, herzie.friendCodes.length, isCraving, herzie.boostUntil);
+		const xp = calculateXpGain(minutes, herzie.friendCodes.length, isCraving, []);
 		const events = applyXp(herzie, xp);
 		herzie.totalMinutesListened += minutes;
 		recordGenreMinutes(herzie.genreMinutes, genres, minutes);
