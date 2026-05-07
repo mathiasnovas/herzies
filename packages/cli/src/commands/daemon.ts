@@ -111,7 +111,8 @@ function handleNotifications(notifications: EventNotification[]) {
 async function syncLoop(herzie: Herzie) {
 	if (!isLoggedIn()) return;
 
-	const minutesToSync = pendingMinutes;
+	// Cap to server's hard limit so excess minutes stay pending for next sync
+	const minutesToSync = Math.min(pendingMinutes, 10);
 	const npPayload = currentNowPlaying
 		? { title: currentNowPlaying.title, artist: currentNowPlaying.artist, genre: currentNowPlaying.genre }
 		: null;
@@ -119,7 +120,7 @@ async function syncLoop(herzie: Herzie) {
 	const result = await apiSync(npPayload, minutesToSync, currentGenres);
 
 	if (result) {
-		pendingMinutes = 0;
+		pendingMinutes = Math.max(0, pendingMinutes - minutesToSync);
 
 		// Server is authoritative — update local state from response
 		const serverHerzie = result.herzie;
