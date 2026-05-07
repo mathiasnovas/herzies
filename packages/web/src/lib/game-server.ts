@@ -216,12 +216,17 @@ export async function processSync(
 			// Cap at 10 minutes per sync hard limit
 			minutes = Math.min(minutes, 10);
 
-			// Cap to actual elapsed wall-clock time since last sync (+1 min grace)
+			// Cap to actual elapsed wall-clock time since last sync (+5s grace)
 			const lastSyncedAt = row.last_synced_at as string | null;
 			if (lastSyncedAt) {
 				const elapsedMs = now.getTime() - new Date(lastSyncedAt).getTime();
 				const elapsedMinutes = Math.max(0, elapsedMs / 60_000);
-				minutes = Math.min(minutes, elapsedMinutes + 1);
+				minutes = Math.min(minutes, elapsedMinutes + 5 / 60);
+
+				// Enforce minimum 8-second cooldown between syncs
+				if (elapsedMs < 8_000) {
+					minutes = 0;
+				}
 			}
 		}
 		// Spotify source: no caps — deduplication handled by spotify_play_log

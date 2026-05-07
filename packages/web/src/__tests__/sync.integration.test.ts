@@ -142,11 +142,11 @@ describe("Sync flow", () => {
 	it("caps minutesListened to elapsed time since last sync", async () => {
 		const admin = getAdminClient();
 
-		// Set last_synced_at to 2 seconds ago — so at most ~0.03 min + 1 min grace ≈ 1.03 min allowed
-		const twoSecondsAgo = new Date(Date.now() - 2000).toISOString();
+		// Set last_synced_at to 15 seconds ago — above 8s cooldown, so sync is allowed
+		const fifteenSecondsAgo = new Date(Date.now() - 15_000).toISOString();
 		await admin
 			.from("herzies")
-			.update({ last_synced_at: twoSecondsAgo })
+			.update({ last_synced_at: fifteenSecondsAgo })
 			.eq("user_id", user.userId);
 
 		// Fetch current minutes before sync
@@ -158,7 +158,7 @@ describe("Sync flow", () => {
 
 		const minutesBefore = before!.total_minutes_listened as number;
 
-		// Try to claim 10 minutes — should be capped to ~1 min (elapsed + grace)
+		// Try to claim 10 minutes — should be capped to ~0.33 min (0.25 elapsed + 5s grace)
 		const res = await syncRoute(
 			authenticatedRequest("/sync", user.accessToken, {
 				nowPlaying: { title: "Cheat Song", artist: "Cheat Artist" },
@@ -169,10 +169,54 @@ describe("Sync flow", () => {
 		expect(res.status).toBe(200);
 		const body = await res.json();
 
-		// Should have gained at most ~1.04 minutes (0.03 elapsed + 1 grace), not 10
+		// Should have gained at most ~0.33 min (15s elapsed + 5s grace), not 10
 		const gained = body.herzie.totalMinutesListened - minutesBefore;
-		expect(gained).toBeLessThanOrEqual(1.1);
+		expect(gained).toBeLessThanOrEqual(0.4);
 		expect(gained).toBeGreaterThan(0);
+	});
+
+	it("enforces 8-second cooldown between syncs", async () => {
+		const admin = getAdminClient();
+
+		// Set last_synced_at to 2 seconds ago — within cooldown window
+		const twoSecondsAgo = new Date(Date.now() - 2000).toISOString();
+		await admin
+			.from("herzies")
+			.update({ last_synced_at: twoSecondsAgo })
+			.eq("user_id", user.userId);
+
+		const { data: before } = await admin
+			.from("herzies")
+			.select("total_minutes_listened")
+			.eq("user_id", user.userId)
+			.single();
+
+		const minutesBefore = before!.total_minutes_listened as number;
+
+		const res = await syncRoute(
+			authenticatedRequest("/sync", user.accessToken, {
+				nowPlaying: { title: "Rapid Song", artist: "Rapid Artist" },
+				minutesListened: 5,
+				genres: ["rock"],
+			}),
+		);
+		expect(res.status).toBe(200);
+		const body = await res.json();
+
+		// Should gain 0 minutes due to cooldown
+		const gained = body.herzie.totalMinutesListened - minutesBefore;
+		expect(gained).toBe(0);
+	});
+
+	it("rejects minutesListened > 10 at schema level", async () => {
+		const res = await syncRoute(
+			authenticatedRequest("/sync", user.accessToken, {
+				nowPlaying: null,
+				minutesListened: 50,
+				genres: [],
+			}),
+		);
+		expect(res.status).toBe(400);
 	});
 
 	it("allows first sync without last_synced_at using 10-min cap", async () => {

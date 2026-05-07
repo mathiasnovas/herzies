@@ -20,7 +20,7 @@ export const syncRequestSchema = z.object({
 			genre: z.string().optional(),
 		})
 		.nullable(),
-	minutesListened: z.number().nonnegative(),
+	minutesListened: z.number().nonnegative().max(10),
 	genres: z.array(z.string()).default([]),
 });
 
