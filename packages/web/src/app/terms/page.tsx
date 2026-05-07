@@ -51,12 +51,17 @@ export default function TermsPage() {
 					<li>Your email address (for authentication)</li>
 					<li>Your herzie's name, level, stage, XP, and appearance</li>
 					<li>Total minutes listened and a breakdown by genre</li>
+					<li>Your listening history — song titles, artist names, and when you listened to them</li>
 					<li>Your friend code and friend list</li>
 					<li>Items and event progress</li>
 					<li>Daily streak data</li>
 				</ul>
 				<p style={{ fontSize: 13 }}>
-					We do <span style={{ fontWeight: 700 }}>not</span> store what songs or artists you listen to.
+					We store your listening history so you can see stats like your recently played
+					tracks and top artists on your profile. This data is publicly visible on your
+					herzie's profile page.
+				</p>
+				<p style={{ fontSize: 13 }}>
 					We do <span style={{ fontWeight: 700 }}>not</span> sell or share your data with anyone.
 					All data is processed by the herzies game server and stored securely.
 				</p>
@@ -79,8 +84,8 @@ export default function TermsPage() {
 			<div style={{ ...panel, display: "flex", flexDirection: "column", gap: "0.75rem" }}>
 				<p style={{ fontSize: 13 }}>
 					You can permanently delete your herzie and all associated data from our servers.
-					This removes your account, herzie stats, friend connections, and leaderboard entry.
-					This action is irreversible.
+					This removes your account, herzie stats, listening history, friend connections,
+					and leaderboard entry. This action is irreversible.
 				</p>
 				<p style={{ fontSize: 13 }}>
 					To delete your herzie, log in through the CLI and
