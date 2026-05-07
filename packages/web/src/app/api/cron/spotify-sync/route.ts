@@ -110,6 +110,15 @@ async function syncUser(
 			if (track.playedAt > latestPlayedAt) {
 				latestPlayedAt = track.playedAt;
 			}
+
+			// Log to listen_log for stats
+			await admin.from("listen_log").insert({
+				user_id: connection.user_id,
+				track_name: track.trackName,
+				artist_name: track.artistName,
+				source: "spotify",
+				listened_at: track.playedAt,
+			});
 		}
 	}
 

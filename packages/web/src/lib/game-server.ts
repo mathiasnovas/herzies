@@ -147,6 +147,22 @@ export async function processSync(
 	const now = new Date();
 	const today = now.toISOString().slice(0, 10);
 
+	// Log track change to listen_log (CLI source only — Spotify logged in cron)
+	if (source === "cli" && nowPlaying) {
+		const prev = row.now_playing as { title?: string; artist?: string } | null;
+		const trackChanged = !prev || prev.title !== nowPlaying.title || prev.artist !== nowPlaying.artist;
+		if (trackChanged) {
+			const classifiedGenre = genres.length > 0 ? classifyGenre(genres)[0] : undefined;
+			await admin.from("listen_log").insert({
+				user_id: userId,
+				track_name: nowPlaying.title,
+				artist_name: nowPlaying.artist,
+				genre: classifiedGenre ?? nowPlaying.genre ?? null,
+				source: "cli",
+			});
+		}
+	}
+
 	// 2. Update daily streak (if user is listening)
 	if (minutesListened > 0 && herzie.streakLastDate !== today) {
 		const yesterday = new Date(now);
