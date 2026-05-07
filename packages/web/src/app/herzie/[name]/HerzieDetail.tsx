@@ -255,7 +255,7 @@ export function HerzieDetail({
 							>
 								<span>
 									<span style={{ color: "var(--yellow)", marginRight: 8 }}>
-										{i === 0 ? "♛" : i === 1 ? "♕" : "♙"}
+										{i + 1}.
 									</span>
 									<span style={{ color: "var(--green)" }}>{artist.name}</span>
 								</span>
