@@ -50,6 +50,7 @@ pub struct HerzieProfile {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct SyncRequest {
     pub now_playing: Option<NowPlayingPayload>,
     pub minutes_listened: f64,
@@ -159,6 +160,7 @@ pub struct NowPlayingDisplay {
 
 /// Full now-playing info from osascript
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct NowPlayingInfo {
     pub title: String,
     pub artist: String,

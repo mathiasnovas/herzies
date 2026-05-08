@@ -14,10 +14,9 @@ pub async fn login(app: &AppHandle) -> bool {
         std::env::var("HERZIES_WEB_URL").unwrap_or_else(|_| "https://www.herzies.app".to_string());
     let port: u16 = 8974;
 
-    match timeout(Duration::from_secs(120), do_login(app, &web_url, port)).await {
-        Ok(result) => result,
-        Err(_) => false, // Timeout
-    }
+    timeout(Duration::from_secs(120), do_login(app, &web_url, port))
+        .await
+        .unwrap_or_default()
 }
 
 async fn do_login(app: &AppHandle, web_url: &str, port: u16) -> bool {

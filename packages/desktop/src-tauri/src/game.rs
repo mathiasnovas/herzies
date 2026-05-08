@@ -160,7 +160,7 @@ fn simple_hash(s: &str) -> u32 {
 pub fn get_daily_craving(herzie_id: &str, date: Option<&str>) -> String {
     let date_str = date
         .map(String::from)
-        .unwrap_or_else(|| chrono_today_string());
+        .unwrap_or_else(chrono_today_string);
     let seed = simple_hash(&format!("{}{}", herzie_id, date_str));
     let index = (seed as usize) % GENRES.len();
     GENRES[index].to_string()

@@ -541,7 +541,6 @@ pub fn run() {
             // Set up window hide-on-blur (production only)
             if std::env::var("TAURI_DEV").is_err() {
                 if let Some(window) = app.get_webview_window("main") {
-                    let w = window.clone();
                     let app_handle = app.handle().clone();
                     window.on_window_event(move |event| match event {
                         tauri::WindowEvent::Focused(false) => {
