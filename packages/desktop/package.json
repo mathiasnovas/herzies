@@ -5,6 +5,7 @@
   "description": "Herzies desktop app for macOS",
   "scripts": {
     "dev": "tauri dev",
+    "check": "tsc --noEmit",
     "build": "tauri build",
     "vite:dev": "vite dev --port 1420",
     "vite:build": "vite build"

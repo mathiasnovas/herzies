@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "check": "tsc --noEmit",
     "dev": "tsc --watch",
     "test": "vitest run"
   },
