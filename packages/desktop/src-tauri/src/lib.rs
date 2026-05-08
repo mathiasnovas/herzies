@@ -603,6 +603,22 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { has_visible_windows, .. } = event {
+                if !has_visible_windows {
+                    // Check for pending deep link — show window if there is one
+                    let has_deep_link = app
+                        .state::<PendingDeepLink>()
+                        .lock()
+                        .map(|dl| dl.is_some())
+                        .unwrap_or(false);
+                    if has_deep_link {
+                        tray::toggle_window(app);
+                    }
+                }
+            }
+        });
 }
