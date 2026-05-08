@@ -666,6 +666,7 @@ function TradeView({
 	const [tradeId, setTradeId] = useState<string | null>(null);
 	const [trade, setTrade] = useState<Trade | null>(null);
 	const [message, setMessage] = useState("");
+	const creatingRef = useRef(false);
 
 	// Poll active trade
 	useEffect(() => {
@@ -685,22 +686,25 @@ function TradeView({
 		return () => clearInterval(interval);
 	}, [tradeId, onClose]);
 
-	const handleCreate = async (overrideCode?: string) => {
+	const handleCreate = useCallback(async (overrideCode?: string) => {
 		const code = (overrideCode ?? targetCode).trim().toUpperCase();
 		if (!code) return;
+		if (creatingRef.current) return;
+		creatingRef.current = true;
 		const result = await herzies.tradeCreate(code);
+		creatingRef.current = false;
 		if (result) {
 			setTradeId(result.tradeId);
 			setTargetCode("");
 		} else setMessage("Failed to create trade");
-	};
+	}, [targetCode]);
 
 	// Auto-start trade when opened from friends list
 	useEffect(() => {
 		if (initialTarget && !tradeId) {
 			handleCreate(initialTarget);
 		}
-	}, [tradeId, initialTarget, handleCreate]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [initialTarget]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const handleCancel = async () => {
 		if (tradeId) await herzies.tradeCancel(tradeId);
