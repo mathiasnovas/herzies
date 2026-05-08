@@ -685,13 +685,6 @@ function TradeView({
 		return () => clearInterval(interval);
 	}, [tradeId, onClose]);
 
-	// Auto-start trade when opened from friends list
-	useEffect(() => {
-		if (initialTarget && !tradeId) {
-			handleCreate(initialTarget);
-		}
-	}, [tradeId, initialTarget, handleCreate]); // eslint-disable-line react-hooks/exhaustive-deps
-
 	const handleCreate = async (overrideCode?: string) => {
 		const code = (overrideCode ?? targetCode).trim().toUpperCase();
 		if (!code) return;
@@ -701,6 +694,13 @@ function TradeView({
 			setTargetCode("");
 		} else setMessage("Failed to create trade");
 	};
+
+	// Auto-start trade when opened from friends list
+	useEffect(() => {
+		if (initialTarget && !tradeId) {
+			handleCreate(initialTarget);
+		}
+	}, [tradeId, initialTarget, handleCreate]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const handleCancel = async () => {
 		if (tradeId) await herzies.tradeCancel(tradeId);
