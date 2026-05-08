@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tauri::{
     tray::{MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    ActivationPolicy, AppHandle, Manager,
+    ActivationPolicy, AppHandle, Manager, PhysicalPosition,
 };
 
 /// Tracks current connectivity state to avoid redundant updates.
@@ -10,8 +10,10 @@ static IS_CONNECTED: AtomicBool = AtomicBool::new(true);
 /// Whether a delayed hide is pending (used to cancel on re-focus).
 static HIDE_PENDING: AtomicBool = AtomicBool::new(false);
 
-/// Whether the window has been positioned at least once (first show centers it).
-static HAS_POSITIONED: AtomicBool = AtomicBool::new(false);
+/// Stored tray icon position for anchoring the window below it.
+static TRAY_X: AtomicU64 = AtomicU64::new(0);
+static TRAY_Y: AtomicU64 = AtomicU64::new(0);
+static TRAY_WIDTH: AtomicU64 = AtomicU64::new(0);
 
 /// Timestamp (ms) of last tray-triggered show, used to suppress immediate blur.
 static LAST_TRAY_SHOW: AtomicU64 = AtomicU64::new(0);
@@ -32,9 +34,26 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click {
                 button_state: MouseButtonState::Up,
+                rect,
                 ..
             } = event
             {
+                // Store tray icon position in physical pixels for window anchoring
+                let scale = tray.app_handle()
+                    .get_webview_window("main")
+                    .and_then(|w| w.scale_factor().ok())
+                    .unwrap_or(1.0);
+                let (px, py) = match rect.position {
+                    tauri::Position::Physical(p) => (p.x, p.y),
+                    tauri::Position::Logical(l) => ((l.x * scale) as i32, (l.y * scale) as i32),
+                };
+                let (sw, sh) = match rect.size {
+                    tauri::Size::Physical(s) => (s.width as i32, s.height as i32),
+                    tauri::Size::Logical(l) => ((l.width * scale) as i32, (l.height * scale) as i32),
+                };
+                TRAY_X.store(px as u64, Ordering::Relaxed);
+                TRAY_Y.store((py + sh) as u64, Ordering::Relaxed);
+                TRAY_WIDTH.store(sw as u64, Ordering::Relaxed);
                 toggle_window(tray.app_handle());
             }
         })
@@ -72,10 +91,21 @@ fn show_window(app: &AppHandle, window: &tauri::WebviewWindow) {
     LAST_TRAY_SHOW.store(now_ms(), Ordering::Relaxed);
     // Switch to Regular so the app can take focus
     let _ = app.set_activation_policy(ActivationPolicy::Regular);
-    // Only center on first show; after that, respect user's chosen position
-    if !HAS_POSITIONED.swap(true, Ordering::Relaxed) {
+
+    // Position window centered horizontally below the tray icon (physical pixels)
+    let tray_x = TRAY_X.load(Ordering::Relaxed) as i32;
+    let tray_y = TRAY_Y.load(Ordering::Relaxed) as i32;
+    let tray_w = TRAY_WIDTH.load(Ordering::Relaxed) as i32;
+    if tray_x > 0 || tray_y > 0 {
+        if let Ok(win_size) = window.outer_size() {
+            let win_w = win_size.width as i32;
+            let x = tray_x + (tray_w / 2) - (win_w / 2);
+            let _ = window.set_position(PhysicalPosition::new(x, tray_y));
+        }
+    } else {
         let _ = window.center();
     }
+
     let _ = window.show();
     let _ = window.set_focus();
 }

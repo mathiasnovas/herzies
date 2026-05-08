@@ -88,9 +88,7 @@ jobs:
           path: packages/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
 
       - name: Create GitHub Release
-        if: env.APPLE_CERTIFICATE != ''
         env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=${{ steps.version.outputs.version }}
