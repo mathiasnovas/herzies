@@ -15,6 +15,8 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_autostart::MacosLauncher;
 use types::*;
 
+type PendingDeepLink = Mutex<Option<String>>;
+
 // --- Tauri commands ---
 
 #[tauri::command]
@@ -478,6 +480,12 @@ async fn sync_tick(app: &AppHandle, client: &Client) -> Result<(), String> {
         for notif in &sync_resp.notifications {
             send_notification(app, &notif.title, &notif.message);
             let _ = app.emit("activity", format!("{}: {}", notif.title, notif.message));
+            // Store deep link for item notifications
+            if let Some(ref item_id) = notif.item_id {
+                if let Ok(mut dl) = app.state::<PendingDeepLink>().lock() {
+                    *dl = Some(item_id.clone());
+                }
+            }
         }
     } else {
         let mut s = state.lock().unwrap();
@@ -514,6 +522,7 @@ pub fn run() {
             }
         }))
         .manage(Mutex::new(ManagedState::new(herzie)) as SharedState)
+        .manage(Mutex::new(None::<String>) as PendingDeepLink)
         .invoke_handler(tauri::generate_handler![
             get_state,
             login,
@@ -550,7 +559,7 @@ pub fn run() {
                             tray::on_blur(&app_handle);
                         }
                         tauri::WindowEvent::Focused(true) => {
-                            tray::on_focus();
+                            tray::on_focus(&app_handle);
                         }
                         _ => {}
                     });

@@ -70,6 +70,17 @@ export const herzies = {
 	testNotification: () => invoke<void>("test_notification"),
 	testActivity: () => invoke<void>("test_activity"),
 
+	onDeepLink: (cb: (itemId: string) => void) => {
+		let cancelled = false;
+		const unlisten = listen<string>("deep-link", (event) => {
+			if (!cancelled) cb(event.payload);
+		});
+		return () => {
+			cancelled = true;
+			unlisten.then((fn) => fn());
+		};
+	},
+
 	onActivity: (cb: (message: string) => void) => {
 		let cancelled = false;
 		const unlisten = listen<string>("activity", (event) => {

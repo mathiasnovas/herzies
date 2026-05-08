@@ -449,11 +449,11 @@ function FriendsView({
 
 // --- Inventory View ---
 
-function InventoryView({ herzie }: { herzie: Herzie }) {
+function InventoryView({ herzie, initialItem }: { herzie: Herzie; initialItem?: string | null }) {
 	const [inventory, setInventory] = useState<Inventory | null>(null);
 	const [currency, setCurrency] = useState(herzie.currency);
 	const [loading, setLoading] = useState(true);
-	const [selectedItem, setSelectedItem] = useState<string | null>(null);
+	const [selectedItem, setSelectedItem] = useState<string | null>(initialItem ?? null);
 
 	const load = useCallback(async () => {
 		const data = await herzies.fetchInventory();
@@ -1051,6 +1051,7 @@ function App() {
 	const [tradeTarget, setTradeTarget] = useState<string | null>(null);
 	const [activityLog, setActivityLog] = useState<{ time: string; message: string }[]>([]);
 	const activityRef = useRef<HTMLDivElement>(null);
+	const [deepLinkItem, setDeepLinkItem] = useState<string | null>(null);
 
 	useEffect(() => {
 		herzies.getState().then(setState);
@@ -1060,9 +1061,14 @@ function App() {
 			const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
 			setActivityLog((prev) => [...prev.slice(-49), { time, message }]);
 		});
+		const unlistenDeepLink = herzies.onDeepLink((itemId) => {
+			setDeepLinkItem(itemId);
+			setView("inventory");
+		});
 		return () => {
 			unlistenState();
 			unlistenActivity();
+			unlistenDeepLink();
 		};
 	}, []);
 
@@ -1085,9 +1091,14 @@ function App() {
 		return <SplashScreen />;
 	}
 
+	const switchView = (v: View) => {
+		if (v !== "inventory") setDeepLinkItem(null);
+		setView(v);
+	};
+
 	const handleStartTrade = (code: string) => {
 		setTradeTarget(code);
-		setView("trade");
+		switchView("trade");
 	};
 
 	return (
@@ -1113,7 +1124,13 @@ function App() {
 				{view === "friends" && herzie && (
 					<FriendsView herzie={herzie} onStartTrade={handleStartTrade} />
 				)}
-				{view === "inventory" && herzie && <InventoryView herzie={herzie} />}
+				{view === "inventory" && herzie && (
+					<InventoryView
+						herzie={herzie}
+						initialItem={deepLinkItem}
+						key={deepLinkItem ?? "inv"}
+					/>
+				)}
 				{view === "trade" && herzie && (
 					<TradeView
 						herzie={herzie}
@@ -1154,7 +1171,7 @@ function App() {
 					))}
 				</div>
 			)}
-			{herzie && <TabBar view={view} setView={setView} />}
+			{herzie && <TabBar view={view} setView={switchView} />}
 		</div>
 	);
 }

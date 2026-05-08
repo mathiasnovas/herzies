@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tauri::{
     tray::{MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    ActivationPolicy, AppHandle, Manager, PhysicalPosition,
+    ActivationPolicy, AppHandle, Emitter, Manager, PhysicalPosition,
 };
 
 /// Tracks current connectivity state to avoid redundant updates.
@@ -133,9 +133,15 @@ fn hide_window(app: &AppHandle, window: &tauri::WebviewWindow) {
     let _ = app.set_activation_policy(ActivationPolicy::Accessory);
 }
 
-/// Called when the window gains focus — cancels any pending hide.
-pub fn on_focus() {
+/// Called when the window gains focus — cancels any pending hide and checks for deep links.
+pub fn on_focus(app: &AppHandle) {
     HIDE_PENDING.store(false, Ordering::Relaxed);
+    // Check for pending deep link
+    if let Ok(mut dl) = app.state::<crate::PendingDeepLink>().lock() {
+        if let Some(item_id) = dl.take() {
+            let _ = app.emit("deep-link", item_id);
+        }
+    }
 }
 
 /// Called when the window loses focus.
