@@ -9,10 +9,7 @@ import {
 	RARITY_COLORS as ITEM_RARITY_COLORS,
 	RARITY_LABELS,
 } from "./items";
-import { type AppState, herzies as tauriBridge } from "./tauri-bridge";
-import { herzies as browserBridge } from "./browser-bridge";
-
-const herzies = "__TAURI__" in window ? tauriBridge : browserBridge;
+import { type AppState, herzies } from "./tauri-bridge";
 
 type View = "home" | "friends" | "inventory" | "trade" | "settings";
 
