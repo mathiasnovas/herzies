@@ -68,6 +68,7 @@ export const herzies = {
 		invoke<Trade | null>("trade_poll", { tradeId }),
 
 	testNotification: () => invoke<void>("test_notification"),
+	testActivity: () => invoke<void>("test_activity"),
 
 	onActivity: (cb: (message: string) => void) => {
 		let cancelled = false;

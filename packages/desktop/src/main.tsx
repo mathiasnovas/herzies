@@ -961,9 +961,14 @@ function SettingsView({ state }: { state: AppState }) {
 				<div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>
 					Debug
 				</div>
-				<button style={btnStyle} onClick={() => herzies.testNotification()}>
-					Test Notification
-				</button>
+				<div style={{ display: "flex", gap: 4 }}>
+					<button style={btnStyle} onClick={() => herzies.testNotification()}>
+						Test Notification
+					</button>
+					<button style={btnStyle} onClick={() => herzies.testActivity()}>
+						Test Activity Log
+					</button>
+				</div>
 			</div>
 
 			{/* Version */}

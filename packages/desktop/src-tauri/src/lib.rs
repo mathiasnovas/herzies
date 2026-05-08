@@ -387,6 +387,11 @@ fn test_notification(app: AppHandle) {
     send_notification(&app, "Test", "Notifications are working!");
 }
 
+#[tauri::command]
+fn test_activity(app: AppHandle) {
+    let _ = app.emit("activity", "Test activity log entry");
+}
+
 fn send_notification(app: &AppHandle, title: &str, body: &str) {
     use tauri_plugin_notification::NotificationExt;
     let _ = app.notification().builder().title(title).body(body).show();
@@ -526,6 +531,7 @@ pub fn run() {
             trade_cancel,
             trade_poll,
             test_notification,
+            test_activity,
         ])
         .setup(|app| {
             // Hide dock icon (menu bar only)
