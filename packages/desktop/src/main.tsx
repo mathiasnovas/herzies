@@ -714,8 +714,17 @@ function TradeView({
 		if (tradeId) await herzies.tradeAccept(tradeId);
 	};
 
-	// No active trade — show create form
+	// No active trade — show create form or loading if auto-starting
 	if (!tradeId) {
+		if (initialTarget) {
+			return (
+				<div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center", alignItems: "center" }}>
+					<div style={{ fontSize: 12, color: "#888" }}>
+						{message || "Starting trade..."}
+					</div>
+				</div>
+			);
+		}
 		return (
 			<div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
 				<div
