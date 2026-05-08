@@ -386,7 +386,11 @@ async fn poll_tick(app: &AppHandle, _client: &Client) -> Result<(), String> {
 
 #[tauri::command]
 fn test_notification(app: AppHandle) {
-    send_notification(&app, "Test", "Notifications are working!");
+    send_notification(&app, "CD", "You earned 1 CD!");
+    let _ = app.emit("activity", "CD: You earned 1 CD!".to_string());
+    if let Ok(mut dl) = app.state::<PendingDeepLink>().lock() {
+        *dl = Some("cd".to_string());
+    }
 }
 
 #[tauri::command]
