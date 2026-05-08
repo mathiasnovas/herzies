@@ -87,7 +87,18 @@ export const herzies = {
 		alert("Login is not supported in browser mode. Run the Tauri app to log in, then refresh this page.");
 		return false;
 	},
-	logout: async () => {},
+	logout: async () => {
+		cachedToken = null;
+		cachedState = {
+			herzie: null,
+			nowPlaying: null,
+			multipliers: null,
+			isOnline: false,
+			isConnected: false,
+			version: "dev-browser",
+		};
+		emit(cachedState);
+	},
 
 	friendAdd: async (code: string) => {
 		const resp = await apiFetch("POST", "/friends/add", { code });
