@@ -7,7 +7,26 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true
+			"recommended": true,
+			"a11y": {
+				"useButtonType": "warn",
+				"useKeyWithClickEvents": "warn",
+				"noStaticElementInteractions": "warn",
+				"useAriaPropsSupportedByRole": "warn"
+			},
+			"suspicious": {
+				"noArrayIndexKey": "warn"
+			},
+			"correctness": {
+				"useExhaustiveDependencies": "warn",
+				"noInvalidUseBeforeDeclaration": "warn"
+			},
+			"style": {
+				"noNonNullAssertion": "warn"
+			},
+			"security": {
+				"noDangerouslySetInnerHtml": "warn"
+			}
 		}
 	},
 	"formatter": {

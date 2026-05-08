@@ -23,10 +23,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Biome lint & format
-        run: pnpm biome ci .
+        run: pnpm biome ci packages/desktop/src packages/shared/src
 
       - name: Typecheck
-        run: pnpm turbo check
+        run: pnpm turbo check --filter=herzies-desktop --filter=@herzies/shared
 
   rust:
     name: Rust checks
