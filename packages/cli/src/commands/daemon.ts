@@ -22,9 +22,13 @@ import { getNowPlaying } from "../music/nowplaying.js";
 import { apiSync, isLoggedIn } from "../storage/api.js";
 import { loadHerzie, saveHerzie, saveMultipliers, savePendingTrade, saveNotifications } from "../storage/state.js";
 import { writePid, clearPid, loadPid } from "../storage/pid.js";
+import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 const POLL_INTERVAL = 3000;
 const SYNC_INTERVAL = 10000;
+const VERSION_CHECK_INTERVAL = 30000;
 
 let lastPollTime = Date.now();
 let lastTrackTitle = "";
@@ -167,8 +171,11 @@ async function main() {
 		process.exit(1);
 	}
 
+	const require = createRequire(import.meta.url);
+	const startVersion: string = require("../../../package.json").version;
+
 	writePid(process.pid);
-	log(`daemon started (pid ${process.pid}) for ${herzie.name}`);
+	log(`daemon started (pid ${process.pid}, v${startVersion}) for ${herzie.name}`);
 
 	const cleanup = async () => {
 		log("daemon stopping");
@@ -192,6 +199,25 @@ async function main() {
 	setInterval(() => {
 		syncLoop(herzie).catch(() => {});
 	}, SYNC_INTERVAL);
+
+	setInterval(() => {
+		try {
+			delete require.cache[require.resolve("../../../package.json")];
+			const currentVersion: string = require("../../../package.json").version;
+			if (currentVersion !== startVersion) {
+				log(`version changed (${startVersion} → ${currentVersion}), restarting`);
+				clearPid();
+				const child = spawn(process.execPath, [fileURLToPath(import.meta.url)], {
+					detached: true,
+					stdio: "ignore",
+				});
+				child.unref();
+				process.exit(0);
+			}
+		} catch {
+			// ignore — package.json may be temporarily missing during install
+		}
+	}, VERSION_CHECK_INTERVAL);
 
 	poll(herzie).catch(() => {});
 }

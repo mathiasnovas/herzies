@@ -1,7 +1,7 @@
-import type { Herzie, Stage, ActiveMultiplier } from "./types.js";
+import type { ActiveMultiplier, Herzie, Stage } from "./types.js";
 
 export function xpForLevel(level: number): number {
-	return Math.floor(100 * Math.pow(level, 1.5));
+	return Math.floor(100 * level ** 1.5);
 }
 
 export function totalXpForLevel(level: number): number {

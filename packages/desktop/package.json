@@ -1,0 +1,28 @@
+{
+  "name": "herzies-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Herzies desktop app for macOS",
+  "scripts": {
+    "dev": "tauri dev",
+    "check": "tsc --noEmit",
+    "build": "tauri build",
+    "vite:dev": "vite dev --port 1420",
+    "vite:build": "vite build"
+  },
+  "dependencies": {
+    "@herzies/shared": "workspace:*",
+    "@tauri-apps/api": "^2.5.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.5.0",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.5.2",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "typescript": "^6.0.3",
+    "vite": "^6.3.5"
+  }
+}

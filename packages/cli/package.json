@@ -12,6 +12,7 @@
   ],
   "scripts": {
     "build": "rm -rf dist && tsc",
+    "check": "tsc --noEmit",
     "dev": "tsc --watch",
     "preview": "node dist/src/commands/preview.js",
     "start": "node dist/bin/herzies.js"

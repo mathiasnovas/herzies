@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { getDailyCraving, matchesCraving } from "./craving.js";
 import { GENRES } from "./types.js";
 
