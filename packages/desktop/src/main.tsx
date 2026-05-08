@@ -1050,6 +1050,7 @@ function App() {
 	const [view, setView] = useState<View>("home");
 	const [tradeTarget, setTradeTarget] = useState<string | null>(null);
 	const [activityLog, setActivityLog] = useState<{ time: string; message: string }[]>([]);
+	const activityRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		herzies.getState().then(setState);
@@ -1064,6 +1065,10 @@ function App() {
 			unlistenActivity();
 		};
 	}, []);
+
+	useEffect(() => {
+		activityRef.current?.scrollTo(0, activityRef.current.scrollHeight);
+	}, [activityLog]);
 
 	// Reset to home screen when logging back in
 	const prevOnline = useRef(state.isOnline);
@@ -1123,6 +1128,7 @@ function App() {
 			</div>
 			{herzie && activityLog.length > 0 && (
 				<div
+					ref={activityRef}
 					style={{
 						maxHeight: 42,
 						overflow: "auto",
@@ -1131,7 +1137,7 @@ function App() {
 						marginBottom: 4,
 					}}
 				>
-					{activityLog.slice().reverse().map((entry, i) => (
+					{activityLog.map((entry, i) => (
 						<div
 							key={`${entry.time}-${i}`}
 							style={{
