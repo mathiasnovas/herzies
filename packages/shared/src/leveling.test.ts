@@ -1,12 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-	xpForLevel,
-	totalXpForLevel,
-	xpToNextLevel,
+	applyXp,
+	calculateXpGain,
 	levelProgress,
 	stageForLevel,
-	calculateXpGain,
-	applyXp,
+	totalXpForLevel,
+	xpForLevel,
+	xpToNextLevel,
 } from "./leveling.js";
 import type { Herzie } from "./types.js";
 
@@ -15,7 +15,16 @@ function makeHerzie(overrides: Partial<Herzie> = {}): Herzie {
 		id: "test-id",
 		name: "Test",
 		createdAt: "2026-01-01",
-		appearance: { headIndex: 0, eyesIndex: 0, mouthIndex: 0, accessoryIndex: 0, limbsIndex: 0, bodyIndex: 0, legsIndex: 0, colorScheme: "pink" },
+		appearance: {
+			headIndex: 0,
+			eyesIndex: 0,
+			mouthIndex: 0,
+			accessoryIndex: 0,
+			limbsIndex: 0,
+			bodyIndex: 0,
+			legsIndex: 0,
+			colorScheme: "pink",
+		},
 		xp: 0,
 		level: 1,
 		stage: 1,
@@ -34,11 +43,11 @@ function makeHerzie(overrides: Partial<Herzie> = {}): Herzie {
 
 describe("xpForLevel", () => {
 	it("returns base XP for level 1", () => {
-		expect(xpForLevel(1)).toBe(Math.floor(100 * Math.pow(1, 1.5)));
+		expect(xpForLevel(1)).toBe(Math.floor(100 * 1 ** 1.5));
 	});
 
 	it("scales with level", () => {
-		expect(xpForLevel(10)).toBe(Math.floor(100 * Math.pow(10, 1.5)));
+		expect(xpForLevel(10)).toBe(Math.floor(100 * 10 ** 1.5));
 	});
 
 	it("increases monotonically", () => {
@@ -58,7 +67,9 @@ describe("totalXpForLevel", () => {
 	});
 
 	it("is cumulative sum", () => {
-		expect(totalXpForLevel(4)).toBe(xpForLevel(2) + xpForLevel(3) + xpForLevel(4));
+		expect(totalXpForLevel(4)).toBe(
+			xpForLevel(2) + xpForLevel(3) + xpForLevel(4),
+		);
 	});
 });
 
