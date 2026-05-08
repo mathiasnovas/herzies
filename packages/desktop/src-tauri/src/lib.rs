@@ -47,7 +47,12 @@ async fn friend_add(
         let s = state.lock().unwrap();
         let herzie = match &s.herzie {
             Some(h) => h,
-            None => return Ok(FriendResult { success: false, message: "No herzie".into() }),
+            None => {
+                return Ok(FriendResult {
+                    success: false,
+                    message: "No herzie".into(),
+                })
+            }
         };
         (
             herzie.friend_code.clone(),
@@ -58,16 +63,28 @@ async fn friend_add(
 
     let re = regex_lite::Regex::new(r"^HERZ-[A-Z0-9]{4}$").unwrap();
     if !re.is_match(&code) {
-        return Ok(FriendResult { success: false, message: "Invalid code format".into() });
+        return Ok(FriendResult {
+            success: false,
+            message: "Invalid code format".into(),
+        });
     }
     if code == friend_code {
-        return Ok(FriendResult { success: false, message: "Can't add yourself".into() });
+        return Ok(FriendResult {
+            success: false,
+            message: "Can't add yourself".into(),
+        });
     }
     if already_has {
-        return Ok(FriendResult { success: false, message: "Already friends".into() });
+        return Ok(FriendResult {
+            success: false,
+            message: "Already friends".into(),
+        });
     }
     if friend_codes_len >= 20 {
-        return Ok(FriendResult { success: false, message: "Friend list full (max 20)".into() });
+        return Ok(FriendResult {
+            success: false,
+            message: "Friend list full (max 20)".into(),
+        });
     }
 
     let client = Client::new();
@@ -81,9 +98,15 @@ async fn friend_add(
             drop(s);
             let _ = app.emit("state-update", &app_state);
         }
-        Ok(FriendResult { success: true, message: "Friend added!".into() })
+        Ok(FriendResult {
+            success: true,
+            message: "Friend added!".into(),
+        })
     } else {
-        Ok(FriendResult { success: false, message: "Friend code not found".into() })
+        Ok(FriendResult {
+            success: false,
+            message: "Friend code not found".into(),
+        })
     }
 }
 
@@ -97,7 +120,12 @@ async fn friend_remove(
         let s = state.lock().unwrap();
         match &s.herzie {
             Some(h) => h.friend_code.clone(),
-            None => return Ok(FriendResult { success: false, message: "No herzie".into() }),
+            None => {
+                return Ok(FriendResult {
+                    success: false,
+                    message: "No herzie".into(),
+                })
+            }
         }
     };
 
@@ -112,9 +140,15 @@ async fn friend_remove(
             drop(s);
             let _ = app.emit("state-update", &app_state);
         }
-        Ok(FriendResult { success: true, message: "Friend removed".into() })
+        Ok(FriendResult {
+            success: true,
+            message: "Friend removed".into(),
+        })
     } else {
-        Ok(FriendResult { success: false, message: "Failed to remove friend".into() })
+        Ok(FriendResult {
+            success: false,
+            message: "Failed to remove friend".into(),
+        })
     }
 }
 
@@ -135,7 +169,10 @@ async fn fetch_inventory(
     }
     let client = Client::new();
     match api::api_fetch_inventory(&client).await {
-        Some((inventory, currency)) => Ok(Some(InventoryResult { inventory, currency })),
+        Some((inventory, currency)) => Ok(Some(InventoryResult {
+            inventory,
+            currency,
+        })),
         None => Ok(None),
     }
 }
@@ -177,10 +214,7 @@ async fn trade_join(trade_id: String) -> Result<bool, String> {
 }
 
 #[tauri::command]
-async fn trade_offer(
-    trade_id: String,
-    offer: TradeOffer,
-) -> Result<bool, String> {
+async fn trade_offer(trade_id: String, offer: TradeOffer) -> Result<bool, String> {
     let client = Client::new();
     Ok(api::api_update_trade_offer(&client, &trade_id, &offer).await)
 }
@@ -327,10 +361,18 @@ async fn poll_tick(app: &AppHandle, _client: &Client) -> Result<(), String> {
 
     // Send notifications outside the lock
     if let Some((name, level)) = notify_level_up {
-        send_notification(app, "Level Up!", &format!("{} is now level {}!", name, level));
+        send_notification(
+            app,
+            "Level Up!",
+            &format!("{} is now level {}!", name, level),
+        );
     }
     if let Some((name, stage)) = notify_evolved {
-        send_notification(app, "Evolution!", &format!("{} evolved to Stage {}!", name, stage));
+        send_notification(
+            app,
+            "Evolution!",
+            &format!("{} evolved to Stage {}!", name, stage),
+        );
     }
 
     let app_state = {
@@ -349,12 +391,7 @@ fn test_notification(app: AppHandle) {
 
 fn send_notification(app: &AppHandle, title: &str, body: &str) {
     use tauri_plugin_notification::NotificationExt;
-    let _ = app
-        .notification()
-        .builder()
-        .title(title)
-        .body(body)
-        .show();
+    let _ = app.notification().builder().title(title).body(body).show();
 }
 
 async fn sync_loop(app: AppHandle) {
@@ -506,16 +543,14 @@ pub fn run() {
                 if let Some(window) = app.get_webview_window("main") {
                     let w = window.clone();
                     let app_handle = app.handle().clone();
-                    window.on_window_event(move |event| {
-                        match event {
-                            tauri::WindowEvent::Focused(false) => {
-                                tray::on_blur(&app_handle);
-                            }
-                            tauri::WindowEvent::Focused(true) => {
-                                tray::on_focus();
-                            }
-                            _ => {}
+                    window.on_window_event(move |event| match event {
+                        tauri::WindowEvent::Focused(false) => {
+                            tray::on_blur(&app_handle);
                         }
+                        tauri::WindowEvent::Focused(true) => {
+                            tray::on_focus();
+                        }
+                        _ => {}
                     });
                 }
             } else {

@@ -60,10 +60,7 @@ pub fn load_herzie() -> Option<Herzie> {
     let raw = fs::read_to_string(&path).ok()?;
     let mut value: serde_json::Value = serde_json::from_str(&raw).ok()?;
 
-    let sig = value
-        .get("_sig")
-        .and_then(|v| v.as_str())
-        .map(String::from);
+    let sig = value.get("_sig").and_then(|v| v.as_str()).map(String::from);
 
     // Remove _sig before deserializing
     if let Some(obj) = value.as_object_mut() {

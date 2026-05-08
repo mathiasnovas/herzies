@@ -33,9 +33,7 @@ async fn do_login(app: &AppHandle, web_url: &str, port: u16) -> bool {
     }
 
     // Set non-blocking so we can poll with timeout
-    listener
-        .set_nonblocking(true)
-        .ok();
+    listener.set_nonblocking(true).ok();
 
     // Wait for the callback POST in a blocking task
     let result = tokio::task::spawn_blocking(move || {
@@ -96,18 +94,16 @@ async fn do_login(app: &AppHandle, web_url: &str, port: u16) -> bool {
     };
 
     // Parse URL-encoded body
-    let params: std::collections::HashMap<String, String> = url::form_urlencoded::parse(body.as_bytes())
-        .into_owned()
-        .collect();
+    let params: std::collections::HashMap<String, String> =
+        url::form_urlencoded::parse(body.as_bytes())
+            .into_owned()
+            .collect();
 
     let access_token = match params.get("access_token") {
         Some(t) if !t.is_empty() => t.clone(),
         _ => return false,
     };
-    let refresh_token = params
-        .get("refresh_token")
-        .cloned()
-        .unwrap_or_default();
+    let refresh_token = params.get("refresh_token").cloned().unwrap_or_default();
     let expires_in: u64 = params
         .get("expires_in")
         .and_then(|v| v.parse().ok())
@@ -127,8 +123,7 @@ async fn do_login(app: &AppHandle, web_url: &str, port: u16) -> bool {
             .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(parts[1]));
         match decoded {
             Ok(bytes) => {
-                let payload: serde_json::Value =
-                    serde_json::from_slice(&bytes).unwrap_or_default();
+                let payload: serde_json::Value = serde_json::from_slice(&bytes).unwrap_or_default();
                 payload["sub"].as_str().unwrap_or_default().to_string()
             }
             Err(_) => return false,

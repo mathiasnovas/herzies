@@ -176,9 +176,7 @@ pub async fn api_lookup_herzies(
     result
 }
 
-pub async fn api_fetch_inventory(
-    client: &Client,
-) -> Option<(Inventory, u32)> {
+pub async fn api_fetch_inventory(client: &Client) -> Option<(Inventory, u32)> {
     let resp = api_fetch(client, reqwest::Method::GET, "/inventory", None).await?;
     if !resp.status().is_success() {
         return None;
@@ -202,7 +200,10 @@ pub async fn api_sell_item(
     resp.json().await.ok()
 }
 
-pub async fn api_create_trade(client: &Client, target_friend_code: &str) -> Option<serde_json::Value> {
+pub async fn api_create_trade(
+    client: &Client,
+    target_friend_code: &str,
+) -> Option<serde_json::Value> {
     let body = serde_json::json!({ "targetFriendCode": target_friend_code });
     let resp = api_fetch(client, reqwest::Method::POST, "/trade/create", Some(body)).await?;
     if !resp.status().is_success() {
@@ -219,11 +220,7 @@ pub async fn api_join_trade(client: &Client, trade_id: &str) -> bool {
     }
 }
 
-pub async fn api_update_trade_offer(
-    client: &Client,
-    trade_id: &str,
-    offer: &TradeOffer,
-) -> bool {
+pub async fn api_update_trade_offer(client: &Client, trade_id: &str, offer: &TradeOffer) -> bool {
     let body = serde_json::json!({ "tradeId": trade_id, "offer": offer });
     match api_fetch(client, reqwest::Method::POST, "/trade/offer", Some(body)).await {
         Some(r) => r.status().is_success(),
@@ -257,10 +254,7 @@ pub async fn api_cancel_trade(client: &Client, trade_id: &str) -> bool {
 }
 
 pub async fn api_poll_trade(client: &Client, trade_id: &str) -> Option<Trade> {
-    let path = format!(
-        "/trade/status?tradeId={}",
-        urlencoding::encode(trade_id)
-    );
+    let path = format!("/trade/status?tradeId={}", urlencoding::encode(trade_id));
     let resp = api_fetch(client, reqwest::Method::GET, &path, None).await?;
     if !resp.status().is_success() {
         return None;

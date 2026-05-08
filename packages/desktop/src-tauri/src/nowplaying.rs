@@ -52,9 +52,7 @@ async fn query_app(script: &str, source: &str) -> Option<NowPlayingInfo> {
     let result = timeout(
         Duration::from_secs(5),
         tokio::task::spawn_blocking(move || {
-            Command::new("osascript")
-                .args(["-e", &script])
-                .output()
+            Command::new("osascript").args(["-e", &script]).output()
         }),
     )
     .await
