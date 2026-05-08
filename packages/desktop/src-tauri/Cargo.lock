@@ -1532,6 +1532,7 @@ dependencies = [
  "hex",
  "hmac",
  "log",
+ "mac-notification-sys",
  "open",
  "regex-lite",
  "reqwest 0.12.28",

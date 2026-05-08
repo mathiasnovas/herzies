@@ -366,12 +366,12 @@ async fn poll_tick(app: &AppHandle, _client: &Client) -> Result<(), String> {
     // Send notifications outside the lock
     if let Some((name, level)) = notify_level_up {
         let msg = format!("{} is now level {}!", name, level);
-        send_notification(app, "Level Up!", &msg);
+        send_notification(app, "Level Up!", &msg, None);
         let _ = app.emit("activity", format!("Level Up! {}", msg));
     }
     if let Some((name, stage)) = notify_evolved {
         let msg = format!("{} evolved to Stage {}!", name, stage);
-        send_notification(app, "Evolution!", &msg);
+        send_notification(app, "Evolution!", &msg, None);
         let _ = app.emit("activity", format!("Evolution! {}", msg));
     }
 
@@ -386,9 +386,8 @@ async fn poll_tick(app: &AppHandle, _client: &Client) -> Result<(), String> {
 
 #[tauri::command]
 fn test_notification(app: AppHandle) {
-    send_notification(&app, "CD", "You earned 1 CD!");
+    send_notification(&app, "CD", "You earned 1 CD!", Some("cd"));
     let _ = app.emit("activity", "CD: You earned 1 CD!".to_string());
-    store_deep_link(&app, "cd");
 }
 
 #[tauri::command]
@@ -396,17 +395,34 @@ fn test_activity(app: AppHandle) {
     let _ = app.emit("activity", "Test activity log entry");
 }
 
-fn send_notification(app: &AppHandle, title: &str, body: &str) {
-    use tauri_plugin_notification::NotificationExt;
-    let _ = app.notification().builder().title(title).body(body).show();
-}
-
-/// Store a deep link and show the window so the user sees the item.
-fn store_deep_link(app: &AppHandle, item_id: &str) {
-    if let Ok(mut dl) = app.state::<PendingDeepLink>().lock() {
-        *dl = Some(item_id.to_string());
+fn send_notification(app: &AppHandle, title: &str, body: &str, deep_link: Option<&str>) {
+    // Store deep link for when the notification is clicked
+    if let Some(item_id) = deep_link {
+        if let Ok(mut dl) = app.state::<PendingDeepLink>().lock() {
+            *dl = Some(item_id.to_string());
+        }
     }
-    tray::ensure_visible(app);
+
+    let title = title.to_string();
+    let body = body.to_string();
+    let app = app.clone();
+
+    std::thread::spawn(move || {
+        let mut n = mac_notification_sys::Notification::default();
+        n.title(&title).message(&body).wait_for_click(true);
+
+        if let Ok(response) = n.send() {
+            if matches!(response, mac_notification_sys::NotificationResponse::Click) {
+                tray::ensure_visible(&app);
+                // Emit pending deep link (covers case where window was already visible)
+                if let Ok(mut dl) = app.state::<PendingDeepLink>().lock() {
+                    if let Some(item_id) = dl.take() {
+                        let _ = app.emit("deep-link", item_id);
+                    }
+                }
+            }
+        }
+    });
 }
 
 async fn sync_loop(app: AppHandle) {
@@ -482,18 +498,14 @@ async fn sync_tick(app: &AppHandle, client: &Client) -> Result<(), String> {
         // Show notification for incoming trade requests
         if let Some(trade_req) = &sync_resp.pending_trade_request {
             let msg = format!("{} wants to trade with you!", trade_req.from_name);
-            send_notification(app, "Trade Request", &msg);
+            send_notification(app, "Trade Request", &msg, None);
             let _ = app.emit("activity", format!("Trade Request: {}", msg));
         }
 
         // Show server-sent notifications (item drops, etc.)
         for notif in &sync_resp.notifications {
-            send_notification(app, &notif.title, &notif.message);
+            send_notification(app, &notif.title, &notif.message, notif.item_id.as_deref());
             let _ = app.emit("activity", format!("{}: {}", notif.title, notif.message));
-            // Deep link for item notifications
-            if let Some(ref item_id) = notif.item_id {
-                store_deep_link(app,item_id);
-            }
         }
     } else {
         let mut s = state.lock().unwrap();
@@ -551,6 +563,14 @@ pub fn run() {
             test_activity,
         ])
         .setup(|app| {
+            // Set notification bundle ID so clicks activate this app
+            let bundle_id = if tauri::is_dev() {
+                "com.apple.Terminal"
+            } else {
+                &app.config().identifier
+            };
+            let _ = mac_notification_sys::set_application(bundle_id);
+
             // Hide dock icon (menu bar only)
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);

@@ -162,13 +162,6 @@ pub fn on_blur(app: &AppHandle) {
         return;
     }
 
-    // Don't hide if there's a pending deep link (user is about to click a notification)
-    if let Ok(dl) = app.state::<crate::PendingDeepLink>().lock() {
-        if dl.is_some() {
-            return;
-        }
-    }
-
     HIDE_PENDING.store(true, Ordering::Relaxed);
     let app = app.clone();
 
