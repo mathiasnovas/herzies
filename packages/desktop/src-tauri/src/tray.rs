@@ -81,6 +81,14 @@ pub fn set_connected(app: &AppHandle, connected: bool) {
     }
 }
 
+pub fn ensure_visible(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        if !window.is_visible().unwrap_or(true) {
+            show_window(app, &window);
+        }
+    }
+}
+
 pub fn toggle_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         if window.is_visible().unwrap_or(false) {

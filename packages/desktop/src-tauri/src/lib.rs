@@ -401,11 +401,12 @@ fn send_notification(app: &AppHandle, title: &str, body: &str) {
     let _ = app.notification().builder().title(title).body(body).show();
 }
 
-/// Store a deep link to be emitted when the window is next focused.
+/// Store a deep link and show the window so the user sees the item.
 fn store_deep_link(app: &AppHandle, item_id: &str) {
     if let Ok(mut dl) = app.state::<PendingDeepLink>().lock() {
         *dl = Some(item_id.to_string());
     }
+    tray::ensure_visible(app);
 }
 
 async fn sync_loop(app: AppHandle) {
@@ -603,22 +604,6 @@ pub fn run() {
 
             Ok(())
         })
-        .build(tauri::generate_context!())
-        .expect("error while building tauri application")
-        .run(|app, event| {
-            #[cfg(target_os = "macos")]
-            if let tauri::RunEvent::Reopen { has_visible_windows, .. } = event {
-                if !has_visible_windows {
-                    // Check for pending deep link — show window if there is one
-                    let has_deep_link = app
-                        .state::<PendingDeepLink>()
-                        .lock()
-                        .map(|dl| dl.is_some())
-                        .unwrap_or(false);
-                    if has_deep_link {
-                        tray::toggle_window(app);
-                    }
-                }
-            }
-        });
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }
