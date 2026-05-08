@@ -298,7 +298,7 @@ export function TradingView({ herzie, tradeId, onDone }: Props) {
 	if (phase === "adding_currency") {
 		return (
 			<Box flexDirection="column" padding={1}>
-				<Text bold color="cyan">Set currency offer (max {myCurrency} H)</Text>
+				<Text bold color="cyan">Set currency offer (max ${myCurrency})</Text>
 				<Box marginTop={1}>
 					<Text>Amount: </Text>
 					<Text color="yellow">{currencyInput || "0"}</Text>
@@ -346,7 +346,7 @@ export function TradingView({ herzie, tradeId, onDone }: Props) {
 									);
 								})}
 								{myOffer.currency > 0 && (
-									<Text color="yellow">  {myOffer.currency} H</Text>
+									<Text color="yellow">  ${myOffer.currency}</Text>
 								)}
 							</>
 						)}
@@ -389,7 +389,7 @@ export function TradingView({ herzie, tradeId, onDone }: Props) {
 									);
 								})}
 								{theirOffer.currency > 0 && (
-									<Text color="yellow">  {theirOffer.currency} H</Text>
+									<Text color="yellow">  ${theirOffer.currency}</Text>
 								)}
 							</>
 						)}

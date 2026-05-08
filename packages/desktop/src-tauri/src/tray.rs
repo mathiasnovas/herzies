@@ -15,6 +15,11 @@ static TRAY_X: AtomicU64 = AtomicU64::new(0);
 static TRAY_Y: AtomicU64 = AtomicU64::new(0);
 static TRAY_WIDTH: AtomicU64 = AtomicU64::new(0);
 
+/// Whether the user has repositioned the window (persists saved position).
+static HAS_USER_POSITION: AtomicBool = AtomicBool::new(false);
+static USER_X: AtomicU64 = AtomicU64::new(0);
+static USER_Y: AtomicU64 = AtomicU64::new(0);
+
 /// Timestamp (ms) of last tray-triggered show, used to suppress immediate blur.
 static LAST_TRAY_SHOW: AtomicU64 = AtomicU64::new(0);
 
@@ -92,18 +97,24 @@ fn show_window(app: &AppHandle, window: &tauri::WebviewWindow) {
     // Switch to Regular so the app can take focus
     let _ = app.set_activation_policy(ActivationPolicy::Regular);
 
-    // Position window centered horizontally below the tray icon (physical pixels)
-    let tray_x = TRAY_X.load(Ordering::Relaxed) as i32;
-    let tray_y = TRAY_Y.load(Ordering::Relaxed) as i32;
-    let tray_w = TRAY_WIDTH.load(Ordering::Relaxed) as i32;
-    if tray_x > 0 || tray_y > 0 {
-        if let Ok(win_size) = window.outer_size() {
-            let win_w = win_size.width as i32;
-            let x = tray_x + (tray_w / 2) - (win_w / 2);
-            let _ = window.set_position(PhysicalPosition::new(x, tray_y));
-        }
+    // Use saved user position if available, otherwise anchor below tray icon
+    if HAS_USER_POSITION.load(Ordering::Relaxed) {
+        let x = USER_X.load(Ordering::Relaxed) as i32;
+        let y = USER_Y.load(Ordering::Relaxed) as i32;
+        let _ = window.set_position(PhysicalPosition::new(x, y));
     } else {
-        let _ = window.center();
+        let tray_x = TRAY_X.load(Ordering::Relaxed) as i32;
+        let tray_y = TRAY_Y.load(Ordering::Relaxed) as i32;
+        let tray_w = TRAY_WIDTH.load(Ordering::Relaxed) as i32;
+        if tray_x > 0 || tray_y > 0 {
+            if let Ok(win_size) = window.outer_size() {
+                let win_w = win_size.width as i32;
+                let x = tray_x + (tray_w / 2) - (win_w / 2);
+                let _ = window.set_position(PhysicalPosition::new(x, tray_y));
+            }
+        } else {
+            let _ = window.center();
+        }
     }
 
     let _ = window.show();
@@ -111,6 +122,12 @@ fn show_window(app: &AppHandle, window: &tauri::WebviewWindow) {
 }
 
 fn hide_window(app: &AppHandle, window: &tauri::WebviewWindow) {
+    // Save window position before hiding so we can restore it
+    if let Ok(pos) = window.outer_position() {
+        USER_X.store(pos.x as u64, Ordering::Relaxed);
+        USER_Y.store(pos.y as u64, Ordering::Relaxed);
+        HAS_USER_POSITION.store(true, Ordering::Relaxed);
+    }
     let _ = window.hide();
     // Switch back to Accessory (no dock icon)
     let _ = app.set_activation_policy(ActivationPolicy::Accessory);

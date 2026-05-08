@@ -86,7 +86,7 @@ export function StatsPanel({ herzie, multipliers, hideBonuses }: Props) {
 			{/* Currency */}
 			<Box>
 				<Text bold>Balance: </Text>
-				<Text color="yellow">{herzie.currency} H</Text>
+				<Text color="yellow">${herzie.currency}</Text>
 			</Box>
 
 			{/* Streak */}

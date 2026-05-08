@@ -191,7 +191,7 @@ function HomeView({ state }: { state: AppState }) {
 					<span style={{ color: "#c084fc" }}>{totalHours}h</span> music
 				</span>
 				<span>
-					<span style={{ color: "#facc15" }}>{herzie.currency}</span> H
+					<span style={{ color: "#facc15" }}>${herzie.currency}</span>
 				</span>
 				<span>
 					<span style={{ color: "#7dd3fc" }}>{herzie.friendCodes.length}</span>{" "}
@@ -505,7 +505,7 @@ function InventoryView({ herzie }: { herzie: Herzie }) {
 					>
 						← Back
 					</div>
-					<div style={{ fontSize: 12, color: "#facc15" }}>{currency} H</div>
+					<div style={{ fontSize: 12, color: "#facc15" }}>${currency}</div>
 				</div>
 
 				{/* Spinning 3D art */}
@@ -541,7 +541,7 @@ function InventoryView({ herzie }: { herzie: Herzie }) {
 				{selected.sellPrice && qty > 0 && (
 					<div>
 						<div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>
-							Sell for {selected.sellPrice} H each
+							Sell for ${selected.sellPrice} each
 						</div>
 						<div style={{ display: "flex", gap: 4 }}>
 							<button
@@ -586,7 +586,7 @@ function InventoryView({ herzie }: { herzie: Herzie }) {
 				<div style={{ fontSize: 13, fontWeight: "bold", color: "#facc15" }}>
 					Inventory
 				</div>
-				<div style={{ fontSize: 12, color: "#facc15" }}>{currency} H</div>
+				<div style={{ fontSize: 12, color: "#facc15" }}>${currency}</div>
 			</div>
 
 			{loading ? (
@@ -638,7 +638,7 @@ function InventoryView({ herzie }: { herzie: Herzie }) {
 									</div>
 									<div style={{ fontSize: 10, color: "#666" }}>
 										x{qty}
-										{def?.sellPrice ? ` · ${def.sellPrice} H each` : ""}
+										{def?.sellPrice ? ` · $${def.sellPrice} each` : ""}
 									</div>
 								</div>
 								<span style={{ color: "#555", fontSize: 12 }}>→</span>
@@ -838,7 +838,7 @@ function TradeView({
 								))}
 							{myOffer && myOffer.currency > 0 && (
 								<div style={{ fontSize: 11, color: "#facc15" }}>
-									{myOffer.currency} H
+									${myOffer.currency}
 								</div>
 							)}
 							{myOffer &&
@@ -859,7 +859,7 @@ function TradeView({
 								))}
 							{theirOffer && theirOffer.currency > 0 && (
 								<div style={{ fontSize: 11, color: "#facc15" }}>
-									{theirOffer.currency} H
+									${theirOffer.currency}
 								</div>
 							)}
 							{theirOffer &&

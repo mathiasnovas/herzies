@@ -98,7 +98,7 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 		if (result) {
 			setInventory(result.inventory);
 			setCurrency(result.newCurrency);
-			setSellMessage(`Sold ${quantity}x for ${result.earned} H!`);
+			setSellMessage(`Sold ${quantity}x for $${result.earned}!`);
 		} else {
 			setSellMessage("Failed to sell.");
 		}
@@ -146,14 +146,14 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 		return (
 			<Box flexDirection="column" padding={1}>
 				<Text bold color="yellow">
-					Sell {sellMode.name}? ({sellMode.maxQty} owned, {price} H each)
+					Sell {sellMode.name}? ({sellMode.maxQty} owned, ${price} each)
 				</Text>
 				<Box marginTop={1} flexDirection="column">
-					<Text>  <Text bold>1</Text> — Sell 1 ({price} H)</Text>
+					<Text>  <Text bold>1</Text> — Sell 1 (${price})</Text>
 					{sellMode.maxQty >= 5 && (
-						<Text>  <Text bold>5</Text> — Sell 5 ({price * 5} H)</Text>
+						<Text>  <Text bold>5</Text> — Sell 5 (${price * 5})</Text>
 					)}
-					<Text>  <Text bold>a</Text> — Sell all {sellMode.maxQty} ({price * sellMode.maxQty} H)</Text>
+					<Text>  <Text bold>a</Text> — Sell all {sellMode.maxQty} (${price * sellMode.maxQty})</Text>
 					<Text>  <Text bold>Esc</Text> — Cancel</Text>
 				</Box>
 			</Box>
@@ -163,7 +163,7 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 	if (entries.length === 0) {
 		return (
 			<Box flexDirection="column" padding={1}>
-				<Text bold color="yellow">Balance: {currency} H</Text>
+				<Text bold color="yellow">Balance: ${currency}</Text>
 				<Box marginTop={1}>
 					<Text dimColor>No items yet — keep listening to earn some!</Text>
 				</Box>
@@ -197,7 +197,7 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 					<Text dimColor italic>{item.description}</Text>
 				)}
 				{item?.sellPrice && (
-					<Text dimColor>Sell price: {item.sellPrice} H each</Text>
+					<Text dimColor>Sell price: ${item.sellPrice} each</Text>
 				)}
 				<Box marginTop={1}>
 					<ItemDisplay itemId={viewing} animate />
@@ -215,7 +215,7 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 			<Text bold color="magenta">
 				♫ {herzie.name}'s inventory
 			</Text>
-			<Text bold color="yellow">Balance: {currency} H</Text>
+			<Text bold color="yellow">Balance: ${currency}</Text>
 			{sellMessage && (
 				<Text color="green">{sellMessage}</Text>
 			)}
@@ -235,7 +235,7 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 								<Text dimColor> x{qty}</Text>
 							)}
 							{item?.sellPrice && isSelected && (
-								<Text dimColor> ({item.sellPrice} H)</Text>
+								<Text dimColor> (${item.sellPrice})</Text>
 							)}
 						</Box>
 					);
