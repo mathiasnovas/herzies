@@ -1133,7 +1133,6 @@ function App() {
 						maxHeight: 42,
 						overflow: "auto",
 						borderTop: "1px solid #333",
-						borderBottom: "1px solid #333",
 						padding: "4px 0",
 					}}
 				>
