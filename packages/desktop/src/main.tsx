@@ -1044,10 +1044,20 @@ function App() {
 	});
 	const [view, setView] = useState<View>("home");
 	const [tradeTarget, setTradeTarget] = useState<string | null>(null);
+	const [activityLog, setActivityLog] = useState<{ time: string; message: string }[]>([]);
 
 	useEffect(() => {
 		herzies.getState().then(setState);
-		return herzies.onStateUpdate(setState);
+		const unlistenState = herzies.onStateUpdate(setState);
+		const unlistenActivity = herzies.onActivity((message) => {
+			const now = new Date();
+			const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+			setActivityLog((prev) => [...prev.slice(-49), { time, message }]);
+		});
+		return () => {
+			unlistenState();
+			unlistenActivity();
+		};
 	}, []);
 
 	// Reset to home screen when logging back in
@@ -1106,6 +1116,34 @@ function App() {
 				)}
 				{view === "settings" && <SettingsView state={state} />}
 			</div>
+			{herzie && activityLog.length > 0 && (
+				<div
+					style={{
+						maxHeight: 42,
+						overflow: "auto",
+						borderTop: "1px solid #333",
+						paddingTop: 4,
+						marginBottom: 4,
+					}}
+				>
+					{activityLog.slice().reverse().map((entry, i) => (
+						<div
+							key={`${entry.time}-${i}`}
+							style={{
+								fontSize: 9,
+								color: "#666",
+								whiteSpace: "nowrap",
+								overflow: "hidden",
+								textOverflow: "ellipsis",
+								lineHeight: "14px",
+							}}
+						>
+							<span style={{ color: "#555" }}>{entry.time}</span>{" "}
+							{entry.message}
+						</div>
+					))}
+				</div>
+			)}
 			{herzie && <TabBar view={view} setView={setView} />}
 		</div>
 	);

@@ -92,12 +92,13 @@ async fn friend_add(
     if ok {
         let mut s = state.lock().unwrap();
         if let Some(ref mut herzie) = s.herzie {
-            herzie.friend_codes.push(code);
+            herzie.friend_codes.push(code.clone());
             storage::save_herzie(herzie);
             let app_state = s.to_app_state(env!("CARGO_PKG_VERSION"));
             drop(s);
             let _ = app.emit("state-update", &app_state);
         }
+        let _ = app.emit("activity", format!("Added friend {}", code));
         Ok(FriendResult {
             success: true,
             message: "Friend added!".into(),
@@ -140,6 +141,7 @@ async fn friend_remove(
             drop(s);
             let _ = app.emit("state-update", &app_state);
         }
+        let _ = app.emit("activity", format!("Removed friend {}", code));
         Ok(FriendResult {
             success: true,
             message: "Friend removed".into(),
@@ -361,18 +363,14 @@ async fn poll_tick(app: &AppHandle, _client: &Client) -> Result<(), String> {
 
     // Send notifications outside the lock
     if let Some((name, level)) = notify_level_up {
-        send_notification(
-            app,
-            "Level Up!",
-            &format!("{} is now level {}!", name, level),
-        );
+        let msg = format!("{} is now level {}!", name, level);
+        send_notification(app, "Level Up!", &msg);
+        let _ = app.emit("activity", format!("Level Up! {}", msg));
     }
     if let Some((name, stage)) = notify_evolved {
-        send_notification(
-            app,
-            "Evolution!",
-            &format!("{} evolved to Stage {}!", name, stage),
-        );
+        let msg = format!("{} evolved to Stage {}!", name, stage);
+        send_notification(app, "Evolution!", &msg);
+        let _ = app.emit("activity", format!("Evolution! {}", msg));
     }
 
     let app_state = {
@@ -466,16 +464,15 @@ async fn sync_tick(app: &AppHandle, client: &Client) -> Result<(), String> {
 
         // Show notification for incoming trade requests
         if let Some(trade_req) = &sync_resp.pending_trade_request {
-            send_notification(
-                app,
-                "Trade Request",
-                &format!("{} wants to trade with you!", trade_req.from_name),
-            );
+            let msg = format!("{} wants to trade with you!", trade_req.from_name);
+            send_notification(app, "Trade Request", &msg);
+            let _ = app.emit("activity", format!("Trade Request: {}", msg));
         }
 
         // Show server-sent notifications (item drops, etc.)
         for notif in &sync_resp.notifications {
             send_notification(app, &notif.title, &notif.message);
+            let _ = app.emit("activity", format!("{}: {}", notif.title, notif.message));
         }
     } else {
         let mut s = state.lock().unwrap();
