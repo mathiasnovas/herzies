@@ -1,0 +1,42 @@
+{
+  "productName": "Herzies",
+  "identifier": "app.herzies.desktop",
+  "version": "0.1.0",
+  "build": {
+    "beforeDevCommand": "pnpm vite:dev",
+    "beforeBuildCommand": "pnpm vite:build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Herzies",
+        "width": 380,
+        "height": 520,
+        "decorations": false,
+        "resizable": false,
+        "visible": false,
+        "skipTaskbar": true,
+        "transparent": false
+      }
+    ],
+    "trayIcon": null
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "app"],
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "icon": [
+      "icons/iconTemplate.png",
+      "icons/iconTemplate@2x.png"
+    ],
+    "category": "Music"
+  },
+  "plugins": {}
+}

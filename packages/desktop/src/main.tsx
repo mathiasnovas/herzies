@@ -1,46 +1,13 @@
 import { createRoot } from "react-dom/client";
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Herzie, ActiveMultiplier, HerzieProfile, Trade, Inventory } from "@herzies/shared";
+import type { Herzie, HerzieProfile, Trade, Inventory } from "@herzies/shared";
 import { levelProgress, xpToNextLevel } from "@herzies/shared";
 import { HerzieArt } from "./HerzieArt";
 import { ItemDisplay } from "./ItemDisplay";
 import { ITEMS, getItem, RARITY_COLORS as ITEM_RARITY_COLORS, RARITY_LABELS } from "./items";
-
-// --- Types ---
-
-interface AppState {
-  herzie: Herzie | null;
-  nowPlaying: { title: string; artist: string } | null;
-  multipliers: ActiveMultiplier[] | null;
-  isOnline: boolean;
-  isConnected: boolean;
-  version: string;
-}
+import { herzies, type AppState } from "./tauri-bridge";
 
 type View = "home" | "friends" | "inventory" | "trade" | "settings";
-
-declare global {
-  interface Window {
-    herzies: {
-      getState: () => Promise<AppState>;
-      onStateUpdate: (cb: (state: AppState) => void) => () => void;
-      login: () => Promise<boolean>;
-      logout: () => Promise<void>;
-      friendAdd: (code: string) => Promise<{ success: boolean; message: string }>;
-      friendRemove: (code: string) => Promise<{ success: boolean; message: string }>;
-      friendLookup: (codes: string[]) => Promise<Record<string, HerzieProfile>>;
-      fetchInventory: () => Promise<{ inventory: Inventory; currency: number } | null>;
-      sellItem: (itemId: string, quantity: number) => Promise<{ earned: number; newCurrency: number; inventory: Inventory } | null>;
-      tradeCreate: (targetCode: string) => Promise<{ tradeId: string } | null>;
-      tradeJoin: (tradeId: string) => Promise<boolean>;
-      tradeOffer: (tradeId: string, offer: { items: Record<string, number>; currency: number }) => Promise<boolean>;
-      tradeLock: (tradeId: string) => Promise<boolean>;
-      tradeAccept: (tradeId: string) => Promise<{ completed: boolean } | null>;
-      tradeCancel: (tradeId: string) => Promise<boolean>;
-      tradePoll: (tradeId: string) => Promise<Trade | null>;
-    };
-  }
-}
 
 // --- Shared styles ---
 
@@ -52,7 +19,6 @@ const btnStyle: React.CSSProperties = {
   padding: "4px 10px",
   fontSize: 11,
   cursor: "pointer",
-  WebkitAppRegion: "no-drag" as "no-drag",
 };
 
 const inputStyle: React.CSSProperties = {
@@ -63,7 +29,6 @@ const inputStyle: React.CSSProperties = {
   padding: "4px 8px",
   fontSize: 12,
   outline: "none",
-  WebkitAppRegion: "no-drag" as "no-drag",
 };
 
 // --- Bottom Tab Bar ---
@@ -198,13 +163,13 @@ function HomeView({ state }: { state: AppState }) {
 // --- Friends View ---
 
 function FriendsView({ herzie, onStartTrade }: { herzie: Herzie; onStartTrade: (code: string) => void }) {
-  const [friends, setFriends] = useState<Record<string, HerzieProfile>>({});
+  const [friends, setFriends] = useState<Record<string, HerzieProfile> | null>(null);
   const [addCode, setAddCode] = useState("");
   const [message, setMessage] = useState("");
 
   const loadFriends = useCallback(async () => {
-    if (herzie.friendCodes.length === 0) return;
-    const data = await window.herzies.friendLookup(herzie.friendCodes);
+    if (herzie.friendCodes.length === 0) { setFriends({}); return; }
+    const data = await herzies.friendLookup(herzie.friendCodes);
     setFriends(data);
   }, [herzie.friendCodes]);
 
@@ -213,14 +178,14 @@ function FriendsView({ herzie, onStartTrade }: { herzie: Herzie; onStartTrade: (
   const handleAdd = async () => {
     const code = addCode.trim().toUpperCase();
     if (!code) return;
-    const result = await window.herzies.friendAdd(code);
+    const result = await herzies.friendAdd(code);
     setMessage(result.message);
     if (result.success) { setAddCode(""); loadFriends(); }
     setTimeout(() => setMessage(""), 3000);
   };
 
   const handleRemove = async (code: string) => {
-    const result = await window.herzies.friendRemove(code);
+    const result = await herzies.friendRemove(code);
     setMessage(result.message);
     if (result.success) loadFriends();
     setTimeout(() => setMessage(""), 3000);
@@ -257,6 +222,8 @@ function FriendsView({ herzie, onStartTrade }: { herzie: Herzie; onStartTrade: (
           <div style={{ fontSize: 12, color: "#555", textAlign: "center", paddingTop: 20 }}>
             No friends yet. Share your code above!
           </div>
+        ) : !friends ? (
+          <div style={{ fontSize: 12, color: "#555", textAlign: "center", paddingTop: 20 }}>Loading...</div>
         ) : (
           herzie.friendCodes.map((code) => {
             const profile = friends[code];
@@ -300,7 +267,7 @@ function InventoryView({ herzie }: { herzie: Herzie }) {
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const data = await window.herzies.fetchInventory();
+    const data = await herzies.fetchInventory();
     if (data) { setInventory(data.inventory); setCurrency(data.currency); }
     setLoading(false);
   }, []);
@@ -308,7 +275,7 @@ function InventoryView({ herzie }: { herzie: Herzie }) {
   useEffect(() => { load(); }, [load]);
 
   const handleSell = async (itemId: string, qty: number) => {
-    const result = await window.herzies.sellItem(itemId, qty);
+    const result = await herzies.sellItem(itemId, qty);
     if (result) { setInventory(result.inventory); setCurrency(result.newCurrency); }
   };
 
@@ -321,7 +288,7 @@ function InventoryView({ herzie }: { herzie: Herzie }) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <div style={{ fontSize: 13, fontWeight: "bold", color: "#facc15", cursor: "pointer", WebkitAppRegion: "no-drag" as "no-drag" }} onClick={() => setSelectedItem(null)}>← Back</div>
+          <div style={{ fontSize: 13, fontWeight: "bold", color: "#facc15", cursor: "pointer" }} onClick={() => setSelectedItem(null)}>← Back</div>
           <div style={{ fontSize: 12, color: "#facc15" }}>{currency} H</div>
         </div>
 
@@ -373,7 +340,7 @@ function InventoryView({ herzie }: { herzie: Herzie }) {
               <div
                 key={itemId}
                 onClick={() => setSelectedItem(itemId)}
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #222", cursor: "pointer", WebkitAppRegion: "no-drag" as "no-drag" }}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #222", cursor: "pointer" }}
               >
                 <div>
                   <div style={{ fontSize: 12, color: ITEM_RARITY_COLORS[rarity] }}>{name}</div>
@@ -403,7 +370,7 @@ function TradeView({ herzie, initialTarget, onClose }: { herzie: Herzie; initial
   useEffect(() => {
     if (!tradeId) return;
     const interval = setInterval(async () => {
-      const t = await window.herzies.tradePoll(tradeId);
+      const t = await herzies.tradePoll(tradeId);
       if (t) setTrade(t);
       if (t?.state === "completed" || t?.state === "cancelled") {
         setMessage(t.state === "completed" ? "Trade completed!" : "Trade cancelled");
@@ -421,18 +388,18 @@ function TradeView({ herzie, initialTarget, onClose }: { herzie: Herzie; initial
   const handleCreate = async (overrideCode?: string) => {
     const code = (overrideCode ?? targetCode).trim().toUpperCase();
     if (!code) return;
-    const result = await window.herzies.tradeCreate(code);
+    const result = await herzies.tradeCreate(code);
     if (result) { setTradeId(result.tradeId); setTargetCode(""); }
     else setMessage("Failed to create trade");
   };
 
   const handleCancel = async () => {
-    if (tradeId) await window.herzies.tradeCancel(tradeId);
+    if (tradeId) await herzies.tradeCancel(tradeId);
     onClose();
   };
 
-  const handleLock = async () => { if (tradeId) await window.herzies.tradeLock(tradeId); };
-  const handleAccept = async () => { if (tradeId) await window.herzies.tradeAccept(tradeId); };
+  const handleLock = async () => { if (tradeId) await herzies.tradeLock(tradeId); };
+  const handleAccept = async () => { if (tradeId) await herzies.tradeAccept(tradeId); };
 
   // No active trade — show create form
   if (!tradeId) {
@@ -531,7 +498,7 @@ function SettingsView({ state }: { state: AppState }) {
         {state.isOnline ? (
           <button
             style={{ ...btnStyle, color: "#f87171" }}
-            onClick={() => window.herzies.logout()}
+            onClick={() => herzies.logout()}
           >
             Logout
           </button>
@@ -539,11 +506,19 @@ function SettingsView({ state }: { state: AppState }) {
           <button
             style={{ ...btnStyle, color: "#4ade80" }}
             disabled={loggingIn}
-            onClick={async () => { setLoggingIn(true); await window.herzies.login(); setLoggingIn(false); }}
+            onClick={async () => { setLoggingIn(true); await herzies.login(); setLoggingIn(false); }}
           >
             {loggingIn ? "Logging in..." : "Login"}
           </button>
         )}
+      </div>
+
+      {/* Debug */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>Debug</div>
+        <button style={btnStyle} onClick={() => herzies.testNotification()}>
+          Test Notification
+        </button>
       </div>
 
       {/* Version */}
@@ -568,7 +543,7 @@ function SplashScreen() {
   const [loggingIn, setLoggingIn] = useState(false);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", gap: 20 }}>
+    <div data-tauri-drag-region style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", gap: 20 }}>
       <div style={{ display: "flex", justifyContent: "center" }}>
         <pre style={{ color: "#c084fc", fontSize: 14, lineHeight: 1.15, margin: 0 }}>
           {BANNER}
@@ -577,7 +552,7 @@ function SplashScreen() {
       <button
         style={{ ...btnStyle, padding: "8px 24px", fontSize: 13, color: "#4ade80" }}
         disabled={loggingIn}
-        onClick={async () => { setLoggingIn(true); await window.herzies.login(); setLoggingIn(false); }}
+        onClick={async () => { setLoggingIn(true); await herzies.login(); setLoggingIn(false); }}
       >
         {loggingIn ? "Opening browser..." : "Login"}
       </button>
@@ -593,8 +568,8 @@ function App() {
   const [tradeTarget, setTradeTarget] = useState<string | null>(null);
 
   useEffect(() => {
-    window.herzies.getState().then(setState);
-    return window.herzies.onStateUpdate(setState);
+    herzies.getState().then(setState);
+    return herzies.onStateUpdate(setState);
   }, []);
 
   // Reset to home screen when logging back in
@@ -618,7 +593,7 @@ function App() {
   };
 
   return (
-    <div style={{ padding: "12px 12px 4px", display: "flex", flexDirection: "column", height: "100vh" }}>
+    <div data-tauri-drag-region style={{ padding: "12px 12px 4px", display: "flex", flexDirection: "column", height: "100vh" }}>
       <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", marginBottom: 8 }}>
         {view === "home" && <HomeView state={state} />}
         {view === "friends" && herzie && <FriendsView herzie={herzie} onStartTrade={handleStartTrade} />}
