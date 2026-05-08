@@ -1,11 +1,11 @@
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tauri::{
-    image::Image,
     tray::{MouseButtonState, TrayIconBuilder, TrayIconEvent},
     ActivationPolicy, AppHandle, Manager,
 };
 
-const TRAY_ICON_BYTES: &[u8] = include_bytes!("../icons/iconTemplate@2x.png");
+/// Tracks current connectivity state to avoid redundant updates.
+static IS_CONNECTED: AtomicBool = AtomicBool::new(true);
 
 /// Whether a delayed hide is pending (used to cancel on re-focus).
 static HIDE_PENDING: AtomicBool = AtomicBool::new(false);
@@ -23,12 +23,11 @@ fn now_ms() -> u64 {
         .as_millis() as u64
 }
 
-pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
-    let icon = Image::from_bytes(TRAY_ICON_BYTES)?;
+pub const TRAY_ID: &str = "herzies-tray";
 
-    let _tray = TrayIconBuilder::new()
-        .icon(icon)
-        .icon_as_template(true)
+pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
+    let _tray = TrayIconBuilder::with_id(TRAY_ID)
+        .title("<3")
         .tooltip("Herzies")
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click {
@@ -42,6 +41,20 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
         .build(app)?;
 
     Ok(())
+}
+
+/// Update the tray title based on connectivity state.
+/// `connected` = true shows `<3`, false shows `</3`.
+pub fn set_connected(app: &AppHandle, connected: bool) {
+    let was_connected = IS_CONNECTED.swap(connected, Ordering::Relaxed);
+    if was_connected == connected {
+        return;
+    }
+
+    let title = if connected { "<3" } else { "</3" };
+    if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        let _ = tray.set_title(Some(title));
+    }
 }
 
 pub fn toggle_window(app: &AppHandle) {

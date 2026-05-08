@@ -81,6 +81,16 @@ pub fn is_logged_in() -> bool {
     storage::load_session().is_some()
 }
 
+/// Lightweight connectivity check — HEAD request to the API base.
+pub async fn is_reachable(client: &Client) -> bool {
+    client
+        .head(api_base())
+        .timeout(std::time::Duration::from_secs(5))
+        .send()
+        .await
+        .is_ok()
+}
+
 pub async fn api_sync(
     client: &Client,
     now_playing: Option<NowPlayingPayload>,

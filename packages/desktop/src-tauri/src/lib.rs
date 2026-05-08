@@ -386,7 +386,17 @@ async fn sync_tick(app: &AppHandle, client: &Client) -> Result<(), String> {
         (has, logged, mins, np, g)
     };
 
+    // Check actual internet connectivity independently
+    let reachable = api::is_reachable(client).await;
+    let connected = is_logged_in && reachable;
+    tray::set_connected(app, connected);
+
     if !has_herzie || !is_logged_in {
+        let mut s = state.lock().unwrap();
+        s.is_connected = connected;
+        let app_state = s.to_app_state(env!("CARGO_PKG_VERSION"));
+        drop(s);
+        let _ = app.emit("state-update", &app_state);
         return Ok(());
     }
 
@@ -394,6 +404,7 @@ async fn sync_tick(app: &AppHandle, client: &Client) -> Result<(), String> {
 
     if let Some(sync_resp) = result {
         let mut s = state.lock().unwrap();
+        s.is_connected = connected;
         s.pending_minutes = (s.pending_minutes - minutes_to_sync).max(0.0);
 
         if let Some(ref mut herzie) = s.herzie {
@@ -429,6 +440,12 @@ async fn sync_tick(app: &AppHandle, client: &Client) -> Result<(), String> {
         for notif in &sync_resp.notifications {
             send_notification(app, &notif.title, &notif.message);
         }
+    } else {
+        let mut s = state.lock().unwrap();
+        s.is_connected = connected;
+        let app_state = s.to_app_state(env!("CARGO_PKG_VERSION"));
+        drop(s);
+        let _ = app.emit("state-update", &app_state);
     }
 
     Ok(())
