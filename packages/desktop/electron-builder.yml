@@ -1,0 +1,26 @@
+appId: app.herzies.desktop
+productName: Herzies
+directories:
+  output: release
+  buildResources: resources
+mac:
+  category: public.app-category.music
+  target:
+    - dmg
+    - zip
+  icon: resources/icon.icns
+dmg:
+  title: Herzies
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+files:
+  - out/**/*
+  - resources/**/*
+  - package.json
+extraMetadata:
+  main: out/main/index.js
