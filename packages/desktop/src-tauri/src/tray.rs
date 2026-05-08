@@ -82,8 +82,12 @@ pub fn set_connected(app: &AppHandle, connected: bool) {
 }
 
 pub fn ensure_visible(app: &AppHandle) {
+    // Always cancel pending hide (e.g. notification click may race with blur timer)
+    HIDE_PENDING.store(false, Ordering::Relaxed);
     if let Some(window) = app.get_webview_window("main") {
-        if !window.is_visible().unwrap_or(true) {
+        if window.is_visible().unwrap_or(true) {
+            let _ = window.set_focus();
+        } else {
             show_window(app, &window);
         }
     }

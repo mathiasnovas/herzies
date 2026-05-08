@@ -367,12 +367,10 @@ async fn poll_tick(app: &AppHandle, _client: &Client) -> Result<(), String> {
     if let Some((name, level)) = notify_level_up {
         let msg = format!("{} is now level {}!", name, level);
         send_notification(app, "Level Up!", &msg, None);
-        let _ = app.emit("activity", format!("Level Up! {}", msg));
     }
     if let Some((name, stage)) = notify_evolved {
         let msg = format!("{} evolved to Stage {}!", name, stage);
         send_notification(app, "Evolution!", &msg, None);
-        let _ = app.emit("activity", format!("Evolution! {}", msg));
     }
 
     let app_state = {
@@ -386,8 +384,8 @@ async fn poll_tick(app: &AppHandle, _client: &Client) -> Result<(), String> {
 
 #[tauri::command]
 fn test_notification(app: AppHandle) {
-    send_notification(&app, "CD", "You earned 1 CD!", Some("cd"));
-    let _ = app.emit("activity", "CD: You earned 1 CD!".to_string());
+    send_notification(&app, "CD", "You received: 1x CD", Some("cd"));
+    let _ = app.emit("activity", "You received: 1x CD".to_string());
 }
 
 #[tauri::command]
