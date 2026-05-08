@@ -1133,8 +1133,8 @@ function App() {
 						maxHeight: 42,
 						overflow: "auto",
 						borderTop: "1px solid #333",
-						paddingTop: 4,
-						marginBottom: 4,
+						borderBottom: "1px solid #333",
+						padding: "4px 0",
 					}}
 				>
 					{activityLog.map((entry, i) => (
