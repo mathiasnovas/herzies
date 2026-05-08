@@ -388,7 +388,7 @@ async fn poll_tick(app: &AppHandle, _client: &Client) -> Result<(), String> {
 fn test_notification(app: AppHandle) {
     send_notification(&app, "CD", "You earned 1 CD!");
     let _ = app.emit("activity", "CD: You earned 1 CD!".to_string());
-    emit_or_store_deep_link(&app, "cd");
+    store_deep_link(&app, "cd");
 }
 
 #[tauri::command]
@@ -401,18 +401,10 @@ fn send_notification(app: &AppHandle, title: &str, body: &str) {
     let _ = app.notification().builder().title(title).body(body).show();
 }
 
-/// Emit a deep link immediately if the window is visible, otherwise store it for next focus.
-fn emit_or_store_deep_link(app: &AppHandle, item_id: &str) {
-    let visible = app
-        .get_webview_window("main")
-        .and_then(|w| w.is_visible().ok())
-        .unwrap_or(false);
-    if visible {
-        let _ = app.emit("deep-link", item_id.to_string());
-    } else {
-        if let Ok(mut dl) = app.state::<PendingDeepLink>().lock() {
-            *dl = Some(item_id.to_string());
-        }
+/// Store a deep link to be emitted when the window is next focused.
+fn store_deep_link(app: &AppHandle, item_id: &str) {
+    if let Ok(mut dl) = app.state::<PendingDeepLink>().lock() {
+        *dl = Some(item_id.to_string());
     }
 }
 
@@ -499,7 +491,7 @@ async fn sync_tick(app: &AppHandle, client: &Client) -> Result<(), String> {
             let _ = app.emit("activity", format!("{}: {}", notif.title, notif.message));
             // Deep link for item notifications
             if let Some(ref item_id) = notif.item_id {
-                emit_or_store_deep_link(app, item_id);
+                store_deep_link(app,item_id);
             }
         }
     } else {
