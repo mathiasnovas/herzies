@@ -62,6 +62,8 @@ export interface HerzieProfile {
 	stage: number;
 	level: number;
 	currency?: number;
+	appearance?: HerzieAppearance;
+	topArtists?: { name: string; plays: number }[];
 }
 
 // --- Game Server API types ---

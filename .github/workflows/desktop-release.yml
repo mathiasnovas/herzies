@@ -2,10 +2,8 @@ name: Desktop Release
 
 on:
   push:
-    branches: [main]
-    paths:
-      - packages/desktop/**
-      - packages/shared/**
+    tags:
+      - 'desktop-v*'
 
 jobs:
   build:

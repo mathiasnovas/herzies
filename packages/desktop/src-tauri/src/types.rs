@@ -46,6 +46,17 @@ pub struct HerzieProfile {
     pub level: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub appearance: Option<HerzieAppearance>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub top_artists: Option<Vec<TopArtist>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TopArtist {
+    pub name: String,
+    pub plays: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

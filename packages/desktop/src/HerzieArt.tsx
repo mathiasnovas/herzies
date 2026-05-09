@@ -159,16 +159,13 @@ interface HerzieArtProps {
 	appearance?: Appearance;
 	stage?: number;
 	size?: number;
-	animate?: boolean;
 }
 
 export function HerzieArt({
 	appearance,
 	stage = 1,
 	size = 16,
-	animate = true,
 }: HerzieArtProps) {
-	const [tick, setTick] = useState(0);
 	const [herzie, setHerzie] = useState<Appearance | null>(appearance ?? null);
 
 	// Pick random appearance on mount (only if no appearance prop)
@@ -184,19 +181,11 @@ export function HerzieArt({
 		});
 	}, [appearance]);
 
-	// Float animation tick
-	useEffect(() => {
-		if (!animate) return;
-		const id = setInterval(() => setTick((t) => t + 1), 600);
-		return () => clearInterval(id);
-	}, [animate]);
-
 	if (!herzie) return null;
 
 	const { lines, accentLineCount, limbAccent } = composeHerzie(herzie, stage);
 	const color = COLORS[herzie.colorScheme] ?? COLORS.pink;
 	const accent = ACCENT_COLORS[herzie.colorScheme] ?? ACCENT_COLORS.pink;
-	const bounceOffset = animate && tick % 2 === 0 ? 0 : animate ? -4 : 0;
 
 	// In the CLI, the accessory line uses accent color, head uses main color,
 	// and for stage 2 limbs use accent, for stage 3 body uses accent.
@@ -231,8 +220,6 @@ export function HerzieArt({
 				fontSize: size,
 				lineHeight: 1.3,
 				margin: 0,
-				transform: `translateY(${bounceOffset}px)`,
-				transition: "transform 0.3s ease-in-out",
 				filter: `drop-shadow(0 0 12px ${color}40)`,
 				userSelect: "none",
 			}}

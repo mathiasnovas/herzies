@@ -150,20 +150,21 @@ function HomeView({ state }: { state: AppState }) {
 				</div>
 				<div
 					style={{
-						background: "#333",
-						borderRadius: 4,
-						height: 5,
-						overflow: "hidden",
+						display: "flex",
+						gap: 2,
+						height: 8,
 					}}
 				>
-					<div
-						style={{
-							background: "linear-gradient(90deg, #4ade80, #22d3ee)",
-							height: "100%",
-							width: `${Math.round(progress * 100)}%`,
-							transition: "width 0.3s",
-						}}
-					/>
+					{Array.from({ length: 40 }, (_, i) => (
+						<div
+							key={i}
+							style={{
+								flex: 1,
+								background:
+									i < Math.round(progress * 40) ? "#4ade80" : "#333",
+							}}
+						/>
+					))}
 				</div>
 				<div
 					style={{
@@ -274,6 +275,95 @@ function HomeView({ state }: { state: AppState }) {
 
 // --- Friends View ---
 
+function FriendProfileView({
+	profile,
+	onBack,
+	onTrade,
+}: {
+	profile: HerzieProfile;
+	onBack: () => void;
+	onTrade: () => void;
+}) {
+	return (
+		<div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+			<div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+				<button
+					style={{ ...btnStyle, fontSize: 10, padding: "2px 8px", marginRight: 8 }}
+					onClick={onBack}
+				>
+					← Back
+				</button>
+				<span style={{ fontSize: 13, fontWeight: "bold", color: "#7dd3fc" }}>
+					{profile.name}
+				</span>
+			</div>
+
+			{profile.appearance && (
+				<div
+					style={{
+						flex: 1,
+						display: "flex",
+						justifyContent: "center",
+						alignItems: "center",
+						minHeight: 0,
+					}}
+				>
+					<HerzieArt
+						appearance={profile.appearance}
+						stage={profile.stage as 1 | 2 | 3}
+						size={15}
+					/>
+				</div>
+			)}
+
+			<div
+				style={{
+					fontSize: 11,
+					color: "#aaa",
+					display: "flex",
+					justifyContent: "space-between",
+					marginBottom: 8,
+				}}
+			>
+				<span>Level {profile.level}</span>
+				<span>Stage {profile.stage}</span>
+			</div>
+
+			{profile.topArtists && profile.topArtists.length > 0 && (
+				<div style={{ marginBottom: 8 }}>
+					<div style={{ fontSize: 10, color: "#555", marginBottom: 4 }}>
+						Top Artists
+					</div>
+					{profile.topArtists.map((a, i) => (
+						<div
+							key={a.name}
+							style={{
+								display: "flex",
+								justifyContent: "space-between",
+								fontSize: 11,
+								padding: "2px 0",
+								borderBottom: "1px solid #222",
+							}}
+						>
+							<span style={{ color: "#e0e0e0" }}>
+								{i + 1}. {a.name}
+							</span>
+							<span style={{ color: "#666" }}>{a.plays} plays</span>
+						</div>
+					))}
+				</div>
+			)}
+
+			<button
+				style={{ ...btnStyle, color: "#c084fc", width: "100%" }}
+				onClick={onTrade}
+			>
+				Trade
+			</button>
+		</div>
+	);
+}
+
 function FriendsView({
 	herzie,
 	onStartTrade,
@@ -286,6 +376,7 @@ function FriendsView({
 	);
 	const [addCode, setAddCode] = useState("");
 	const [message, setMessage] = useState("");
+	const [selectedFriend, setSelectedFriend] = useState<HerzieProfile | null>(null);
 
 	const loadFriends = useCallback(async () => {
 		if (herzie.friendCodes.length === 0) {
@@ -318,6 +409,19 @@ function FriendsView({
 		if (result.success) loadFriends();
 		setTimeout(() => setMessage(""), 3000);
 	};
+
+	if (selectedFriend) {
+		return (
+			<FriendProfileView
+				profile={selectedFriend}
+				onBack={() => setSelectedFriend(null)}
+				onTrade={() => {
+					setSelectedFriend(null);
+					onStartTrade(selectedFriend.friendCode);
+				}}
+			/>
+		);
+	}
 
 	return (
 		<div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -404,7 +508,10 @@ function FriendsView({
 									borderBottom: "1px solid #222",
 								}}
 							>
-								<div>
+								<div
+									style={{ cursor: profile ? "pointer" : "default" }}
+									onClick={() => profile && setSelectedFriend(profile)}
+								>
 									<div style={{ fontSize: 12, color: "#e0e0e0" }}>
 										{profile?.name ?? code}
 									</div>
