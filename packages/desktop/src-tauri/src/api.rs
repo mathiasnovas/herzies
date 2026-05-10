@@ -34,8 +34,8 @@ async fn ensure_fresh_token(client: &Client) {
         .send()
         .await;
 
-    if let Ok(resp) = res {
-        if resp.status().is_success() {
+    match res {
+        Ok(resp) if resp.status().is_success() => {
             if let Ok(data) = resp.json::<serde_json::Value>().await {
                 let access_token = data["accessToken"].as_str().unwrap_or_default().to_string();
                 let refresh_token = data["refreshToken"]
@@ -50,6 +50,15 @@ async fn ensure_fresh_token(client: &Client) {
                     user_id: session.user_id,
                 });
             }
+        }
+        Ok(resp) => {
+            // Server rejected the refresh token (401, 403, etc.) — session is dead
+            log::warn!("Token refresh failed with status {}, logging out", resp.status());
+            storage::clear_session();
+        }
+        Err(e) => {
+            // Network error — don't clear session, might be temporary
+            log::warn!("Token refresh network error: {}", e);
         }
     }
 }
@@ -74,7 +83,15 @@ async fn api_fetch(
         req = req.json(&b);
     }
 
-    req.send().await.ok()
+    let resp = req.send().await.ok()?;
+
+    if resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+        log::warn!("Got 401 on {}, clearing session", path);
+        storage::clear_session();
+        return None;
+    }
+
+    Some(resp)
 }
 
 pub fn is_logged_in() -> bool {

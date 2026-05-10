@@ -166,11 +166,13 @@ async fn do_login(app: &AppHandle, web_url: &str, port: u16) -> bool {
         }
     }
 
-    let app_state = {
-        let s = state.lock().unwrap();
-        s.to_app_state(env!("CARGO_PKG_VERSION"))
-    };
-    let _ = app.emit("state-update", &app_state);
+    {
+        let mut s = state.lock().unwrap();
+        s.is_connected = true;
+        let app_state = s.to_app_state(env!("CARGO_PKG_VERSION"));
+        drop(s);
+        let _ = app.emit("state-update", &app_state);
+    }
 
     true
 }
