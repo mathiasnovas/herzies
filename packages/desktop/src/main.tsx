@@ -2,7 +2,7 @@ import type { Herzie, HerzieProfile, Inventory, Trade } from "@herzies/shared";
 import { levelProgress, xpToNextLevel } from "@herzies/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { HerzieArt } from "./HerzieArt";
+import { Herzie3D } from "./Herzie3D";
 import { ItemDisplay } from "./ItemDisplay";
 import {
 	getItem,
@@ -188,10 +188,10 @@ function HomeView({ state }: { state: AppState }) {
 					minHeight: 0,
 				}}
 			>
-				<HerzieArt
-					appearance={herzie.appearance}
+				<Herzie3D
+					userId={herzie.id}
 					stage={herzie.stage}
-					size={15}
+					isPlaying={!!nowPlaying}
 				/>
 			</div>
 
@@ -375,10 +375,9 @@ function FriendProfileView({
 						minHeight: 0,
 					}}
 				>
-					<HerzieArt
-						appearance={profile.appearance}
-						stage={profile.stage as 1 | 2 | 3}
-						size={15}
+					<Herzie3D
+						userId={profile.friendCode}
+						stage={profile.stage}
 					/>
 				</div>
 			)}

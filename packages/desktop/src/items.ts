@@ -3,6 +3,20 @@
  * Ported from CLI — uses HTML color spans instead of chalk.
  */
 
+import {
+	type V3,
+	type V2,
+	rotY,
+	rotZ,
+	dot3,
+	normV,
+	cross,
+	col,
+	RAMP,
+	LIGHT,
+	CHAR_ASPECT,
+} from "./ascii3d";
+
 export type Rarity = "common" | "uncommon" | "rare" | "legendary";
 
 export interface ItemDef {
@@ -29,49 +43,13 @@ export const RARITY_LABELS: Record<Rarity, string> = {
 	legendary: "Legendary",
 };
 
-// --- 3D Math ---
-type V3 = [number, number, number];
-type V2 = [number, number];
-
-function rotY(p: V3, a: number): V3 {
-	const c = Math.cos(a),
-		s = Math.sin(a);
-	return [p[0] * c + p[2] * s, p[1], -p[0] * s + p[2] * c];
-}
-
-function rotZ(p: V3, a: number): V3 {
-	const c = Math.cos(a),
-		s = Math.sin(a);
-	return [p[0] * c - p[1] * s, p[0] * s + p[1] * c, p[2]];
-}
-
-function dot3(a: V3, b: V3): number {
-	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-}
-
-function normV(v: V3): V3 {
-	const l = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-	return [v[0] / l, v[1] / l, v[2] / l];
-}
-
-function cross(a: V3, b: V3): V3 {
-	return [
-		a[1] * b[2] - a[2] * b[1],
-		a[2] * b[0] - a[0] * b[2],
-		a[0] * b[1] - a[1] * b[0],
-	];
-}
-
 // --- Constants ---
 const SW = 30;
 const SH = 18;
-const CHAR_ASPECT = 2.1;
 const CARD_HW = 0.85;
 const CARD_HH = 1.3;
 const TILT = 12 * (Math.PI / 180);
 const CAM = 4.5;
-const LIGHT = normV([0.4, -0.6, -0.8]);
-const RAMP = " .·:;=+*#%@█";
 
 const CORNERS: V3[] = [
 	[-CARD_HW, -CARD_HH, 0],
@@ -85,10 +63,6 @@ const UVS: V2[] = [
 	[1, 1],
 	[0, 1],
 ];
-
-function col(hex: string, ch: string): string {
-	return `<span style="color:${hex}">${ch}</span>`;
-}
 
 // --- Card textures ---
 function frontTexture(u: number, v: number): number {
