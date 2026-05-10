@@ -238,7 +238,7 @@ export interface FrameData {
 	anchors: Record<string, FrameAnchor>;
 }
 
-export { SW, SH };
+export { SW, SH, simpleHash, mulberry32 };
 
 // --- Creature parameters ---
 

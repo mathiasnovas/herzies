@@ -9,6 +9,7 @@ import {
 	SH,
 } from "./creature-renderer";
 import type { Cell } from "./creature-renderer";
+import { renderSky, renderGround } from "./scenery-renderer";
 
 const FONT_FAMILY = "'SF Mono', 'Menlo', monospace";
 const DRAG_SENSITIVITY = Math.PI / 200; // ~180° per 200px
@@ -26,8 +27,28 @@ interface Props {
 	isPlaying?: boolean;
 }
 
+function useIsNight(): boolean {
+	const [isNight, setIsNight] = useState(() => {
+		const h = new Date().getHours();
+		return h >= 21 || h < 6;
+	});
+
+	useEffect(() => {
+		const check = () => {
+			const h = new Date().getHours();
+			setIsNight(h >= 21 || h < 6);
+		};
+		const id = setInterval(check, 10 * 60 * 1000); // re-check every 10 minutes
+		return () => clearInterval(id);
+	}, []);
+
+	return isNight;
+}
+
 export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = false }: Props) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const skyRef = useRef<HTMLPreElement>(null);
+	const groundRef = useRef<HTMLPreElement>(null);
 	const [frame, setFrame] = useState(0);
 	const [dragAngle, setDragAngle] = useState(0);
 	const [isDragging, setIsDragging] = useState(false);
@@ -39,6 +60,24 @@ export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = fal
 	const lastMoveTime = useRef(0);
 	const velocity = useRef(0);
 	const momentumRaf = useRef(0);
+
+	// --- Scenery state ---
+	const isNight = useIsNight();
+	const cloudOffset = useRef(0);
+	const twinkleFrame = useRef(0);
+
+	// Dynamic column count based on window width
+	const [sceneryCols, setSceneryCols] = useState(() =>
+		Math.floor(window.innerWidth / (size * 0.6)),
+	);
+
+	useEffect(() => {
+		const onResize = () => {
+			setSceneryCols(Math.floor(window.innerWidth / (size * 0.6)));
+		};
+		window.addEventListener("resize", onResize);
+		return () => window.removeEventListener("resize", onResize);
+	}, [size]);
 
 	const hasDragged = dragAngle !== 0;
 	const wantsDancing = animate !== false && isPlaying;
@@ -173,6 +212,50 @@ export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = fal
 		setFrame(0);
 	}, [frames]);
 
+	// --- Ground (static, re-renders only on userId or column change) ---
+
+	useEffect(() => {
+		const el = groundRef.current;
+		if (!el) return;
+		el.innerHTML = renderGround({ userId, cols: sceneryCols });
+	}, [userId, sceneryCols]);
+
+	// --- Sky animation ---
+
+	useEffect(() => {
+		if (animate === false) return;
+		const el = skyRef.current;
+		if (!el) return;
+
+		const cols = sceneryCols;
+
+		const render = () => {
+			el.innerHTML = renderSky({
+				userId, isNight, isPlaying,
+				cloudOffset: Math.floor(cloudOffset.current),
+				twinkleFrame: twinkleFrame.current,
+				cols,
+			});
+		};
+
+		render();
+
+		const cloudId = setInterval(() => {
+			cloudOffset.current += isPlaying ? 1.4 : 1;
+			render();
+		}, 100);
+
+		const twinkleId = setInterval(() => {
+			twinkleFrame.current += 1;
+			render();
+		}, 200);
+
+		return () => {
+			clearInterval(cloudId);
+			clearInterval(twinkleId);
+		};
+	}, [userId, isNight, isPlaying, animate, sceneryCols]);
+
 	// --- Render ---
 
 	useEffect(() => {
@@ -190,23 +273,65 @@ export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = fal
 		}
 	}, [frame, frames, drawFrame, dragAngle, hasDragged, userId, stage, animate, dancing]);
 
+	const sceneryPreStyle = {
+		margin: 0,
+		padding: 0,
+		font: `${size}px ${FONT_FAMILY}`,
+		lineHeight: `${metrics.lineH}px`,
+		letterSpacing: 0,
+		overflow: "hidden" as const,
+		pointerEvents: "none" as const,
+	};
+
 	return (
-		<canvas
-			ref={canvasRef}
-			width={metrics.canvasW}
-			height={metrics.canvasH}
-			onMouseDown={onMouseDown}
-			onMouseMove={onMouseMove}
-			onMouseUp={stopDrag}
-			onMouseLeave={stopDrag}
-			style={{
-				width: metrics.canvasW,
-				height: metrics.canvasH,
-				imageRendering: "pixelated",
-				userSelect: "none",
-				cursor: isDragging ? "grabbing" : "grab",
-			}}
-			aria-label={`A stage ${stage} herzie`}
-		/>
+		<>
+			{/* Sky — fixed to window top, full width */}
+			<pre
+				ref={skyRef}
+				style={{
+					...sceneryPreStyle,
+					position: "fixed",
+					top: 0,
+					left: 0,
+					width: "100vw",
+					zIndex: 0,
+				}}
+			/>
+			{/* Creature + ground wrapper */}
+			<div style={{ position: "relative" }}>
+				<canvas
+					ref={canvasRef}
+					width={metrics.canvasW}
+					height={metrics.canvasH}
+					onMouseDown={onMouseDown}
+					onMouseMove={onMouseMove}
+					onMouseUp={stopDrag}
+					onMouseLeave={stopDrag}
+					style={{
+						position: "relative",
+						zIndex: 1,
+						width: metrics.canvasW,
+						height: metrics.canvasH,
+						imageRendering: "pixelated",
+						userSelect: "none",
+						cursor: isDragging ? "grabbing" : "grab",
+					}}
+					aria-label={`A stage ${stage} herzie`}
+				/>
+				{/* Ground — anchored to canvas bottom, breaks out to full width */}
+				<pre
+					ref={groundRef}
+					style={{
+						...sceneryPreStyle,
+						position: "absolute",
+						bottom: metrics.lineH * 4,
+						left: "50%",
+						transform: "translateX(-50%)",
+						width: "100vw",
+						zIndex: 0,
+					}}
+				/>
+			</div>
+		</>
 	);
 }
