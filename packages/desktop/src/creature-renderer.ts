@@ -165,7 +165,7 @@ function intSeeded(min: number, max: number, rng: () => number): number {
 
 // --- Sphere primitives ---
 
-type ColorZone = "primary" | "accent" | "eye" | "pupil" | "dark";
+type ColorZone = "primary" | "accent" | "eye" | "pupil" | "dark" | "wearable";
 
 interface Sphere {
 	center: V3;
@@ -226,6 +226,8 @@ export interface FrameAnchor {
 	screenY: number;
 	visible: boolean;
 	depth: number;
+	/** Projected radius of the parent sphere in screen (cell) units. */
+	screenRadius: number;
 }
 
 export interface Cell {
@@ -512,6 +514,35 @@ function buildSpiky(p: CreatureParams, stage: number): Sphere[] {
 
 const BODY_BUILDERS = [buildBlob, buildTall, buildWide, buildSpiky];
 
+// --- Wearable sphere builders ---
+
+function buildHeadphoneSpheres(spheres: Sphere[]): Sphere[] {
+	const head = spheres.find((s) => s.part === "head");
+	if (!head) return [];
+
+	const [hx, hy, hz] = head.center;
+	const hr = head.radius;
+	const result: Sphere[] = [];
+
+	// Ear cups — two spheres at ±headRadius, vertically centered on head
+	const cupR = hr * 0.28;
+	result.push({ center: [hx - hr * 0.95, hy, hz], radius: cupR, zone: "wearable", part: "head" });
+	result.push({ center: [hx + hr * 0.95, hy, hz], radius: cupR, zone: "wearable", part: "head" });
+
+	// Band — arc of spheres over the top of the head
+	const bandR = hr * 0.18;
+	const bandSteps = 9;
+	for (let i = 0; i <= bandSteps; i++) {
+		const t = i / bandSteps; // 0 = left cup, 1 = right cup
+		const angle = Math.PI * t; // π to 0 — arc over the top
+		const bx = hx + Math.cos(angle) * hr * 0.95;
+		const by = hy - Math.sin(angle) * hr * 1.05;
+		result.push({ center: [bx, by, hz], radius: bandR, zone: "wearable", part: "head" });
+	}
+
+	return result;
+}
+
 function buildCreatureSpheres(params: CreatureParams, stage: number): Sphere[] {
 	const spheres = BODY_BUILDERS[params.bodyType](params, stage);
 	centerVertically(spheres);
@@ -671,6 +702,8 @@ function zoneColor(zone: ColorZone, brightness: number, colors: ColorTriplet): s
 			return brightness > 0.45 ? colors.base : colors.dim;
 		case "dark":
 			return colors.dim;
+		case "wearable":
+			return brightness > 0.6 ? "#888" : brightness > 0.3 ? "#666" : "#444";
 		default:
 			return brightness > 0.6 ? colors.bright : brightness > 0.3 ? colors.base : colors.dim;
 	}
@@ -798,11 +831,17 @@ function renderCreatureFrame(
 		const nRotated = rotY(nTilted, yAngle);
 		const visible = nRotated[2] < 0;
 
+		const parentRadius = transformed[parentIdx].radius;
+		const screenRadius = depth > 0.01
+			? (parentRadius / depth) * (SW * 0.5 / HALF_W)
+			: 0;
+
 		anchors[anchor.name] = {
 			screenX: Math.round(screenX),
 			screenY: Math.round(screenY),
 			visible,
 			depth,
+			screenRadius,
 		};
 	}
 
@@ -817,13 +856,14 @@ const frameCache = new Map<string, FrameData[]>();
  * Generate idle animation frames — fixed Y angle with per-part breathing offsets.
  * 60 frames at 50ms = 3s loop.
  */
-export function generateIdleFrames(userId: string, stage: number): FrameData[] {
-	const key = `idle:${userId}:${stage}`;
+export function generateIdleFrames(userId: string, stage: number, wearables?: string[]): FrameData[] {
+	const key = `idle:${userId}:${stage}:${wearables?.sort().join(",") ?? ""}`;
 	const cached = frameCache.get(key);
 	if (cached) return cached;
 
 	const params = generateCreatureParams(userId);
 	const baseSpheres = buildCreatureSpheres(params, stage);
+	if (wearables?.includes("headphones")) baseSpheres.push(...buildHeadphoneSpheres(baseSpheres));
 	const anchors = getAnchors(baseSpheres, params, stage);
 	const colors = buildColorTriplet(CREATURE_PALETTE[params.colorIndex]);
 
@@ -844,13 +884,15 @@ export function generateRotationFrames(
 	userId: string,
 	stage: number,
 	frameCount = 36,
+	wearables?: string[],
 ): FrameData[] {
-	const key = `rot:${userId}:${stage}`;
+	const key = `rot:${userId}:${stage}:${wearables?.sort().join(",") ?? ""}`;
 	const cached = frameCache.get(key);
 	if (cached) return cached;
 
 	const params = generateCreatureParams(userId);
 	const spheres = buildCreatureSpheres(params, stage);
+	if (wearables?.includes("headphones")) spheres.push(...buildHeadphoneSpheres(spheres));
 	const anchors = getAnchors(spheres, params, stage);
 	const colors = buildColorTriplet(CREATURE_PALETTE[params.colorIndex]);
 
@@ -866,13 +908,14 @@ export function generateRotationFrames(
  * Generate dance animation frames — rhythmic bounce at DEFAULT_Y_ANGLE.
  * 24 frames at 35ms = 840ms loop.
  */
-export function generateDanceFrames(userId: string, stage: number): FrameData[] {
-	const key = `dance:${userId}:${stage}`;
+export function generateDanceFrames(userId: string, stage: number, wearables?: string[]): FrameData[] {
+	const key = `dance:${userId}:${stage}:${wearables?.sort().join(",") ?? ""}`;
 	const cached = frameCache.get(key);
 	if (cached) return cached;
 
 	const params = generateCreatureParams(userId);
 	const baseSpheres = buildCreatureSpheres(params, stage);
+	if (wearables?.includes("headphones")) baseSpheres.push(...buildHeadphoneSpheres(baseSpheres));
 	const anchors = getAnchors(baseSpheres, params, stage);
 	const colors = buildColorTriplet(CREATURE_PALETTE[params.colorIndex]);
 
@@ -896,9 +939,11 @@ export function renderCreatureAtAngle(
 	yAngle: number,
 	frameIdx: number,
 	dancing = false,
+	wearables?: string[],
 ): FrameData {
 	const params = generateCreatureParams(userId);
 	const baseSpheres = buildCreatureSpheres(params, stage);
+	if (wearables?.includes("headphones")) baseSpheres.push(...buildHeadphoneSpheres(baseSpheres));
 	const anchors = getAnchors(baseSpheres, params, stage);
 	const colors = buildColorTriplet(CREATURE_PALETTE[params.colorIndex]);
 	const animated = dancing

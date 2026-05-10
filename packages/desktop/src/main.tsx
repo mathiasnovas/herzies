@@ -192,6 +192,7 @@ function HomeView({ state }: { state: AppState }) {
 					userId={herzie.id}
 					stage={herzie.stage}
 					isPlaying={!!nowPlaying}
+					wearables={["headphones"]}
 				/>
 			</div>
 

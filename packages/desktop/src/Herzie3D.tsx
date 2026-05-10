@@ -25,6 +25,8 @@ interface Props {
 	animate?: boolean;
 	/** Music is playing — switches to dance animation. No effect when animate is false. */
 	isPlaying?: boolean;
+	/** Active wearable IDs to render on the creature (e.g. ["headphones"]). */
+	wearables?: string[];
 }
 
 function useIsNight(): boolean {
@@ -45,7 +47,7 @@ function useIsNight(): boolean {
 	return isNight;
 }
 
-export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = false }: Props) {
+export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = false, wearables }: Props) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const skyRef = useRef<HTMLPreElement>(null);
 	const groundRef = useRef<HTMLPreElement>(null);
@@ -91,11 +93,11 @@ export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = fal
 
 	const frames = useMemo(
 		() => {
-			if (dancing) return generateDanceFrames(userId, stage);
-			if (animate) return generateRotationFrames(userId, stage);
-			return generateIdleFrames(userId, stage);
+			if (dancing) return generateDanceFrames(userId, stage, wearables);
+			if (animate) return generateRotationFrames(userId, stage, undefined, wearables);
+			return generateIdleFrames(userId, stage, wearables);
 		},
-		[userId, stage, animate, dancing],
+		[userId, stage, animate, dancing, wearables],
 	);
 
 	const interval = dancing ? 65 : (animate ? 80 : 50);
@@ -264,14 +266,14 @@ export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = fal
 			const yAngle = animate
 				? (frame / frames.length) * Math.PI * 2 + dragAngle
 				: DEFAULT_Y_ANGLE + dragAngle;
-			const data = renderCreatureAtAngle(userId, stage, yAngle, frame, dancing);
+			const data = renderCreatureAtAngle(userId, stage, yAngle, frame, dancing, wearables);
 			drawFrame(data.cells);
 		} else {
 			// Use pre-computed frames
 			const current = frames[frame] ?? frames[0];
 			if (current) drawFrame(current.cells);
 		}
-	}, [frame, frames, drawFrame, dragAngle, hasDragged, userId, stage, animate, dancing]);
+	}, [frame, frames, drawFrame, dragAngle, hasDragged, userId, stage, animate, dancing, wearables]);
 
 	const sceneryPreStyle = {
 		margin: 0,
