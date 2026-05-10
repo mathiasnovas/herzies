@@ -173,9 +173,10 @@ async fn fetch_inventory(
     }
     let client = Client::new();
     match api::api_fetch_inventory(&client).await {
-        Some((inventory, currency)) => Ok(Some(InventoryResult {
+        Some((inventory, currency, equipped)) => Ok(Some(InventoryResult {
             inventory,
             currency,
+            equipped,
         })),
         None => Ok(None),
     }
@@ -203,6 +204,12 @@ async fn sell_item(
         }
     }
     Ok(result)
+}
+
+#[tauri::command]
+async fn equip_item(item_id: String, action: String) -> Result<serde_json::Value, String> {
+    let client = Client::new();
+    api::api_equip_item(&client, &item_id, &action).await
 }
 
 #[tauri::command]
@@ -259,6 +266,7 @@ struct FriendResult {
 struct InventoryResult {
     inventory: Inventory,
     currency: u32,
+    equipped: Vec<String>,
 }
 
 // --- Background loops ---
@@ -550,6 +558,7 @@ pub fn run() {
             friend_lookup,
             fetch_inventory,
             sell_item,
+            equip_item,
             trade_create,
             trade_join,
             trade_offer,

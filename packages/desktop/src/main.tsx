@@ -134,8 +134,15 @@ function TabBar({ view, setView }: { view: View; setView: (v: View) => void }) {
 
 // --- Home View ---
 
-function HomeView({ state }: { state: AppState }) {
+function HomeView({ state, stageOverride }: { state: AppState; stageOverride?: number | null }) {
 	const { herzie, nowPlaying, multipliers, isConnected } = state;
+	const [equipped, setEquipped] = useState<string[]>([]);
+
+	useEffect(() => {
+		herzies.fetchInventory().then((data) => {
+			if (data) setEquipped(data.equipped ?? []);
+		});
+	}, []);
 
 	if (!herzie) return null;
 
@@ -190,9 +197,9 @@ function HomeView({ state }: { state: AppState }) {
 			>
 				<Herzie3D
 					userId={herzie.id}
-					stage={herzie.stage}
+					stage={stageOverride ?? herzie.stage}
 					isPlaying={!!nowPlaying}
-					wearables={["headphones"]}
+					wearables={equipped}
 				/>
 			</div>
 
@@ -342,11 +349,13 @@ function FriendProfileView({
 	onBack,
 	onTrade,
 	onRemove,
+	stageOverride,
 }: {
 	profile: HerzieProfile;
 	onBack: () => void;
 	onTrade: () => void;
 	onRemove: () => void;
+	stageOverride?: number | null;
 }) {
 	const [confirmRemove, setConfirmRemove] = useState(false);
 
@@ -358,6 +367,8 @@ function FriendProfileView({
 					justifyContent: "space-between",
 					alignItems: "center",
 					marginBottom: 8,
+					position: "relative",
+					zIndex: 10,
 				}}
 			>
 				<BackButton onClick={onBack} />
@@ -378,7 +389,7 @@ function FriendProfileView({
 				>
 					<Herzie3D
 						userId={profile.friendCode}
-						stage={profile.stage}
+						stage={stageOverride ?? profile.stage}
 					/>
 				</div>
 			)}
@@ -459,9 +470,11 @@ function FriendProfileView({
 function FriendsView({
 	herzie,
 	onStartTrade,
+	stageOverride,
 }: {
 	herzie: Herzie;
 	onStartTrade: (code: string) => void;
+	stageOverride?: number | null;
 }) {
 	const [friends, setFriends] = useState<Record<string, HerzieProfile> | null>(
 		null,
@@ -515,6 +528,7 @@ function FriendsView({
 					await handleRemove(selectedFriend.friendCode);
 					setSelectedFriend(null);
 				}}
+				stageOverride={stageOverride}
 			/>
 		);
 	}
@@ -662,9 +676,10 @@ function SellControls({
 	);
 }
 
-function InventoryView({ herzie, initialItem }: { herzie: Herzie; initialItem?: string | null }) {
+function InventoryView({ herzie, initialItem, onLog }: { herzie: Herzie; initialItem?: string | null; onLog?: (msg: string) => void }) {
 	const [inventory, setInventory] = useState<Inventory | null>(null);
 	const [currency, setCurrency] = useState(herzie.currency);
+	const [equipped, setEquipped] = useState<string[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [selectedItem, setSelectedItem] = useState<string | null>(initialItem ?? null);
 
@@ -673,6 +688,7 @@ function InventoryView({ herzie, initialItem }: { herzie: Herzie; initialItem?: 
 		if (data) {
 			setInventory(data.inventory);
 			setCurrency(data.currency);
+			setEquipped(data.equipped ?? []);
 		}
 		setLoading(false);
 	}, []);
@@ -689,8 +705,31 @@ function InventoryView({ herzie, initialItem }: { herzie: Herzie; initialItem?: 
 		}
 	};
 
+	const handleEquip = async (itemId: string) => {
+		const isEquipped = equipped.includes(itemId);
+		const action = isEquipped ? "unequip" : "equip";
+		const item = getItem(itemId);
+		const name = item?.name ?? itemId;
+		try {
+			const result = await herzies.equipItem(itemId, action);
+			setEquipped(result.equipped);
+			onLog?.(action === "equip" ? `Equipped ${name}` : `Unequipped ${name}`);
+		} catch (e: unknown) {
+			const msg = e instanceof Error ? e.message : String(e);
+			onLog?.(`Failed to ${action} ${name}: ${msg}`);
+		}
+	};
+
+	const rarityOrder: Record<string, number> = { legendary: 0, rare: 1, uncommon: 2, common: 3 };
 	const items = inventory
-		? Object.entries(inventory).filter(([, qty]) => qty > 0)
+		? Object.entries(inventory)
+				.filter(([, qty]) => qty > 0)
+				.sort((a, b) => {
+					const ra = rarityOrder[getItem(a[0])?.rarity ?? "common"] ?? 3;
+					const rb = rarityOrder[getItem(b[0])?.rarity ?? "common"] ?? 3;
+					if (ra !== rb) return ra - rb;
+					return (getItem(a[0])?.name ?? a[0]).localeCompare(getItem(b[0])?.name ?? b[0]);
+				})
 		: [];
 	const selected = selectedItem ? getItem(selectedItem) : null;
 
@@ -739,6 +778,21 @@ function InventoryView({ herzie, initialItem }: { herzie: Herzie; initialItem?: 
 				<div style={{ fontSize: 12, color: "#aaa", marginBottom: 12 }}>
 					{selected.description}
 				</div>
+
+				{/* Equip/Unequip */}
+				{selected.equipable && (
+					<button
+						style={{
+							...btnStyle,
+							color: equipped.includes(selectedItem) ? "#f87171" : "#4ade80",
+							marginBottom: 8,
+							alignSelf: "flex-start",
+						}}
+						onClick={() => handleEquip(selectedItem)}
+					>
+						{equipped.includes(selectedItem) ? "Unequip" : "Equip"}
+					</button>
+				)}
 
 				{/* Sell controls */}
 				{selected.sellPrice && qty > 0 && (
@@ -819,6 +873,9 @@ function InventoryView({ herzie, initialItem }: { herzie: Herzie; initialItem?: 
 									<div style={{ fontSize: 10, color: "#666" }}>
 										x{qty}
 										{def?.sellPrice ? ` · $${def.sellPrice} each` : ""}
+										{equipped.includes(itemId) && (
+											<span style={{ color: "#4ade80", marginLeft: 4 }}>[equipped]</span>
+										)}
 									</div>
 								</div>
 								<span style={{ color: "#555", fontSize: 12 }}>→</span>
@@ -1169,7 +1226,7 @@ function TradeView({
 
 // --- Settings View ---
 
-function SettingsView({ state }: { state: AppState }) {
+function SettingsView({ state, stageOverride, onStageOverride }: { state: AppState; stageOverride: number | null; onStageOverride: (v: number | null) => void }) {
 	const [loggingIn, setLoggingIn] = useState(false);
 
 	return (
@@ -1226,6 +1283,30 @@ function SettingsView({ state }: { state: AppState }) {
 					</button>
 				</div>
 			</div>
+
+			{/* Dev-only stage selector */}
+			{import.meta.env.DEV && (
+				<div style={{ marginBottom: 16 }}>
+					<div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>
+						Stage Preview
+					</div>
+					<div style={{ display: "flex", gap: 4 }}>
+						{[null, 1, 2, 3].map((s) => (
+							<button
+								key={s ?? "default"}
+								style={{
+									...btnStyle,
+									color: stageOverride === s ? "#7dd3fc" : "#888",
+									borderColor: stageOverride === s ? "#7dd3fc" : "#555",
+								}}
+								onClick={() => onStageOverride(s)}
+							>
+								{s === null ? "Default" : `Stage ${s}`}
+							</button>
+						))}
+					</div>
+				</div>
+			)}
 
 			{/* Version */}
 			<div style={{ marginTop: "auto", fontSize: 11, color: "#555" }}>
@@ -1308,15 +1389,18 @@ function App() {
 	const [activityLog, setActivityLog] = useState<{ time: string; message: string }[]>([]);
 	const activityRef = useRef<HTMLDivElement>(null);
 	const [deepLinkItem, setDeepLinkItem] = useState<string | null>(null);
+	const [stageOverride, setStageOverride] = useState<number | null>(null);
+
+	const addLog = useCallback((message: string) => {
+		const now = new Date();
+		const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+		setActivityLog((prev) => [...prev.slice(-49), { time, message }]);
+	}, []);
 
 	useEffect(() => {
 		herzies.getState().then(setState);
 		const unlistenState = herzies.onStateUpdate(setState);
-		const unlistenActivity = herzies.onActivity((message) => {
-			const now = new Date();
-			const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-			setActivityLog((prev) => [...prev.slice(-49), { time, message }]);
-		});
+		const unlistenActivity = herzies.onActivity(addLog);
 		const unlistenDeepLink = herzies.onDeepLink((itemId) => {
 			setDeepLinkItem(itemId);
 			setView("inventory");
@@ -1376,15 +1460,16 @@ function App() {
 					marginBottom: 8,
 				}}
 			>
-				{view === "home" && <HomeView state={state} />}
+				{view === "home" && <HomeView state={state} stageOverride={stageOverride} />}
 				{view === "friends" && herzie && (
-					<FriendsView herzie={herzie} onStartTrade={handleStartTrade} />
+					<FriendsView herzie={herzie} onStartTrade={handleStartTrade} stageOverride={stageOverride} />
 				)}
 				{view === "inventory" && herzie && (
 					<InventoryView
 						herzie={herzie}
 						initialItem={deepLinkItem}
 						key={deepLinkItem ?? "inv"}
+						onLog={addLog}
 					/>
 				)}
 				{view === "trade" && herzie && (
@@ -1397,7 +1482,7 @@ function App() {
 						}}
 					/>
 				)}
-				{view === "settings" && <SettingsView state={state} />}
+				{view === "settings" && <SettingsView state={state} stageOverride={stageOverride} onStageOverride={setStageOverride} />}
 			</div>
 			{herzie && activityLog.length > 0 && (
 				<div

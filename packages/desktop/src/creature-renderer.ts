@@ -325,7 +325,7 @@ function buildBlob(p: CreatureParams, stage: number): Sphere[] {
 
 	const headR = 0.65 * p.headRatio * s;
 	// Head pushed up further from body for clear silhouette separation
-	const headY = stage === 1 ? 0 : stage === 2 ? -0.55 * s : -0.75 * s;
+	const headY = stage === 1 ? 0 : stage === 2 ? -0.55 * s : -0.45 * s;
 	spheres.push({ center: [0, headY, 0], radius: headR, zone: "primary", part: "head" });
 
 	const ex = p.eyeSpacing * s;
@@ -375,7 +375,7 @@ function buildTall(p: CreatureParams, stage: number): Sphere[] {
 	const spheres: Sphere[] = [];
 
 	const headR = 0.5 * p.headRatio * s;
-	const headY = stage === 1 ? 0 : stage === 2 ? -0.65 * s : -0.85 * s;
+	const headY = stage === 1 ? 0 : stage === 2 ? -0.65 * s : -0.55 * s;
 	spheres.push({ center: [0, headY, 0], radius: headR, zone: "primary", part: "head" });
 	spheres.push({ center: [0, headY - headR * 0.5, 0], radius: headR * 0.85, zone: "primary", part: "head" });
 
@@ -421,7 +421,7 @@ function buildWide(p: CreatureParams, stage: number): Sphere[] {
 	const spheres: Sphere[] = [];
 
 	const headR = 0.45 * p.headRatio * s;
-	const headY = stage === 1 ? 0 : stage === 2 ? -0.4 * s : -0.6 * s;
+	const headY = stage === 1 ? 0 : stage === 2 ? -0.4 * s : -0.35 * s;
 	spheres.push({ center: [-0.18 * s, headY, 0], radius: headR, zone: "primary", part: "head" });
 	spheres.push({ center: [0.18 * s, headY, 0], radius: headR, zone: "primary", part: "head" });
 	spheres.push({ center: [0, headY, 0], radius: headR * 0.8, zone: "primary", part: "head" });
@@ -465,7 +465,7 @@ function buildSpiky(p: CreatureParams, stage: number): Sphere[] {
 	const spheres: Sphere[] = [];
 
 	const headR = 0.55 * p.headRatio * s;
-	const headY = stage === 1 ? 0 : stage === 2 ? -0.5 * s : -0.7 * s;
+	const headY = stage === 1 ? 0 : stage === 2 ? -0.5 * s : -0.4 * s;
 	spheres.push({ center: [0, headY, 0], radius: headR, zone: "primary", part: "head" });
 
 	const ex = p.eyeSpacing * s;

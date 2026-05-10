@@ -29,6 +29,11 @@ export const sellItemSchema = z.object({
 	quantity: z.number().int().min(1),
 });
 
+export const equipItemSchema = z.object({
+	itemId: z.string().min(1),
+	action: z.enum(["equip", "unequip"]),
+});
+
 export const createTradeSchema = z.object({
 	targetFriendCode: z.string().min(1),
 });

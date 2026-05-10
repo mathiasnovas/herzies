@@ -193,7 +193,7 @@ pub async fn api_lookup_herzies(
     result
 }
 
-pub async fn api_fetch_inventory(client: &Client) -> Option<(Inventory, u32)> {
+pub async fn api_fetch_inventory(client: &Client) -> Option<(Inventory, u32, Vec<String>)> {
     let resp = api_fetch(client, reqwest::Method::GET, "/inventory", None).await?;
     if !resp.status().is_success() {
         return None;
@@ -201,7 +201,23 @@ pub async fn api_fetch_inventory(client: &Client) -> Option<(Inventory, u32)> {
     let data: serde_json::Value = resp.json().await.ok()?;
     let inventory: Inventory = serde_json::from_value(data["inventory"].clone()).ok()?;
     let currency = data["currency"].as_u64().unwrap_or(0) as u32;
-    Some((inventory, currency))
+    let equipped: Vec<String> = serde_json::from_value(data["equipped"].clone()).unwrap_or_default();
+    Some((inventory, currency, equipped))
+}
+
+pub async fn api_equip_item(client: &Client, item_id: &str, action: &str) -> Result<serde_json::Value, String> {
+    let body = serde_json::json!({ "itemId": item_id, "action": action });
+    let resp = api_fetch(client, reqwest::Method::POST, "/inventory/equip", Some(body)).await
+        .ok_or_else(|| "Network error".to_string())?;
+    let status = resp.status();
+    let text = resp.text().await.map_err(|e| format!("Read error: {e}"))?;
+    let data: serde_json::Value = serde_json::from_str(&text)
+        .map_err(|_| format!("Server returned {status}"))?;
+    if !status.is_success() {
+        let msg = data["error"].as_str().unwrap_or("Unknown error");
+        return Err(msg.to_string());
+    }
+    Ok(data)
 }
 
 pub async fn api_sell_item(

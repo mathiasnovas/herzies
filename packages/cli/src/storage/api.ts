@@ -175,7 +175,7 @@ export async function apiRemoveFriend(
 }
 
 /** Fetch inventory via game server */
-export async function apiFetchInventory(): Promise<{ inventory: Inventory; currency: number } | null> {
+export async function apiFetchInventory(): Promise<{ inventory: Inventory; currency: number; equipped: string[] } | null> {
 	try {
 		const res = await apiFetch("/inventory");
 		if (!res.ok) return null;
@@ -183,7 +183,22 @@ export async function apiFetchInventory(): Promise<{ inventory: Inventory; curre
 		return {
 			inventory: data.inventory as Inventory,
 			currency: (data.currency ?? 0) as number,
+			equipped: (data.equipped as string[]) ?? [],
 		};
+	} catch {
+		return null;
+	}
+}
+
+/** Equip or unequip an item */
+export async function apiEquipItem(itemId: string, action: "equip" | "unequip"): Promise<{ equipped: string[] } | null> {
+	try {
+		const res = await apiFetch("/inventory/equip", {
+			method: "POST",
+			body: JSON.stringify({ itemId, action }),
+		});
+		if (!res.ok) return null;
+		return await res.json();
 	} catch {
 		return null;
 	}

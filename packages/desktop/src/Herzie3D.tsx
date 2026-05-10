@@ -163,6 +163,7 @@ export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = fal
 	// --- Drag handlers ---
 
 	const onMouseDown = useCallback((e: React.MouseEvent) => {
+		e.preventDefault(); // prevent native drag-selection overlay
 		cancelAnimationFrame(momentumRaf.current);
 		velocity.current = 0;
 		dragging.current = true;
@@ -299,24 +300,32 @@ export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = fal
 					zIndex: 0,
 				}}
 			/>
-			{/* Creature + ground wrapper */}
-			<div style={{ position: "relative" }}>
+			{/* Creature + ground wrapper — drag area spans full window width */}
+			<div
+				onMouseDown={onMouseDown}
+				onMouseMove={onMouseMove}
+				onMouseUp={stopDrag}
+				onMouseLeave={stopDrag}
+				style={{
+					position: "relative",
+					width: "100vw",
+					marginLeft: "calc(-50vw + 50%)",
+					display: "flex",
+					justifyContent: "center",
+					cursor: isDragging ? "grabbing" : "grab",
+					userSelect: "none",
+				}}
+			>
 				<canvas
 					ref={canvasRef}
 					width={metrics.canvasW}
 					height={metrics.canvasH}
-					onMouseDown={onMouseDown}
-					onMouseMove={onMouseMove}
-					onMouseUp={stopDrag}
-					onMouseLeave={stopDrag}
 					style={{
 						position: "relative",
 						zIndex: 1,
 						width: metrics.canvasW,
 						height: metrics.canvasH,
 						imageRendering: "pixelated",
-						userSelect: "none",
-						cursor: isDragging ? "grabbing" : "grab",
 					}}
 					aria-label={`A stage ${stage} herzie`}
 				/>
@@ -326,7 +335,7 @@ export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = fal
 					style={{
 						...sceneryPreStyle,
 						position: "absolute",
-						bottom: metrics.lineH * 4,
+						bottom: metrics.lineH * 4 + 6,
 						left: "50%",
 						transform: "translateX(-50%)",
 						width: "100vw",

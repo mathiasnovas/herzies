@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import type { Herzie, Inventory } from "@herzies/shared";
 import { getItem, RARITY_COLORS, RARITY_LABELS } from "../art/items.js";
 import { ItemDisplay } from "./ItemDisplay.js";
-import { isLoggedIn, apiFetchInventory, apiSellItem } from "../storage/api.js";
+import { isLoggedIn, apiFetchInventory, apiSellItem, apiEquipItem } from "../storage/api.js";
 
 interface Props {
 	herzie: Herzie;
@@ -19,6 +19,7 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 	const [inventory, setInventory] = useState<Inventory | null>(null);
 	const [currency, setCurrency] = useState(herzie.currency);
 	const [loading, setLoading] = useState(true);
+	const [equipped, setEquipped] = useState<string[]>([]);
 	const [sellMode, setSellMode] = useState<SellMode>(null);
 	const [sellMessage, setSellMessage] = useState<string | null>(null);
 
@@ -31,6 +32,7 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 			if (result) {
 				setInventory(result.inventory);
 				setCurrency(result.currency);
+				setEquipped(result.equipped);
 			} else {
 				setInventory({});
 			}
@@ -39,10 +41,16 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 	}, []);
 
 	// Get sorted item entries (non-zero quantities)
+	const rarityOrder: Record<string, number> = { legendary: 0, rare: 1, uncommon: 2, common: 3 };
 	const entries = inventory
 		? Object.entries(inventory)
 				.filter(([, qty]) => qty > 0)
-				.sort((a, b) => a[0].localeCompare(b[0]))
+				.sort((a, b) => {
+					const ra = rarityOrder[getItem(a[0])?.rarity ?? "common"] ?? 3;
+					const rb = rarityOrder[getItem(b[0])?.rarity ?? "common"] ?? 3;
+					if (ra !== rb) return ra - rb;
+					return (getItem(a[0])?.name ?? a[0]).localeCompare(getItem(b[0])?.name ?? b[0]);
+				})
 		: [];
 
 	useInput((_input, key) => {
@@ -91,7 +99,25 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 				setSellMessage(null);
 			}
 		}
+		if (_input === "e" && entries.length > 0) {
+			const [itemId] = entries[selected];
+			const item = getItem(itemId);
+			if (item?.equipable) {
+				const isEquipped = equipped.includes(itemId);
+				doEquip(itemId, isEquipped ? "unequip" : "equip");
+			}
+		}
 	});
+
+	async function doEquip(itemId: string, action: "equip" | "unequip") {
+		const result = await apiEquipItem(itemId, action);
+		if (result) {
+			setEquipped(result.equipped);
+			setSellMessage(action === "equip" ? "Equipped!" : "Unequipped!");
+		} else {
+			setSellMessage("Failed to update equipment.");
+		}
+	}
 
 	async function doSell(itemId: string, quantity: number) {
 		const result = await apiSellItem(itemId, quantity);
@@ -196,6 +222,9 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 				{item?.description && (
 					<Text dimColor italic>{item.description}</Text>
 				)}
+				{equipped.includes(viewing) && (
+					<Text color="green">[Equipped]</Text>
+				)}
 				{item?.sellPrice && (
 					<Text dimColor>Sell price: ${item.sellPrice} each</Text>
 				)}
@@ -234,6 +263,9 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 							{qty > 1 && (
 								<Text dimColor> x{qty}</Text>
 							)}
+							{equipped.includes(id) && (
+								<Text color="green"> [equipped]</Text>
+							)}
 							{item?.sellPrice && isSelected && (
 								<Text dimColor> (${item.sellPrice})</Text>
 							)}
@@ -242,7 +274,7 @@ export function InventoryView({ herzie, onBack, online }: Props) {
 				})}
 			</Box>
 			<Box marginTop={1}>
-				<Text dimColor>↑↓ navigate · Enter to view · s to sell · q to go back</Text>
+				<Text dimColor>↑↓ navigate · Enter to view · e to equip · s to sell · q to go back</Text>
 			</Box>
 		</Box>
 	);

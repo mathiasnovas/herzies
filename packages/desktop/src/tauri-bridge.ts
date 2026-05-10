@@ -42,7 +42,7 @@ export const herzies = {
 		invoke<Record<string, HerzieProfile>>("friend_lookup", { codes }),
 
 	fetchInventory: () =>
-		invoke<{ inventory: Inventory; currency: number } | null>(
+		invoke<{ inventory: Inventory; currency: number; equipped: string[] } | null>(
 			"fetch_inventory",
 		),
 	sellItem: (itemId: string, quantity: number) =>
@@ -51,6 +51,8 @@ export const herzies = {
 			newCurrency: number;
 			inventory: Inventory;
 		} | null>("sell_item", { itemId, quantity }),
+	equipItem: (itemId: string, action: "equip" | "unequip") =>
+		invoke<{ equipped: string[] }>("equip_item", { itemId, action }),
 
 	tradeCreate: (targetCode: string) =>
 		invoke<{ tradeId: string } | null>("trade_create", { targetCode }),
