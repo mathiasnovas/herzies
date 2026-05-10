@@ -29,10 +29,80 @@ export const DEFAULT_Y_ANGLE = 17 * (Math.PI / 180);
 // Creature scale
 const CS = 1.5;
 
-const AMBER = "#FFD700";
-const AMBER_DIM = "#B8960F";
-const AMBER_BRIGHT = "#FFEC80";
+const CREATURE_PALETTE = [
+	"#FFD700", // amber (original)
+	"#FF6B6B", // coral red
+	"#4ECDC4", // teal
+	"#A8E6CF", // sage green
+	"#C3A6FF", // soft violet
+	"#FF9F43", // warm orange
+	"#74B9FF", // sky blue
+	"#FD79A8", // rose pink
+	"#55EFC4", // mint
+	"#FDCB6E", // golden yellow
+];
+
 const EYE_COLOR = "#FFF8DC";
+
+// --- HSL color utilities ---
+
+interface ColorTriplet {
+	dim: string;
+	base: string;
+	bright: string;
+}
+
+function hexToHsl(hex: string): [number, number, number] {
+	const r = parseInt(hex.slice(1, 3), 16) / 255;
+	const g = parseInt(hex.slice(3, 5), 16) / 255;
+	const b = parseInt(hex.slice(5, 7), 16) / 255;
+	const max = Math.max(r, g, b), min = Math.min(r, g, b);
+	const l = (max + min) / 2;
+	if (max === min) return [0, 0, l];
+	const d = max - min;
+	const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+	let h = 0;
+	if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+	else if (max === g) h = ((b - r) / d + 2) / 6;
+	else h = ((r - g) / d + 4) / 6;
+	return [h, s, l];
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+	if (s === 0) {
+		const v = Math.round(l * 255);
+		return `#${v.toString(16).padStart(2, "0").repeat(3)}`.toUpperCase();
+	}
+	const hue2rgb = (p: number, q: number, t: number) => {
+		if (t < 0) t += 1;
+		if (t > 1) t -= 1;
+		if (t < 1 / 6) return p + (q - p) * 6 * t;
+		if (t < 1 / 2) return q;
+		if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+		return p;
+	};
+	const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+	const p = 2 * l - q;
+	const r = Math.round(hue2rgb(p, q, h + 1 / 3) * 255);
+	const g = Math.round(hue2rgb(p, q, h) * 255);
+	const b = Math.round(hue2rgb(p, q, h - 1 / 3) * 255);
+	return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`.toUpperCase();
+}
+
+function buildColorTriplet(hex: string): ColorTriplet {
+	const [h, s, l] = hexToHsl(hex);
+	// Dim: darken and desaturate slightly so cool pastels don't turn neon
+	const dimL = l * 0.55;
+	const dimS = Math.min(s, 0.6 + s * 0.2);
+	// Bright: lighten toward near-white while preserving hue
+	const brightL = Math.min(0.92, l + (1 - l) * 0.6);
+	const brightS = Math.max(0, s - 0.1);
+	return {
+		dim: hslToHex(h, dimS, dimL),
+		base: hex.toUpperCase(),
+		bright: hslToHex(h, brightS, brightL),
+	};
+}
 
 // --- Idle animation constants ---
 // Amplitudes in world units, applied to already-scaled sphere positions.
@@ -95,7 +165,7 @@ function intSeeded(min: number, max: number, rng: () => number): number {
 
 // --- Sphere primitives ---
 
-type ColorZone = "primary" | "accent" | "eye" | "dark";
+type ColorZone = "primary" | "accent" | "eye" | "pupil" | "dark";
 
 interface Sphere {
 	center: V3;
@@ -129,7 +199,7 @@ function applyDanceOffsets(spheres: Sphere[], frameIdx: number): Sphere[] {
 		let dx = 0;
 		if (s.part === "body") dy = bodyOff;
 		else if (s.part === "head") dy = headOff;
-		else if (s.part === "eye") dy = eyeOff;
+		else if (s.part === "eye" || s.part === "pupil") dy = eyeOff;
 		else if (s.part === "ear") dy = earOff;
 		else if (s.part === "spike") { dy = spikeYOff; dx = spikeXOff; }
 		else if (s.part === "arm-l" || s.part === "leg-l") dy = limbLOff;
@@ -174,6 +244,7 @@ export { SW, SH };
 
 export interface CreatureParams {
 	bodyType: number;
+	colorIndex: number;
 	bodyScale: number;
 	headRatio: number;
 	eyeSpacing: number;
@@ -193,9 +264,10 @@ export function generateCreatureParams(userId: string): CreatureParams {
 
 	return {
 		bodyType: intSeeded(0, 3, rng),
+		colorIndex: intSeeded(0, CREATURE_PALETTE.length - 1, rng),
 		bodyScale: rangeSeeded(0.85, 1.15, rng),
 		headRatio: rangeSeeded(0.65, 0.95, rng),
-		eyeSpacing: rangeSeeded(0.18, 0.32, rng),
+		eyeSpacing: rangeSeeded(0.10, 0.18, rng),
 		eyeSize: rangeSeeded(0.09, 0.15, rng),
 		eyeHeight: rangeSeeded(-0.25, -0.1, rng),
 		earCount: intSeeded(0, 2, rng),
@@ -214,6 +286,16 @@ function eyeZ(headR: number, eyeX: number, eyeY: number, eyeR: number): number {
 		Math.max(0, headR * headR - eyeX * eyeX - eyeY * eyeY),
 	);
 	return -(headSurfaceZ - eyeR * 0.3);
+}
+
+// --- Pupil geometry helper ---
+// Places a small dark sphere on the front face of an eye sphere.
+
+function addPupils(spheres: Sphere[], eyeRadius: number, leftCenter: V3, rightCenter: V3): void {
+	const pr = eyeRadius * 0.32;
+	const zOff = -eyeRadius * 0.85; // protrude toward camera
+	spheres.push({ center: [leftCenter[0], leftCenter[1], leftCenter[2] + zOff], radius: pr, zone: "pupil", part: "pupil" });
+	spheres.push({ center: [rightCenter[0], rightCenter[1], rightCenter[2] + zOff], radius: pr, zone: "pupil", part: "pupil" });
 }
 
 // --- Vertical centering ---
@@ -250,6 +332,7 @@ function buildBlob(p: CreatureParams, stage: number): Sphere[] {
 	const ez = eyeZ(headR, ex, ey - headY, er);
 	spheres.push({ center: [-ex, ey, ez], radius: er, zone: "eye", part: "eye" });
 	spheres.push({ center: [ex, ey, ez], radius: er, zone: "eye", part: "eye" });
+	addPupils(spheres, er, [-ex, ey, ez], [ex, ey, ez]);
 
 	for (let i = 0; i < p.earCount; i++) {
 		const side = p.earCount === 1 ? 0 : i === 0 ? -1 : 1;
@@ -300,6 +383,7 @@ function buildTall(p: CreatureParams, stage: number): Sphere[] {
 	const ez = eyeZ(headR, ex, ey - headY, er);
 	spheres.push({ center: [-ex, ey, ez], radius: er, zone: "eye", part: "eye" });
 	spheres.push({ center: [ex, ey, ez], radius: er, zone: "eye", part: "eye" });
+	addPupils(spheres, er, [-ex, ey, ez], [ex, ey, ez]);
 
 	for (let i = 0; i < p.earCount; i++) {
 		const side = p.earCount === 1 ? 0 : i === 0 ? -1 : 1;
@@ -346,6 +430,7 @@ function buildWide(p: CreatureParams, stage: number): Sphere[] {
 	const ez = eyeZ(headR, ex - 0.18 * s, ey - headY, er);
 	spheres.push({ center: [-ex, ey, ez], radius: er, zone: "eye", part: "eye" });
 	spheres.push({ center: [ex, ey, ez], radius: er, zone: "eye", part: "eye" });
+	addPupils(spheres, er, [-ex, ey, ez], [ex, ey, ez]);
 
 	for (let i = 0; i < p.earCount; i++) {
 		const side = p.earCount === 1 ? 0 : i === 0 ? -1 : 1;
@@ -387,6 +472,7 @@ function buildSpiky(p: CreatureParams, stage: number): Sphere[] {
 	const ez = eyeZ(headR, ex, ey - headY, er);
 	spheres.push({ center: [-ex, ey, ez], radius: er, zone: "eye", part: "eye" });
 	spheres.push({ center: [ex, ey, ez], radius: er, zone: "eye", part: "eye" });
+	addPupils(spheres, er, [-ex, ey, ez], [ex, ey, ez]);
 
 	const spikeCount = 2 + p.earCount;
 	const spikeR = p.earLength * 0.3 * s;
@@ -453,7 +539,7 @@ function applyIdleOffsets(spheres: Sphere[], frameIdx: number): Sphere[] {
 		let dy = 0;
 		if (s.part === "body") dy = bodyOff;
 		else if (s.part === "head") dy = headOff;
-		else if (s.part === "eye") dy = eyeOff;
+		else if (s.part === "eye" || s.part === "pupil") dy = eyeOff;
 		else if (s.part === "ear") dy = earOff;
 		else if (s.part === "spike") dy = spikeOff;
 		else if (s.part === "arm-l" || s.part === "leg-l") dy = limbLOff;
@@ -575,16 +661,18 @@ function projectPoint(p: V3): [number, number, number] {
 
 // --- Color for zone ---
 
-function zoneColor(zone: ColorZone, brightness: number): string {
+function zoneColor(zone: ColorZone, brightness: number, colors: ColorTriplet): string {
 	switch (zone) {
 		case "eye":
 			return EYE_COLOR;
+		case "pupil":
+			return "#111111";
 		case "accent":
-			return brightness > 0.45 ? AMBER : AMBER_DIM;
+			return brightness > 0.45 ? colors.base : colors.dim;
 		case "dark":
-			return AMBER_DIM;
+			return colors.dim;
 		default:
-			return brightness > 0.6 ? AMBER_BRIGHT : brightness > 0.3 ? AMBER : AMBER_DIM;
+			return brightness > 0.6 ? colors.bright : brightness > 0.3 ? colors.base : colors.dim;
 	}
 }
 
@@ -595,6 +683,7 @@ function renderCreatureFrame(
 	yAngle: number,
 	textureType: number,
 	anchorDefs: AnchorPoint[],
+	colors: ColorTriplet,
 ): FrameData {
 	const transformed = spheres.map((s) => {
 		const tilted: V3 = [
@@ -655,15 +744,17 @@ function renderCreatureFrame(
 			// Directional diffuse — max(0, ...) produces proper lit/shadow gradient
 			const diffuse = Math.max(0, dot3(normal, LIGHT));
 
-			let baseBright: number;
-			if (sp.zone === "eye") {
-				baseBright = 0.75;
+			let lit: number;
+			if (sp.zone === "pupil") {
+				// Force pupils to bottom 2 RAMP characters regardless of lighting
+				lit = 1 / (RAMP.length - 1);
+			} else if (sp.zone === "eye") {
+				lit = 0.75 * (0.15 + 0.85 * diffuse);
 			} else {
-				baseBright = 0.5 + applyTexture(textureType, nx, ny, nz);
+				const baseBright = 0.5 + applyTexture(textureType, nx, ny, nz);
+				// Lower ambient for cleaner gradient, less heavy-character noise
+				lit = baseBright * (0.15 + 0.85 * diffuse);
 			}
-
-			// Lower ambient for cleaner gradient, less heavy-character noise
-			const lit = baseBright * (0.15 + 0.85 * diffuse);
 			bright[sy][sx] = lit;
 			zones[sy][sx] = sp.zone;
 		}
@@ -676,7 +767,7 @@ function renderCreatureFrame(
 			const idx = Math.min(Math.floor(val * (RAMP.length - 1)), RAMP.length - 1);
 			const ch = RAMP[idx];
 			if (ch === " ") return EMPTY_CELL;
-			return { ch, color: zoneColor(zones[y][x], val) };
+			return { ch, color: zoneColor(zones[y][x], val, colors) };
 		}),
 	);
 
@@ -734,10 +825,11 @@ export function generateIdleFrames(userId: string, stage: number): FrameData[] {
 	const params = generateCreatureParams(userId);
 	const baseSpheres = buildCreatureSpheres(params, stage);
 	const anchors = getAnchors(baseSpheres, params, stage);
+	const colors = buildColorTriplet(CREATURE_PALETTE[params.colorIndex]);
 
 	const frames = Array.from({ length: IDLE_FRAMES }, (_, i) => {
 		const animated = applyIdleOffsets(baseSpheres, i);
-		return renderCreatureFrame(animated, DEFAULT_Y_ANGLE, params.textureType, anchors);
+		return renderCreatureFrame(animated, DEFAULT_Y_ANGLE, params.textureType, anchors, colors);
 	});
 
 	frameCache.set(key, frames);
@@ -760,9 +852,10 @@ export function generateRotationFrames(
 	const params = generateCreatureParams(userId);
 	const spheres = buildCreatureSpheres(params, stage);
 	const anchors = getAnchors(spheres, params, stage);
+	const colors = buildColorTriplet(CREATURE_PALETTE[params.colorIndex]);
 
 	const frames = Array.from({ length: frameCount }, (_, i) =>
-		renderCreatureFrame(spheres, (i / frameCount) * Math.PI * 2, params.textureType, anchors),
+		renderCreatureFrame(spheres, (i / frameCount) * Math.PI * 2, params.textureType, anchors, colors),
 	);
 
 	frameCache.set(key, frames);
@@ -781,10 +874,11 @@ export function generateDanceFrames(userId: string, stage: number): FrameData[] 
 	const params = generateCreatureParams(userId);
 	const baseSpheres = buildCreatureSpheres(params, stage);
 	const anchors = getAnchors(baseSpheres, params, stage);
+	const colors = buildColorTriplet(CREATURE_PALETTE[params.colorIndex]);
 
 	const frames = Array.from({ length: DANCE_FRAMES }, (_, i) => {
 		const animated = applyDanceOffsets(baseSpheres, i);
-		return renderCreatureFrame(animated, DEFAULT_Y_ANGLE, params.textureType, anchors);
+		return renderCreatureFrame(animated, DEFAULT_Y_ANGLE, params.textureType, anchors, colors);
 	});
 
 	frameCache.set(key, frames);
@@ -806,10 +900,16 @@ export function renderCreatureAtAngle(
 	const params = generateCreatureParams(userId);
 	const baseSpheres = buildCreatureSpheres(params, stage);
 	const anchors = getAnchors(baseSpheres, params, stage);
+	const colors = buildColorTriplet(CREATURE_PALETTE[params.colorIndex]);
 	const animated = dancing
 		? applyDanceOffsets(baseSpheres, frameIdx)
 		: applyIdleOffsets(baseSpheres, frameIdx);
-	return renderCreatureFrame(animated, yAngle, params.textureType, anchors);
+	return renderCreatureFrame(animated, yAngle, params.textureType, anchors, colors);
+}
+
+export function getCreatureColors(userId: string): { dim: string; base: string; bright: string } {
+	const params = generateCreatureParams(userId);
+	return buildColorTriplet(CREATURE_PALETTE[params.colorIndex]);
 }
 
 export function clearCreatureCache(): void {
