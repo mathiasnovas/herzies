@@ -26,6 +26,7 @@ export interface ItemDef {
 	rarity: Rarity;
 	frames: string[][]; // Each frame is an array of lines (with HTML color spans)
 	stackable?: boolean;
+	equipable?: boolean;
 	sellPrice?: number;
 }
 
@@ -369,6 +370,141 @@ function renderCdFrame(yAngle: number): string[] {
 	);
 }
 
+// --- Headphones rendering (ray-traced) ---
+
+function raySphere(
+	ox: number, oy: number, oz: number,
+	dx: number, dy: number, dz: number,
+	sx: number, sy: number, sz: number,
+	sr: number,
+): [number, V3] | null {
+	const ex = ox - sx, ey = oy - sy, ez = oz - sz;
+	const a = dx * dx + dy * dy + dz * dz;
+	const b = 2 * (ex * dx + ey * dy + ez * dz);
+	const c = ex * ex + ey * ey + ez * ez - sr * sr;
+	const disc = b * b - 4 * a * c;
+	if (disc < 0) return null;
+	const t = (-b - Math.sqrt(disc)) / (2 * a);
+	if (t < 0) return null;
+	const hx = ox + dx * t - sx, hy = oy + dy * t - sy, hz = oz + dz * t - sz;
+	const il = 1 / sr;
+	return [t, [hx * il, hy * il, hz * il]];
+}
+
+function rayChain(
+	ox: number, oy: number, oz: number,
+	dx: number, dy: number, dz: number,
+	centers: V3[], radius: number,
+): [number, V3] | null {
+	let best: [number, V3] | null = null;
+	for (const c of centers) {
+		const hit = raySphere(ox, oy, oz, dx, dy, dz, c[0], c[1], c[2], radius);
+		if (hit && (best === null || hit[0] < best[0])) best = hit;
+	}
+	return best;
+}
+
+function renderHeadphonesFrame(yAngle: number): string[] {
+	const bright: number[][] = Array.from({ length: SH }, () => Array(SW).fill(-1));
+	const zone: string[][] = Array.from({ length: SH }, () => Array(SW).fill(""));
+
+	const cosA = Math.cos(yAngle), sinA = Math.sin(yAngle);
+
+	const arcR = 1.7;
+	const tubeR = 0.14;
+	const cupR = 0.72;
+	const cupY = 0.45;
+	const padR = 0.35;
+
+	// Headband arc points
+	const bandPts: V3[] = [];
+	for (let i = 0; i <= 64; i++) {
+		const t = (i / 64) * Math.PI;
+		const lx = Math.cos(t) * arcR;
+		const ly = -Math.sin(t) * arcR * 0.85 - 0.15;
+		bandPts.push([lx * cosA, ly, -lx * sinA]);
+	}
+
+	// Connector bars
+	const connPts: V3[] = [];
+	for (const side of [-1, 1]) {
+		const bx = side * arcR;
+		const topY = -0.15;
+		for (let j = 0; j <= 8; j++) {
+			const frac = j / 8;
+			connPts.push([bx * cosA, topY + frac * (cupY - topY), -bx * sinA]);
+		}
+	}
+
+	const leftCup: V3 = [-arcR * cosA, cupY, arcR * sinA];
+	const rightCup: V3 = [arcR * cosA, cupY, -arcR * sinA];
+	const leftPad: V3 = [-arcR * cosA - sinA * 0.15, cupY, arcR * sinA - cosA * 0.15];
+	const rightPad: V3 = [arcR * cosA + sinA * 0.15, cupY, -arcR * sinA + cosA * 0.15];
+
+	const camZ = -CAM;
+	const fov = 2.2;
+
+	for (let sy2 = 0; sy2 < SH; sy2++) {
+		for (let sx = 0; sx < SW; sx++) {
+			const nx = ((sx + 0.5) / SW - 0.5) * fov * (SW / SH) / CHAR_ASPECT;
+			const ny = ((sy2 + 0.5) / SH - 0.5) * fov;
+			const rd = normV([nx, ny, 1]);
+
+			let bestT = Infinity;
+			let bestN: V3 = [0, 0, 0];
+			let bestZone = "";
+
+			// Ear cups
+			for (const cup of [leftCup, rightCup]) {
+				const hit = raySphere(0, 0, camZ, rd[0], rd[1], rd[2], cup[0], cup[1], cup[2], cupR);
+				if (hit && hit[0] < bestT) { bestT = hit[0]; bestN = hit[1]; bestZone = "cup"; }
+			}
+
+			// Ear pads
+			for (const pad of [leftPad, rightPad]) {
+				const hit = raySphere(0, 0, camZ, rd[0], rd[1], rd[2], pad[0], pad[1], pad[2], padR);
+				if (hit && hit[0] < bestT) { bestT = hit[0]; bestN = hit[1]; bestZone = "pad"; }
+			}
+
+			// Headband
+			const bandHit = rayChain(0, 0, camZ, rd[0], rd[1], rd[2], bandPts, tubeR);
+			if (bandHit && bandHit[0] < bestT) { bestT = bandHit[0]; bestN = bandHit[1]; bestZone = "band"; }
+
+			// Connectors
+			const connHit = rayChain(0, 0, camZ, rd[0], rd[1], rd[2], connPts, tubeR * 0.8);
+			if (connHit && connHit[0] < bestT) { bestT = connHit[0]; bestN = connHit[1]; bestZone = "band"; }
+
+			if (bestT < Infinity) {
+				const diffuse = Math.max(0, -dot3(bestN, LIGHT));
+				const ambient = 0.2;
+				const ref: V3 = [
+					bestN[0] * 2 * dot3(bestN, LIGHT) - LIGHT[0],
+					bestN[1] * 2 * dot3(bestN, LIGHT) - LIGHT[1],
+					bestN[2] * 2 * dot3(bestN, LIGHT) - LIGHT[2],
+				];
+				const spec = Math.pow(Math.max(0, -ref[2]), 16) * 0.3;
+				const lit = Math.min(1, ambient + diffuse * 0.65 + spec);
+				bright[sy2][sx] = lit;
+				zone[sy2][sx] = bestZone;
+			}
+		}
+	}
+
+	return bright.map((row, y) =>
+		row
+			.map((val, x) => {
+				if (val < 0) return " ";
+				const idx = Math.min(Math.floor(val * (RAMP.length - 1)), RAMP.length - 1);
+				const ch = RAMP[idx];
+				if (ch === " ") return " ";
+				if (zone[y][x] === "pad") return col("#3a3a3a", ch);
+				if (zone[y][x] === "cup") return val > 0.6 ? col("#e0b0ff", ch) : col("#c084fc", ch);
+				return val > 0.55 ? col("#BBBBBB", ch) : col("#888888", ch);
+			})
+			.join(""),
+	);
+}
+
 // --- Generate all frames ---
 function generateFrames(
 	renderFn: (angle: number) => string[],
@@ -381,6 +517,7 @@ function generateFrames(
 
 const firstEditionFrames = generateFrames(renderCardFrame);
 const cdFrames = generateFrames(renderCdFrame);
+const headphonesFrames = generateFrames(renderHeadphonesFrame);
 
 export const ITEMS: ItemDef[] = [
 	{
@@ -399,6 +536,14 @@ export const ITEMS: ItemDef[] = [
 		frames: cdFrames,
 		stackable: true,
 		sellPrice: 10,
+	},
+	{
+		id: "headphones",
+		name: "Headphones",
+		description: "Wearable headphones for your herzie.",
+		rarity: "uncommon",
+		frames: headphonesFrames,
+		equipable: true,
 	},
 ];
 

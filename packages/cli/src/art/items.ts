@@ -416,6 +416,188 @@ function generateCdFrames(): string[][] {
 
 const cdFrames = generateCdFrames();
 
+// --- Headphones rendering (ray-traced) ---
+
+/** Ray-sphere intersection: returns distance or -1 */
+function raySphere(
+	ox: number, oy: number, oz: number,
+	dx: number, dy: number, dz: number,
+	sx: number, sy: number, sz: number,
+	sr: number,
+): [number, V3] | null {
+	const ex = ox - sx, ey = oy - sy, ez = oz - sz;
+	const a = dx * dx + dy * dy + dz * dz;
+	const b = 2 * (ex * dx + ey * dy + ez * dz);
+	const c = ex * ex + ey * ey + ez * ez - sr * sr;
+	const disc = b * b - 4 * a * c;
+	if (disc < 0) return null;
+	const t = (-b - Math.sqrt(disc)) / (2 * a);
+	if (t < 0) return null;
+	const hx = ox + dx * t - sx, hy = oy + dy * t - sy, hz = oz + dz * t - sz;
+	const il = 1 / sr;
+	return [t, [hx * il, hy * il, hz * il]];
+}
+
+/** Ray-torus intersection for headband arc (thin tube swept along arc) */
+function rayTorus(
+	ox: number, oy: number, oz: number,
+	dx: number, dy: number, dz: number,
+	arcR: number, tubeR: number,
+	centers: V3[],
+): [number, V3] | null {
+	// Approximate torus as chain of small spheres along the arc
+	let best: [number, V3] | null = null;
+	for (const c of centers) {
+		const hit = raySphere(ox, oy, oz, dx, dy, dz, c[0], c[1], c[2], tubeR);
+		if (hit && (best === null || hit[0] < best[0])) best = hit;
+	}
+	return best;
+}
+
+function renderHeadphonesFrame(yAngle: number): string[] {
+	const bright: number[][] = Array.from({ length: SH }, () => Array(SW).fill(-1));
+	const zone: string[][] = Array.from({ length: SH }, () => Array(SW).fill(""));
+
+	const cosA = Math.cos(yAngle), sinA = Math.sin(yAngle);
+
+	// Build headband arc points in 3D (semicircle in XY plane, then rotated)
+	const arcR = 1.7; // headband radius
+	const tubeR = 0.14; // tube thickness
+	const cupR = 0.72; // ear cup sphere radius
+	const cupY = 0.45; // ear cup vertical position
+	const padR = 0.35; // ear pad (inner disc) radius
+
+	const bandPts: V3[] = [];
+	for (let i = 0; i <= 64; i++) {
+		const t = (i / 64) * Math.PI; // 0..PI semicircle
+		const lx = Math.cos(t) * arcR;
+		const ly = -Math.sin(t) * arcR * 0.85 - 0.15;
+		const lz = 0;
+		bandPts.push([lx * cosA + lz * sinA, ly, -lx * sinA + lz * cosA]);
+	}
+
+	// Connector bars from band end to cup center
+	const connPts: V3[] = [];
+	for (const side of [-1, 1]) {
+		const bx = side * arcR;
+		const topY = -0.15; // bottom of arc at endpoints
+		for (let j = 0; j <= 8; j++) {
+			const frac = j / 8;
+			const cx2 = bx;
+			const cy2 = topY + frac * (cupY - topY);
+			connPts.push([cx2 * cosA, cy2, -cx2 * sinA]);
+		}
+	}
+
+	// Ear cup centers (at ends of headband, lowered)
+	const leftCup: V3 = [-arcR * cosA, cupY, arcR * sinA];
+	const rightCup: V3 = [arcR * cosA, cupY, -arcR * sinA];
+
+	// Inner ear pad spheres (slightly recessed, darker)
+	const leftPad: V3 = [-arcR * cosA - sinA * 0.15, cupY, arcR * sinA - cosA * 0.15];
+	const rightPad: V3 = [arcR * cosA + sinA * 0.15, cupY, -arcR * sinA + cosA * 0.15];
+
+	// Camera setup - perspective projection matching card/CD style
+	const camZ = -CAM;
+	const fov = 2.2;
+
+	for (let sy = 0; sy < SH; sy++) {
+		for (let sx = 0; sx < SW; sx++) {
+			// Normalized screen coords
+			const nx = ((sx + 0.5) / SW - 0.5) * fov * (SW / SH) / CHAR_ASPECT;
+			const ny = ((sy + 0.5) / SH - 0.5) * fov;
+
+			// Ray direction
+			const rd = norm([nx, ny, 1]);
+
+			let bestT = Infinity;
+			let bestN: V3 = [0, 0, 0];
+			let bestZone = "";
+
+			// Test ear cups
+			for (const [cup, label] of [[leftCup, "cup"], [rightCup, "cup"]] as [V3, string][]) {
+				const hit = raySphere(0, 0, camZ, rd[0], rd[1], rd[2], cup[0], cup[1], cup[2], cupR);
+				if (hit && hit[0] < bestT) {
+					bestT = hit[0];
+					bestN = hit[1];
+					bestZone = label;
+				}
+			}
+
+			// Test ear pads (inner circle on cups)
+			for (const pad of [leftPad, rightPad]) {
+				const hit = raySphere(0, 0, camZ, rd[0], rd[1], rd[2], pad[0], pad[1], pad[2], padR);
+				if (hit && hit[0] < bestT) {
+					bestT = hit[0];
+					bestN = hit[1];
+					bestZone = "pad";
+				}
+			}
+
+			// Test headband (chain of spheres)
+			const bandHit = rayTorus(0, 0, camZ, rd[0], rd[1], rd[2], arcR, tubeR, bandPts);
+			if (bandHit && bandHit[0] < bestT) {
+				bestT = bandHit[0];
+				bestN = bandHit[1];
+				bestZone = "band";
+			}
+
+			// Test connectors
+			const connHit = rayTorus(0, 0, camZ, rd[0], rd[1], rd[2], arcR, tubeR * 0.8, connPts);
+			if (connHit && connHit[0] < bestT) {
+				bestT = connHit[0];
+				bestN = connHit[1];
+				bestZone = "band";
+			}
+
+			if (bestT < Infinity) {
+				const diffuse = Math.max(0, -dot3(bestN, LIGHT));
+				const ambient = 0.2;
+				// Specular highlight
+				const ref: V3 = [
+					bestN[0] * 2 * dot3(bestN, LIGHT) - LIGHT[0],
+					bestN[1] * 2 * dot3(bestN, LIGHT) - LIGHT[1],
+					bestN[2] * 2 * dot3(bestN, LIGHT) - LIGHT[2],
+				];
+				const spec = Math.pow(Math.max(0, -ref[2]), 16) * 0.3;
+				const lit = Math.min(1, ambient + diffuse * 0.65 + spec);
+				bright[sy][sx] = lit;
+				zone[sy][sx] = bestZone;
+			}
+		}
+	}
+
+	const bandColor = chalk.hex("#888888");
+	const bandHi = chalk.hex("#BBBBBB");
+	const cupColor = chalk.hex("#c084fc");
+	const cupHighlight = chalk.hex("#e0b0ff");
+	const padColor = chalk.hex("#3a3a3a");
+
+	return bright.map((row, y) =>
+		row
+			.map((val, x) => {
+				if (val < 0) return " ";
+				const idx = Math.min(Math.floor(val * (RAMP.length - 1)), RAMP.length - 1);
+				const ch = RAMP[idx];
+				if (ch === " ") return " ";
+				if (zone[y][x] === "pad") return padColor(ch);
+				if (zone[y][x] === "cup") return val > 0.6 ? cupHighlight(ch) : cupColor(ch);
+				return val > 0.55 ? bandHi(ch) : bandColor(ch);
+			})
+			.join(""),
+	);
+}
+
+function generateHeadphonesFrames(): string[][] {
+	const frames: string[][] = [];
+	for (let i = 0; i < 36; i++) {
+		frames.push(renderHeadphonesFrame((i / 36) * Math.PI * 2));
+	}
+	return frames;
+}
+
+const headphonesFrames = generateHeadphonesFrames();
+
 export const ITEMS: ItemDef[] = [
 	{
 		id: "first-edition",
@@ -437,6 +619,16 @@ export const ITEMS: ItemDef[] = [
 		stackable: true,
 		equipable: false,
 		sellPrice: 10,
+	},
+	{
+		id: "headphones",
+		name: "Headphones",
+		description: "Wearable headphones for your herzie.",
+		rarity: "uncommon",
+		art: headphonesFrames[0],
+		frames: headphonesFrames,
+		stackable: false,
+		equipable: true,
 	},
 ];
 
