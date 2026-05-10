@@ -30,10 +30,71 @@ const inputStyle: React.CSSProperties = {
 	color: "#e0e0e0",
 	border: "1px solid #555",
 	borderRadius: 4,
-	padding: "4px 8px",
-	fontSize: 12,
+	padding: "4px 10px",
+	fontSize: 11,
 	outline: "none",
 };
+
+// --- Shared components ---
+
+function BackButton({ onClick }: { onClick: () => void }) {
+	return (
+		<div
+			style={{
+				fontSize: 13,
+				fontWeight: "bold",
+				color: "#facc15",
+				cursor: "pointer",
+			}}
+			onClick={onClick}
+		>
+			← Back
+		</div>
+	);
+}
+
+function NumberTicker({
+	value,
+	min = 0,
+	max,
+	onChange,
+	size = "normal",
+}: {
+	value: number;
+	min?: number;
+	max: number;
+	onChange: (v: number) => void;
+	size?: "normal" | "small";
+}) {
+	const small = size === "small";
+	const bStyle = { ...btnStyle, ...(small ? { fontSize: 9, padding: "1px 5px" } : {}) };
+	const iStyle = {
+		...inputStyle,
+		width: small ? 36 : 60,
+		textAlign: "center" as const,
+		...(small ? { fontSize: 9, padding: "1px 2px" } : {}),
+	};
+	const clamped = Math.max(min, Math.min(value, max));
+
+	return (
+		<>
+			<button style={bStyle} onClick={() => onChange(Math.max(min, clamped - 1))}>
+				−
+			</button>
+			<input
+				type="number"
+				min={min}
+				max={max}
+				value={clamped}
+				onChange={(e) => onChange(Math.max(min, Math.min(max, Number(e.target.value))))}
+				style={iStyle}
+			/>
+			<button style={bStyle} onClick={() => onChange(Math.min(max, clamped + 1))}>
+				+
+			</button>
+		</>
+	);
+}
 
 // --- Bottom Tab Bar ---
 
@@ -279,20 +340,26 @@ function FriendProfileView({
 	profile,
 	onBack,
 	onTrade,
+	onRemove,
 }: {
 	profile: HerzieProfile;
 	onBack: () => void;
 	onTrade: () => void;
+	onRemove: () => void;
 }) {
+	const [confirmRemove, setConfirmRemove] = useState(false);
+
 	return (
 		<div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-			<div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
-				<button
-					style={{ ...btnStyle, fontSize: 10, padding: "2px 8px", marginRight: 8 }}
-					onClick={onBack}
-				>
-					← Back
-				</button>
+			<div
+				style={{
+					display: "flex",
+					justifyContent: "space-between",
+					alignItems: "center",
+					marginBottom: 8,
+				}}
+			>
+				<BackButton onClick={onBack} />
 				<span style={{ fontSize: 13, fontWeight: "bold", color: "#7dd3fc" }}>
 					{profile.name}
 				</span>
@@ -354,12 +421,37 @@ function FriendProfileView({
 				</div>
 			)}
 
-			<button
-				style={{ ...btnStyle, color: "#c084fc", width: "100%" }}
-				onClick={onTrade}
-			>
-				Trade
-			</button>
+			<div style={{ display: "flex", gap: 6 }}>
+				<button
+					style={{ ...btnStyle, color: "#c084fc" }}
+					onClick={onTrade}
+				>
+					Trade
+				</button>
+				{confirmRemove ? (
+					<>
+						<button
+							style={{ ...btnStyle, color: "#f87171" }}
+							onClick={onRemove}
+						>
+							Yes, remove
+						</button>
+						<button
+							style={btnStyle}
+							onClick={() => setConfirmRemove(false)}
+						>
+							Cancel
+						</button>
+					</>
+				) : (
+					<button
+						style={{ ...btnStyle, color: "#f87171" }}
+						onClick={() => setConfirmRemove(true)}
+					>
+						Remove friend
+					</button>
+				)}
+			</div>
 		</div>
 	);
 }
@@ -418,6 +510,10 @@ function FriendsView({
 				onTrade={() => {
 					setSelectedFriend(null);
 					onStartTrade(selectedFriend.friendCode);
+				}}
+				onRemove={async () => {
+					await handleRemove(selectedFriend.friendCode);
+					setSelectedFriend(null);
 				}}
 			/>
 		);
@@ -521,30 +617,6 @@ function FriendsView({
 											: code}
 									</div>
 								</div>
-								<div style={{ display: "flex", gap: 4 }}>
-									<button
-										style={{
-											...btnStyle,
-											fontSize: 10,
-											padding: "2px 6px",
-											color: "#c084fc",
-										}}
-										onClick={() => onStartTrade(code)}
-									>
-										Trade
-									</button>
-									<button
-										style={{
-											...btnStyle,
-											fontSize: 10,
-											padding: "2px 6px",
-											color: "#f87171",
-										}}
-										onClick={() => handleRemove(code)}
-									>
-										✕
-									</button>
-								</div>
 							</div>
 						);
 					})
@@ -555,6 +627,40 @@ function FriendsView({
 }
 
 // --- Inventory View ---
+
+function SellControls({
+	itemId,
+	qty,
+	price,
+	onSell,
+}: {
+	itemId: string;
+	qty: number;
+	price: number;
+	onSell: (itemId: string, qty: number) => void;
+}) {
+	const [sellAmount, setSellAmount] = useState(1);
+	const clamped = Math.max(1, Math.min(sellAmount, qty));
+
+	return (
+		<div>
+			<div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>
+				Sell for ${price} each
+			</div>
+			<div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+				<NumberTicker value={clamped} min={1} max={qty} onChange={setSellAmount} />
+				<button style={btnStyle} onClick={() => onSell(itemId, clamped)}>
+					Sell (${clamped * price})
+				</button>
+				{qty > 1 && (
+					<button style={btnStyle} onClick={() => onSell(itemId, qty)}>
+						Sell All ({qty})
+					</button>
+				)}
+			</div>
+		</div>
+	);
+}
 
 function InventoryView({ herzie, initialItem }: { herzie: Herzie; initialItem?: string | null }) {
 	const [inventory, setInventory] = useState<Inventory | null>(null);
@@ -601,17 +707,7 @@ function InventoryView({ herzie, initialItem }: { herzie: Herzie; initialItem?: 
 						marginBottom: 8,
 					}}
 				>
-					<div
-						style={{
-							fontSize: 13,
-							fontWeight: "bold",
-							color: "#facc15",
-							cursor: "pointer",
-						}}
-						onClick={() => setSelectedItem(null)}
-					>
-						← Back
-					</div>
+					<BackButton onClick={() => setSelectedItem(null)} />
 					<div style={{ fontSize: 12, color: "#facc15" }}>${currency}</div>
 				</div>
 
@@ -644,37 +740,14 @@ function InventoryView({ herzie, initialItem }: { herzie: Herzie; initialItem?: 
 					{selected.description}
 				</div>
 
-				{/* Sell buttons */}
+				{/* Sell controls */}
 				{selected.sellPrice && qty > 0 && (
-					<div>
-						<div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>
-							Sell for ${selected.sellPrice} each
-						</div>
-						<div style={{ display: "flex", gap: 4 }}>
-							<button
-								style={btnStyle}
-								onClick={() => handleSell(selectedItem, 1)}
-							>
-								Sell 1
-							</button>
-							{qty >= 5 && (
-								<button
-									style={btnStyle}
-									onClick={() => handleSell(selectedItem, 5)}
-								>
-									Sell 5
-								</button>
-							)}
-							{qty > 1 && (
-								<button
-									style={btnStyle}
-									onClick={() => handleSell(selectedItem, qty)}
-								>
-									Sell All ({qty})
-								</button>
-							)}
-						</div>
-					</div>
+					<SellControls
+						itemId={selectedItem}
+						qty={qty}
+						price={selected.sellPrice}
+						onSell={handleSell}
+					/>
 				)}
 			</div>
 		);
@@ -774,6 +847,19 @@ function TradeView({
 	const [trade, setTrade] = useState<Trade | null>(null);
 	const [message, setMessage] = useState("");
 	const creatingRef = useRef(false);
+	const [inventory, setInventory] = useState<Inventory | null>(null);
+	const [offerItems, setOfferItems] = useState<Record<string, number>>({});
+	const [offerCurrency, setOfferCurrency] = useState(0);
+	const [currency, setCurrency] = useState(herzie.currency);
+
+	useEffect(() => {
+		herzies.fetchInventory().then((data) => {
+			if (data) {
+				setInventory(data.inventory);
+				setCurrency(data.currency);
+			}
+		});
+	}, []);
 
 	// Poll active trade
 	useEffect(() => {
@@ -818,8 +904,20 @@ function TradeView({
 		onClose();
 	};
 
+	const handleSendOffer = async () => {
+		if (!tradeId) return;
+		const items: Record<string, number> = {};
+		for (const [id, qty] of Object.entries(offerItems)) {
+			if (qty > 0) items[id] = qty;
+		}
+		await herzies.tradeOffer(tradeId, { items, currency: offerCurrency });
+	};
+
 	const handleLock = async () => {
-		if (tradeId) await herzies.tradeLock(tradeId);
+		if (tradeId) {
+			await handleSendOffer();
+			await herzies.tradeLock(tradeId);
+		}
 	};
 	const handleAccept = async () => {
 		if (tradeId) await herzies.tradeAccept(tradeId);
@@ -950,22 +1048,73 @@ function TradeView({
 							<div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
 								Your offer {myLocked ? "🔒" : ""}
 							</div>
-							{myOffer &&
-								Object.entries(myOffer.items).map(([id, qty]) => (
-									<div key={id} style={{ fontSize: 11, color: "#ccc" }}>
-										{id} x{qty}
+							{myLocked ? (
+								<>
+									{myOffer &&
+										Object.entries(myOffer.items).map(([id, qty]) => (
+											<div key={id} style={{ fontSize: 11, color: "#ccc" }}>
+												{getItem(id)?.name ?? id} x{qty}
+											</div>
+										))}
+									{myOffer && myOffer.currency > 0 && (
+										<div style={{ fontSize: 11, color: "#facc15" }}>
+											${myOffer.currency}
+										</div>
+									)}
+								</>
+							) : (
+								<>
+									{inventory &&
+										Object.entries(inventory)
+											.filter(([, qty]) => qty > 0)
+											.map(([id, qty]) => {
+												const item = getItem(id);
+												if (!item) return null;
+												const offered = offerItems[id] ?? 0;
+												return (
+													<div
+														key={id}
+														style={{
+															display: "flex",
+															alignItems: "center",
+															gap: 4,
+															marginBottom: 2,
+														}}
+													>
+														<span style={{ fontSize: 10, color: "#ccc", flex: 1 }}>
+															{item.name} ({qty})
+														</span>
+														<NumberTicker
+															value={offered}
+															max={qty}
+															size="small"
+															onChange={(v) =>
+																setOfferItems((prev) => ({ ...prev, [id]: v }))
+															}
+														/>
+													</div>
+												);
+											})}
+									<div
+										style={{
+											display: "flex",
+											alignItems: "center",
+											gap: 4,
+											marginTop: 4,
+										}}
+									>
+										<span style={{ fontSize: 10, color: "#facc15", flex: 1 }}>
+											$ ({currency})
+										</span>
+										<NumberTicker
+											value={offerCurrency}
+											max={currency}
+											size="small"
+											onChange={setOfferCurrency}
+										/>
 									</div>
-								))}
-							{myOffer && myOffer.currency > 0 && (
-								<div style={{ fontSize: 11, color: "#facc15" }}>
-									${myOffer.currency}
-								</div>
+								</>
 							)}
-							{myOffer &&
-								Object.keys(myOffer.items).length === 0 &&
-								myOffer.currency === 0 && (
-									<div style={{ fontSize: 10, color: "#ccc" }}>Empty</div>
-								)}
 						</div>
 						<div>
 							<div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
