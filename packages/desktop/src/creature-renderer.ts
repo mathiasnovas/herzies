@@ -91,12 +91,12 @@ function hslToHex(h: number, s: number, l: number): string {
 
 function buildColorTriplet(hex: string): ColorTriplet {
 	const [h, s, l] = hexToHsl(hex);
-	// Dim: darken and desaturate slightly so cool pastels don't turn neon
-	const dimL = l * 0.55;
-	const dimS = Math.min(s, 0.6 + s * 0.2);
-	// Bright: lighten toward near-white while preserving hue
-	const brightL = Math.min(0.92, l + (1 - l) * 0.6);
-	const brightS = Math.max(0, s - 0.1);
+	// Dim: darken while keeping saturation punchy
+	const dimL = l * 0.45;
+	const dimS = s;
+	// Bright: lighten moderately, preserve saturation
+	const brightL = Math.min(0.82, l + (1 - l) * 0.45);
+	const brightS = s;
 	return {
 		dim: hslToHex(h, dimS, dimL),
 		base: hex.toUpperCase(),
@@ -797,7 +797,6 @@ function renderCreatureFrame(
 				lit = 0.75 * (0.15 + 0.85 * diffuse);
 			} else {
 				const baseBright = 0.5 + applyTexture(textureType, nx, ny, nz);
-				// Lower ambient for cleaner gradient, less heavy-character noise
 				lit = baseBright * (0.15 + 0.85 * diffuse);
 			}
 			bright[sy][sx] = lit;
