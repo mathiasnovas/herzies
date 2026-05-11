@@ -1,36 +1,19 @@
 /**
  * Background scenery renderer for Herzie3D.
  *
- * Two separate zones rendered as independent HTML strings:
- * - Sky (6 rows): clouds by day, stars by night — anchored to window top
- * - Ground (3 rows): sparse grass — anchored to creature canvas bottom
+ * Sky (9 rows): clouds by day, stars by night, anchored to window top.
  */
 
 import { simpleHash, mulberry32 } from "./creature-renderer";
 
-// --- Colors ---
-const GRASS_COLOR = "#4a7c59";
 const SKY_COLOR = "#8899aa";
 const BRIGHT_STAR_COLOR = "#ccddee";
 
-// --- Zone sizes ---
 const SKY_ROWS = 9;
-const GROUND_ROWS = 5; // 2 tall stalks/flowers + 3 grass
 
-// --- Cloud config ---
 const CLOUD_CHARS = [".", "-", "~", ".", "~"];
 
-// --- Star config ---
-const STAR_TWINKLE_VARIANTS = ["\u00B7", "+", "*", "\u00B7", "+"]; // · + * · +
-
-// --- Grass config ---
-const GRASS_CHARS = ["\u2227", "'", ",", "|"]; // ∧ ' , |
-
-// --- Stalk/flower config ---
-const STALK_COLOR = "#3d6b4e";
-const FLOWER_COLORS = ["#c27a8a", "#d4a054", "#8a7cc2", "#c2a27a"]; // muted rose, gold, violet, tan
-const STALK_CHAR = "|";
-const FLOWER_CHARS = ["\u00B7", "*", "\u00B0"]; // · * °
+const STAR_TWINKLE_VARIANTS = ["·", "+", "*", "·", "+"];
 
 interface Cloud {
 	row: number;
@@ -44,20 +27,6 @@ interface Star {
 	phase: number;
 	bright: boolean;
 	musicOnly: boolean;
-}
-
-function generateGrassRow(baseSeed: number, rowIdx: number, cols: number): string[] {
-	const rng = mulberry32(baseSeed + rowIdx * 7919);
-	const row: string[] = new Array(cols).fill(" ");
-	let col = Math.floor(rng() * 4);
-	while (col < cols) {
-		const clusterLen = 1 + Math.floor(rng() * 4);
-		for (let c = 0; c < clusterLen && col + c < cols; c++) {
-			row[col + c] = GRASS_CHARS[Math.floor(rng() * GRASS_CHARS.length)];
-		}
-		col += clusterLen + 2 + Math.floor(rng() * 7);
-	}
-	return row;
 }
 
 function generateClouds(rng: () => number): Cloud[] {
@@ -100,9 +69,7 @@ function generateStars(rng: () => number): Star[] {
 	return stars;
 }
 
-// --- Caches keyed by userId ---
 let cachedUserId = "";
-let cachedGrassSeed = 0;
 let cachedClouds: Cloud[] = [];
 let cachedStars: Star[] = [];
 
@@ -113,7 +80,6 @@ function ensureCache(userId: string) {
 	const seed = simpleHash(userId + ":scenery");
 	const rng = mulberry32(seed);
 
-	cachedGrassSeed = simpleHash(userId + ":grass");
 	cachedClouds = generateClouds(rng);
 	cachedStars = generateStars(rng);
 }
@@ -192,104 +158,6 @@ export function renderSky(opts: {
 			}
 			lines.push(line);
 		}
-	}
-
-	return lines.join("\n");
-}
-
-interface StalkCell {
-	ch: string;
-	color: string;
-}
-
-function generateStalks(baseSeed: number, cols: number): (StalkCell | null)[][] {
-	const rng = mulberry32(baseSeed + 31337);
-	const rows: (StalkCell | null)[][] = [
-		new Array(cols).fill(null), // row 0: flower tops (tallest)
-		new Array(cols).fill(null), // row 1: stalk middles
-	];
-
-	// Place 1 stalk per ~25-40 columns
-	let col = 5 + Math.floor(rng() * 10);
-	while (col < cols) {
-		const tall = rng() < 0.4; // 40% chance of being 2-row tall
-		const hasFlower = rng() < 0.5;
-		const flowerColor = FLOWER_COLORS[Math.floor(rng() * FLOWER_COLORS.length)];
-		const flowerChar = FLOWER_CHARS[Math.floor(rng() * FLOWER_CHARS.length)];
-
-		// Bottom of stalk always in row 1
-		rows[1][col] = { ch: STALK_CHAR, color: STALK_COLOR };
-
-		if (tall) {
-			// Tall stalk: flower or tip in row 0, stalk in row 1
-			rows[0][col] = hasFlower
-				? { ch: flowerChar, color: flowerColor }
-				: { ch: STALK_CHAR, color: STALK_COLOR };
-		} else {
-			// Short stalk: flower or tip in row 1, nothing in row 0
-			if (hasFlower) {
-				rows[1][col] = { ch: flowerChar, color: flowerColor };
-			}
-		}
-
-		col += 25 + Math.floor(rng() * 16);
-	}
-
-	return rows;
-}
-
-export function renderGround(opts: {
-	userId: string;
-	cols: number;
-}): string {
-	const { userId, cols } = opts;
-	ensureCache(userId);
-
-	const stalkRows = generateStalks(cachedGrassSeed, cols);
-	const lines: string[] = [];
-
-	// Stalk rows (top 2 of ground zone)
-	for (const row of stalkRows) {
-		let line = "";
-		let lastNonNull = -1;
-		for (let c = cols - 1; c >= 0; c--) {
-			if (row[c]) { lastNonNull = c; break; }
-		}
-		if (lastNonNull < 0) {
-			lines.push("");
-			continue;
-		}
-		for (let c = 0; c <= lastNonNull; c++) {
-			const cell = row[c];
-			if (cell) {
-				line += `<span style="color:${cell.color}">${cell.ch}</span>`;
-			} else {
-				line += " ";
-			}
-		}
-		lines.push(line);
-	}
-
-	// Grass rows (bottom 3 of ground zone)
-	for (let r = 0; r < 3; r++) {
-		const row = generateGrassRow(cachedGrassSeed, r, cols);
-		let line = "";
-		let lastNonSpace = -1;
-		for (let c = cols - 1; c >= 0; c--) {
-			if (row[c] !== " ") { lastNonSpace = c; break; }
-		}
-		if (lastNonSpace < 0) {
-			lines.push("");
-			continue;
-		}
-		for (let c = 0; c <= lastNonSpace; c++) {
-			if (row[c] !== " ") {
-				line += `<span style="color:${GRASS_COLOR}">${row[c]}</span>`;
-			} else {
-				line += " ";
-			}
-		}
-		lines.push(line);
 	}
 
 	return lines.join("\n");

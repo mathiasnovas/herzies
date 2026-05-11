@@ -9,7 +9,7 @@ import {
 	SH,
 } from "./creature-renderer";
 import type { Cell } from "./creature-renderer";
-import { renderSky, renderGround } from "./scenery-renderer";
+import { renderSky } from "./scenery-renderer";
 
 const FONT_FAMILY = "'SF Mono', 'Menlo', monospace";
 const DRAG_SENSITIVITY = Math.PI / 200; // ~180° per 200px
@@ -50,7 +50,6 @@ function useIsNight(): boolean {
 export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = false, wearables }: Props) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const skyRef = useRef<HTMLPreElement>(null);
-	const groundRef = useRef<HTMLPreElement>(null);
 	const [frame, setFrame] = useState(0);
 	const [dragAngle, setDragAngle] = useState(0);
 	const [isDragging, setIsDragging] = useState(false);
@@ -215,14 +214,6 @@ export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = fal
 		setFrame(0);
 	}, [frames]);
 
-	// --- Ground (static, re-renders only on userId or column change) ---
-
-	useEffect(() => {
-		const el = groundRef.current;
-		if (!el) return;
-		el.innerHTML = renderGround({ userId, cols: sceneryCols });
-	}, [userId, sceneryCols]);
-
 	// --- Sky animation ---
 
 	useEffect(() => {
@@ -328,19 +319,6 @@ export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = fal
 						imageRendering: "pixelated",
 					}}
 					aria-label={`A stage ${stage} herzie`}
-				/>
-				{/* Ground — anchored to canvas bottom, breaks out to full width */}
-				<pre
-					ref={groundRef}
-					style={{
-						...sceneryPreStyle,
-						position: "absolute",
-						bottom: metrics.lineH * 4 + 6,
-						left: "50%",
-						transform: "translateX(-50%)",
-						width: "100vw",
-						zIndex: 0,
-					}}
 				/>
 			</div>
 		</>

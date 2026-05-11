@@ -98,6 +98,12 @@ export async function POST(request: Request) {
 		.single();
 
 	if (error || !msg) {
+		if (error?.message?.includes("Rate limit")) {
+			return NextResponse.json({ error: "Slow down — only 1 message per second" }, { status: 429 });
+		}
+		if (error?.message?.includes("blocked content")) {
+			return NextResponse.json({ error: "Message contains blocked content" }, { status: 400 });
+		}
 		return NextResponse.json({ error: "Failed to create message" }, { status: 500 });
 	}
 

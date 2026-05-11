@@ -583,7 +583,7 @@ function FriendsView({
 			</div>
 
 			{/* Friend list */}
-			<div style={{ flex: 1, overflow: "auto" }}>
+			<div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
 				{herzie.friendCodes.length === 0 ? (
 					<div
 						style={{
@@ -848,7 +848,7 @@ function InventoryView({ herzie, initialItem, onLog }: { herzie: Herzie; initial
 					No items yet. Keep listening to earn drops!
 				</div>
 			) : (
-				<div style={{ flex: 1, overflow: "auto" }}>
+				<div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
 					{items.map(([itemId, qty]) => {
 						const def = getItem(itemId);
 						const name = def?.name ?? itemId;
@@ -1761,7 +1761,7 @@ function ChatPanel({ activityLog, isOnline }: {
 		setItemRefs([]);
 		setShowAutocomplete(false);
 		setCooldown(true);
-		setTimeout(() => setCooldown(false), 1000);
+		setTimeout(() => setCooldown(false), 1500);
 
 		const result = await herzies.chatSend(content, refs);
 		if (result) {
@@ -1907,7 +1907,7 @@ function ChatPanel({ activityLog, isOnline }: {
 				<div
 					ref={scrollRef}
 					style={{
-						maxHeight: 120,
+						maxHeight: 84,
 						minHeight: 28,
 						overflow: "auto",
 						padding: "4px 0",
