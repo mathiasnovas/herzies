@@ -57,6 +57,9 @@ importers:
       '@herzies/shared':
         specifier: workspace:*
         version: link:../shared
+      '@supabase/supabase-js':
+        specifier: ^2.105.1
+        version: 2.105.1
       '@tauri-apps/api':
         specifier: ^2.5.0
         version: 2.11.0

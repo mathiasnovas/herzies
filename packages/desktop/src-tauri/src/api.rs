@@ -68,6 +68,11 @@ async fn get_token(client: &Client) -> Option<String> {
     storage::load_session().map(|s| s.access_token)
 }
 
+/// Public wrapper for get_token, used by Tauri commands that need the access token directly.
+pub async fn get_token_public(client: &Client) -> Option<String> {
+    get_token(client).await
+}
+
 async fn api_fetch(
     client: &Client,
     method: reqwest::Method,
@@ -303,4 +308,22 @@ pub async fn api_poll_trade(client: &Client, trade_id: &str) -> Option<Trade> {
     }
     let data: serde_json::Value = resp.json().await.ok()?;
     serde_json::from_value(data["trade"].clone()).ok()
+}
+
+pub async fn api_chat_fetch(client: &Client) -> Option<ChatFetchResponse> {
+    let resp = api_fetch(client, reqwest::Method::GET, "/chat?limit=50", None).await?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    resp.json().await.ok()
+}
+
+pub async fn api_chat_send(client: &Client, content: &str, item_refs: &[String]) -> Option<ChatMessage> {
+    let body = serde_json::json!({ "content": content, "itemRefs": item_refs });
+    let resp = api_fetch(client, reqwest::Method::POST, "/chat", Some(body)).await?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    let result: ChatSendResponse = resp.json().await.ok()?;
+    Some(result.message)
 }

@@ -189,6 +189,27 @@ pub struct ActiveEventsResponse {
     pub events: Vec<GameEvent>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatMessage {
+    pub id: String,
+    pub user_id: String,
+    pub username: String,
+    pub content: String,
+    pub item_refs: Vec<String>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatFetchResponse {
+    pub messages: Vec<ChatMessage>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatSendResponse {
+    pub message: ChatMessage,
+}
+
 /// Full now-playing info from osascript
 #[derive(Debug, Clone)]
 #[allow(dead_code)]

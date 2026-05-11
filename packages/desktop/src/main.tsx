@@ -2,6 +2,7 @@ import type { GameEvent, Herzie, HerzieProfile, Inventory, Trade } from "@herzie
 import { levelProgress, xpToNextLevel } from "@herzies/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { createClient, type RealtimeChannel } from "@supabase/supabase-js";
 import { Herzie3D } from "./Herzie3D";
 import { ItemDisplay } from "./ItemDisplay";
 import {
@@ -9,7 +10,7 @@ import {
 	RARITY_COLORS as ITEM_RARITY_COLORS,
 	RARITY_LABELS,
 } from "./items";
-import { type AppState, herzies } from "./tauri-bridge";
+import { type AppState, type ChatMessage, herzies } from "./tauri-bridge";
 
 type View = "home" | "friends" | "inventory" | "trade" | "events" | "settings";
 
@@ -1611,6 +1612,434 @@ function SplashScreen() {
 	);
 }
 
+// --- Chat ---
+
+const CHAT_COLORS = ['#7dd3fc', '#fca5a5', '#86efac', '#fde047', '#c4b5fd', '#fdba74', '#f9a8d4', '#67e8f9'];
+function usernameColor(name: string): string {
+	let hash = 0;
+	for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+	return CHAT_COLORS[Math.abs(hash) % CHAT_COLORS.length];
+}
+
+function ItemInspectOverlay({ itemId, onClose }: { itemId: string; onClose: () => void }) {
+	const item = getItem(itemId);
+
+	useEffect(() => {
+		const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+		window.addEventListener("keydown", handler);
+		return () => window.removeEventListener("keydown", handler);
+	}, [onClose]);
+
+	if (!item) return null;
+
+	return (
+		<div
+			onClick={onClose}
+			style={{
+				position: "fixed",
+				inset: 0,
+				background: "rgba(0,0,0,0.7)",
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				zIndex: 1000,
+			}}
+		>
+			<div
+				onClick={(e) => e.stopPropagation()}
+				style={{
+					background: "#1a1a1a",
+					border: "1px solid #333",
+					borderRadius: 8,
+					padding: 16,
+					maxWidth: 260,
+					textAlign: "center",
+				}}
+			>
+				<div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+					<ItemDisplay item={item} size={9} />
+				</div>
+				<div style={{ fontSize: 14, fontWeight: "bold", color: ITEM_RARITY_COLORS[item.rarity] }}>
+					{item.name}
+				</div>
+				<div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
+					{RARITY_LABELS[item.rarity]}
+				</div>
+				<div style={{ fontSize: 11, color: "#aaa" }}>
+					{item.description}
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function ChatPanel({ activityLog, isOnline }: {
+	activityLog: { time: string; message: string }[];
+	isOnline: boolean;
+}) {
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [input, setInput] = useState('');
+	const [itemRefs, setItemRefs] = useState<string[]>([]);
+	const [cooldown, setCooldown] = useState(false);
+	const [inspectItem, setInspectItem] = useState<string | null>(null);
+	const [inventory, setInventory] = useState<Inventory | null>(null);
+	const [showAutocomplete, setShowAutocomplete] = useState(false);
+	const [autocompleteFilter, setAutocompleteFilter] = useState('');
+	const [autocompleteIndex, setAutocompleteIndex] = useState(0);
+	const scrollRef = useRef<HTMLDivElement>(null);
+	const inputRef = useRef<HTMLInputElement>(null);
+	const channelRef = useRef<RealtimeChannel | null>(null);
+	const atPosRef = useRef<number>(-1);
+
+	// Fetch initial messages
+	useEffect(() => {
+		if (!isOnline) return;
+		herzies.chatFetch().then(data => {
+			if (data) setMessages(data.messages);
+		});
+	}, [isOnline]);
+
+	// Supabase Realtime subscription
+	useEffect(() => {
+		if (!isOnline) return;
+		let cancelled = false;
+
+		herzies.getAuthConfig().then(config => {
+			if (cancelled || !config) return;
+			const supabase = createClient(config.supabaseUrl, config.anonKey, {
+				global: { headers: { Authorization: `Bearer ${config.accessToken}` } },
+			});
+
+			const channel = supabase
+				.channel('chat_messages_realtime')
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'chat_messages' } as any, (payload: any) => {
+					const newId = payload.new?.id;
+					if (!newId) return;
+					setMessages(prev => {
+						if (prev.some(m => m.id === newId)) return prev;
+						herzies.chatFetch().then(data => {
+							if (data) setMessages(data.messages);
+						});
+						return prev;
+					});
+				})
+				.subscribe();
+
+			channelRef.current = channel;
+		});
+
+		return () => {
+			cancelled = true;
+			if (channelRef.current) {
+				channelRef.current.unsubscribe();
+				channelRef.current = null;
+			}
+		};
+	}, [isOnline]);
+
+	// Fetch inventory for autocomplete
+	useEffect(() => {
+		if (!isOnline) return;
+		herzies.fetchInventory().then(data => {
+			if (data) setInventory(data.inventory);
+		});
+	}, [isOnline]);
+
+	// Auto-scroll
+	useEffect(() => {
+		const el = scrollRef.current;
+		if (el) el.scrollTop = el.scrollHeight;
+	}, [messages, activityLog]);
+
+	// Send handler
+	const handleSend = async () => {
+		if (!input.trim() || cooldown) return;
+		const content = input.trim();
+		const refs = [...itemRefs];
+		setInput('');
+		setItemRefs([]);
+		setShowAutocomplete(false);
+		setCooldown(true);
+		setTimeout(() => setCooldown(false), 1000);
+
+		const result = await herzies.chatSend(content, refs);
+		if (result) {
+			setMessages(prev => {
+				if (prev.some(m => m.id === result.message.id)) return prev;
+				return [...prev, result.message];
+			});
+		}
+	};
+
+	// Build filtered autocomplete items
+	const autocompleteItems = inventory
+		? Object.entries(inventory)
+				.filter(([, qty]) => qty > 0)
+				.map(([id]) => ({ id, item: getItem(id) }))
+				.filter((x): x is { id: string; item: NonNullable<ReturnType<typeof getItem>> } => !!x.item)
+				.filter(x => !autocompleteFilter || x.item.name.toLowerCase().includes(autocompleteFilter.toLowerCase()))
+		: [];
+
+	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const val = e.target.value;
+		setInput(val);
+
+		const cursorPos = e.target.selectionStart ?? val.length;
+		// Find the last @ before cursor that isn't preceded by a non-space
+		const before = val.slice(0, cursorPos);
+		const atIdx = before.lastIndexOf('@');
+		if (atIdx >= 0 && (atIdx === 0 || before[atIdx - 1] === ' ')) {
+			const filterText = before.slice(atIdx + 1);
+			// Don't show autocomplete if there's a space after the filter (completed reference)
+			if (!filterText.includes(' ')) {
+				setShowAutocomplete(true);
+				setAutocompleteFilter(filterText);
+				setAutocompleteIndex(0);
+				atPosRef.current = atIdx;
+				return;
+			}
+		}
+		setShowAutocomplete(false);
+	};
+
+	const selectAutocomplete = (itemId: string, itemName: string) => {
+		const atIdx = atPosRef.current;
+		if (atIdx < 0) return;
+		const before = input.slice(0, atIdx);
+		const cursorPos = inputRef.current?.selectionStart ?? input.length;
+		const after = input.slice(cursorPos);
+		const newInput = `${before}@${itemId} ${after}`;
+		setInput(newInput);
+		if (!itemRefs.includes(itemId)) {
+			setItemRefs(prev => [...prev, itemId]);
+		}
+		setShowAutocomplete(false);
+		inputRef.current?.focus();
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (showAutocomplete && autocompleteItems.length > 0) {
+			if (e.key === "ArrowUp") {
+				e.preventDefault();
+				setAutocompleteIndex(i => Math.max(0, i - 1));
+				return;
+			}
+			if (e.key === "ArrowDown") {
+				e.preventDefault();
+				setAutocompleteIndex(i => Math.min(autocompleteItems.length - 1, i + 1));
+				return;
+			}
+			if (e.key === "Tab" || e.key === "Enter") {
+				e.preventDefault();
+				const sel = autocompleteItems[autocompleteIndex];
+				if (sel) selectAutocomplete(sel.id, sel.item.name);
+				return;
+			}
+			if (e.key === "Escape") {
+				e.preventDefault();
+				setShowAutocomplete(false);
+				return;
+			}
+		}
+		if (e.key === "Enter" && !showAutocomplete) {
+			e.preventDefault();
+			handleSend();
+		}
+	};
+
+	// Render item ref inline: replace @item-id with colored item name
+	const renderMessageContent = (content: string, msgItemRefs: string[]) => {
+		if (msgItemRefs.length === 0) return <span>{content}</span>;
+
+		const parts: React.ReactNode[] = [];
+		let remaining = content;
+		let key = 0;
+
+		for (const ref of msgItemRefs) {
+			const pattern = `@${ref}`;
+			const idx = remaining.indexOf(pattern);
+			if (idx >= 0) {
+				if (idx > 0) parts.push(<span key={key++}>{remaining.slice(0, idx)}</span>);
+				const item = getItem(ref);
+				parts.push(
+					<span
+						key={key++}
+						style={{
+							color: item ? ITEM_RARITY_COLORS[item.rarity] : '#c084fc',
+							cursor: 'pointer',
+							textDecoration: 'underline',
+							textDecorationStyle: 'dotted',
+						}}
+						onClick={() => setInspectItem(ref)}
+					>
+						{item?.name ?? ref}
+					</span>
+				);
+				remaining = remaining.slice(idx + pattern.length);
+			}
+		}
+		if (remaining) parts.push(<span key={key++}>{remaining}</span>);
+		return <>{parts}</>;
+	};
+
+	// Merge activity log entries and chat messages chronologically
+	type FeedEntry =
+		| { kind: 'activity'; time: string; message: string; sortKey: string }
+		| { kind: 'chat'; msg: ChatMessage; sortKey: string };
+
+	const feed: FeedEntry[] = [];
+
+	// Activity log entries don't have a full timestamp, just HH:MM. Use today's date for sorting.
+	const today = new Date().toISOString().slice(0, 10);
+	for (const entry of activityLog) {
+		feed.push({ kind: 'activity', time: entry.time, message: entry.message, sortKey: `${today}T${entry.time}:00` });
+	}
+	for (const msg of messages) {
+		feed.push({ kind: 'chat', msg, sortKey: msg.createdAt });
+	}
+	feed.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+
+	return (
+		<>
+			<div style={{ borderTop: "1px solid #333", display: "flex", flexDirection: "column" }}>
+				{/* Message feed */}
+				<div
+					ref={scrollRef}
+					style={{
+						maxHeight: 120,
+						minHeight: 28,
+						overflow: "auto",
+						padding: "4px 0",
+					}}
+				>
+					{feed.length === 0 && (
+						<div style={{ fontSize: 9, color: "#444", textAlign: "center", padding: "4px 0" }}>
+							No messages yet
+						</div>
+					)}
+					{feed.map((entry, i) => {
+						if (entry.kind === 'activity') {
+							return (
+								<div
+									key={`a-${i}`}
+									style={{
+										fontSize: 9,
+										color: "#666",
+										whiteSpace: "nowrap",
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										lineHeight: "14px",
+									}}
+								>
+									<span style={{ color: "#555" }}>{entry.time}</span>{" "}
+									{entry.message}
+								</div>
+							);
+						}
+						const { msg } = entry;
+						const ts = new Date(msg.createdAt);
+						const time = `${ts.getHours().toString().padStart(2, '0')}:${ts.getMinutes().toString().padStart(2, '0')}`;
+						return (
+							<div
+								key={msg.id}
+								style={{
+									fontSize: 9,
+									lineHeight: "14px",
+									whiteSpace: "nowrap",
+									overflow: "hidden",
+									textOverflow: "ellipsis",
+								}}
+							>
+								<span style={{ color: "#555" }}>{time}</span>{" "}
+								<span style={{ color: usernameColor(msg.username), fontWeight: "bold" }}>
+									{msg.username}
+								</span>
+								<span style={{ color: "#555" }}>:</span>{" "}
+								<span style={{ color: "#ccc" }}>
+									{renderMessageContent(msg.content, msg.itemRefs)}
+								</span>
+							</div>
+						);
+					})}
+				</div>
+
+				{/* Input area */}
+				{isOnline && (
+					<div style={{ position: "relative" }}>
+						{/* Autocomplete dropdown */}
+						{showAutocomplete && autocompleteItems.length > 0 && (
+							<div
+								style={{
+									position: "absolute",
+									bottom: "100%",
+									left: 0,
+									right: 0,
+									background: "#1a1a1a",
+									border: "1px solid #444",
+									borderRadius: 4,
+									maxHeight: 120,
+									overflow: "auto",
+									zIndex: 100,
+								}}
+							>
+								{autocompleteItems.map((x, i) => (
+									<div
+										key={x.id}
+										onClick={() => selectAutocomplete(x.id, x.item.name)}
+										style={{
+											padding: "3px 8px",
+											fontSize: 10,
+											cursor: "pointer",
+											background: i === autocompleteIndex ? "#333" : "transparent",
+											color: ITEM_RARITY_COLORS[x.item.rarity],
+										}}
+									>
+										{x.item.name}
+										<span style={{ color: "#555", marginLeft: 4 }}>
+											{RARITY_LABELS[x.item.rarity]}
+										</span>
+									</div>
+								))}
+							</div>
+						)}
+						<div style={{ display: "flex", gap: 4, padding: "4px 0" }}>
+							<input
+								ref={inputRef}
+								style={{ ...inputStyle, flex: 1, fontSize: 10 }}
+								placeholder="Type a message... (@ for items)"
+								value={input}
+								onChange={handleInputChange}
+								onKeyDown={handleKeyDown}
+								maxLength={500}
+							/>
+							<button
+								style={{
+									...btnStyle,
+									fontSize: 9,
+									opacity: cooldown || !input.trim() ? 0.5 : 1,
+								}}
+								disabled={cooldown || !input.trim()}
+								onClick={handleSend}
+							>
+								Send
+							</button>
+						</div>
+					</div>
+				)}
+			</div>
+
+			{/* Item inspect overlay */}
+			{inspectItem && (
+				<ItemInspectOverlay
+					itemId={inspectItem}
+					onClose={() => setInspectItem(null)}
+				/>
+			)}
+		</>
+	);
+}
+
 // --- App ---
 
 function App() {
@@ -1625,7 +2054,6 @@ function App() {
 	const [view, setView] = useState<View>("home");
 	const [tradeTarget, setTradeTarget] = useState<string | null>(null);
 	const [activityLog, setActivityLog] = useState<{ time: string; message: string }[]>([]);
-	const activityRef = useRef<HTMLDivElement>(null);
 	const [deepLinkItem, setDeepLinkItem] = useState<string | null>(null);
 	const [stageOverride, setStageOverride] = useState<number | null>(null);
 
@@ -1649,10 +2077,6 @@ function App() {
 			unlistenDeepLink();
 		};
 	}, []);
-
-	useEffect(() => {
-		activityRef.current?.scrollTo(0, activityRef.current.scrollHeight);
-	}, [activityLog]);
 
 	// Reset to home screen when logging back in
 	const prevOnline = useRef(state.isOnline);
@@ -1723,33 +2147,8 @@ function App() {
 				)}
 				{view === "settings" && <SettingsView state={state} stageOverride={stageOverride} onStageOverride={setStageOverride} />}
 			</div>
-			{herzie && activityLog.length > 0 && (
-				<div
-					ref={activityRef}
-					style={{
-						maxHeight: 42,
-						overflow: "auto",
-						borderTop: "1px solid #333",
-						padding: "4px 0",
-					}}
-				>
-					{activityLog.map((entry, i) => (
-						<div
-							key={`${entry.time}-${i}`}
-							style={{
-								fontSize: 9,
-								color: "#666",
-								whiteSpace: "nowrap",
-								overflow: "hidden",
-								textOverflow: "ellipsis",
-								lineHeight: "14px",
-							}}
-						>
-							<span style={{ color: "#555" }}>{entry.time}</span>{" "}
-							{entry.message}
-						</div>
-					))}
-				</div>
+			{herzie && (
+				<ChatPanel activityLog={activityLog} isOnline={state.isOnline} />
 			)}
 			{herzie && <TabBar view={view} setView={switchView} />}
 		</div>
