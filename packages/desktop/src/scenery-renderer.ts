@@ -4,7 +4,7 @@
  * Sky (9 rows): clouds by day, stars by night, anchored to window top.
  */
 
-import { simpleHash, mulberry32 } from "./creature-renderer";
+import { mulberry32, simpleHash } from "./creature-renderer";
 
 const SKY_COLOR = "#8899aa";
 const BRIGHT_STAR_COLOR = "#ccddee";
@@ -110,7 +110,9 @@ export function renderSky(opts: {
 			const col = Math.floor(star.fractionalCol * cols);
 			if (col >= cols) continue;
 			const tickRate = isPlaying ? 8 : 12;
-			const variantIdx = Math.floor((twinkleFrame + star.phase) / tickRate) % STAR_TWINKLE_VARIANTS.length;
+			const variantIdx =
+				Math.floor((twinkleFrame + star.phase) / tickRate) %
+				STAR_TWINKLE_VARIANTS.length;
 			skyGrid[star.row][col] = STAR_TWINKLE_VARIANTS[variantIdx];
 			colorGrid[star.row][col] = star.bright ? BRIGHT_STAR_COLOR : SKY_COLOR;
 		}
@@ -135,7 +137,7 @@ export function renderSky(opts: {
 
 		for (const cloud of cachedClouds) {
 			const baseCol = Math.floor(cloud.fractionalCol * cols);
-			const shifted = ((baseCol + cloudOffset) % cols + cols) % cols;
+			const shifted = (((baseCol + cloudOffset) % cols) + cols) % cols;
 			for (let i = 0; i < cloud.chars.length; i++) {
 				if (cloud.chars[i] === " ") continue;
 				const col = (shifted + i) % cols;

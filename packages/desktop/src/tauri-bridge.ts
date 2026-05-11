@@ -52,9 +52,11 @@ export const herzies = {
 		invoke<Record<string, HerzieProfile>>("friend_lookup", { codes }),
 
 	fetchInventory: () =>
-		invoke<{ inventory: Inventory; currency: number; equipped: string[] } | null>(
-			"fetch_inventory",
-		),
+		invoke<{
+			inventory: Inventory;
+			currency: number;
+			equipped: string[];
+		} | null>("fetch_inventory"),
 	sellItem: (itemId: string, quantity: number) =>
 		invoke<{
 			earned: number;
@@ -83,12 +85,14 @@ export const herzies = {
 		invoke<{ events: GameEvent[] }>("fetch_active_events"),
 
 	getAuthConfig: () =>
-		invoke<{ supabaseUrl: string; anonKey: string; accessToken: string; userId: string } | null>(
-			"get_auth_config",
-		),
+		invoke<{
+			supabaseUrl: string;
+			anonKey: string;
+			accessToken: string;
+			userId: string;
+		} | null>("get_auth_config"),
 
-	chatFetch: () =>
-		invoke<{ messages: ChatMessage[] } | null>("chat_fetch"),
+	chatFetch: () => invoke<{ messages: ChatMessage[] } | null>("chat_fetch"),
 	chatSend: (content: string, itemRefs: string[]) =>
 		invoke<{ message: ChatMessage } | null>("chat_send", { content, itemRefs }),
 

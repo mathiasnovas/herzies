@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Cell } from "../creature-renderer";
 import {
+	DEFAULT_Y_ANGLE,
+	generateDanceFrames,
 	generateIdleFrames,
 	generateRotationFrames,
-	generateDanceFrames,
 	renderCreatureAtAngle,
-	DEFAULT_Y_ANGLE,
-	SW,
 	SH,
-} from "./creature-renderer";
-import type { Cell } from "./creature-renderer";
-import { renderSky } from "./scenery-renderer";
+	SW,
+} from "../creature-renderer";
+import { renderSky } from "../scenery-renderer";
 
 const FONT_FAMILY = "'SF Mono', 'Menlo', monospace";
 const DRAG_SENSITIVITY = Math.PI / 200; // ~180° per 200px
@@ -47,7 +47,14 @@ function useIsNight(): boolean {
 	return isNight;
 }
 
-export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = false, wearables }: Props) {
+export function Herzie3D({
+	userId,
+	stage = 1,
+	size = 5,
+	animate,
+	isPlaying = false,
+	wearables,
+}: Props) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const skyRef = useRef<HTMLPreElement>(null);
 	const [frame, setFrame] = useState(0);
@@ -90,16 +97,14 @@ export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = fal
 		}
 	}, [frame, dancing, wantsDancing]);
 
-	const frames = useMemo(
-		() => {
-			if (dancing) return generateDanceFrames(userId, stage, wearables);
-			if (animate) return generateRotationFrames(userId, stage, undefined, wearables);
-			return generateIdleFrames(userId, stage, wearables);
-		},
-		[userId, stage, animate, dancing, wearables],
-	);
+	const frames = useMemo(() => {
+		if (dancing) return generateDanceFrames(userId, stage, wearables);
+		if (animate)
+			return generateRotationFrames(userId, stage, undefined, wearables);
+		return generateIdleFrames(userId, stage, wearables);
+	}, [userId, stage, animate, dancing, wearables]);
 
-	const interval = dancing ? 65 : (animate ? 80 : 50);
+	const interval = dancing ? 65 : animate ? 80 : 50;
 
 	// Measure character cell dimensions once
 	const metrics = useMemo(() => {
@@ -161,17 +166,20 @@ export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = fal
 
 	// --- Drag handlers ---
 
-	const onMouseDown = useCallback((e: React.MouseEvent) => {
-		e.preventDefault(); // prevent native drag-selection overlay
-		cancelAnimationFrame(momentumRaf.current);
-		velocity.current = 0;
-		dragging.current = true;
-		setIsDragging(true);
-		dragStartX.current = e.clientX;
-		dragStartAngle.current = dragAngle;
-		lastMoveX.current = e.clientX;
-		lastMoveTime.current = performance.now();
-	}, [dragAngle]);
+	const onMouseDown = useCallback(
+		(e: React.MouseEvent) => {
+			e.preventDefault(); // prevent native drag-selection overlay
+			cancelAnimationFrame(momentumRaf.current);
+			velocity.current = 0;
+			dragging.current = true;
+			setIsDragging(true);
+			dragStartX.current = e.clientX;
+			dragStartAngle.current = dragAngle;
+			lastMoveX.current = e.clientX;
+			lastMoveTime.current = performance.now();
+		},
+		[dragAngle],
+	);
 
 	const onMouseMove = useCallback((e: React.MouseEvent) => {
 		if (!dragging.current) return;
@@ -225,7 +233,9 @@ export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = fal
 
 		const render = () => {
 			el.innerHTML = renderSky({
-				userId, isNight, isPlaying,
+				userId,
+				isNight,
+				isPlaying,
 				cloudOffset: Math.floor(cloudOffset.current),
 				twinkleFrame: twinkleFrame.current,
 				cols,
@@ -258,14 +268,32 @@ export function Herzie3D({ userId, stage = 1, size = 5, animate, isPlaying = fal
 			const yAngle = animate
 				? (frame / frames.length) * Math.PI * 2 + dragAngle
 				: DEFAULT_Y_ANGLE + dragAngle;
-			const data = renderCreatureAtAngle(userId, stage, yAngle, frame, dancing, wearables);
+			const data = renderCreatureAtAngle(
+				userId,
+				stage,
+				yAngle,
+				frame,
+				dancing,
+				wearables,
+			);
 			drawFrame(data.cells);
 		} else {
 			// Use pre-computed frames
 			const current = frames[frame] ?? frames[0];
 			if (current) drawFrame(current.cells);
 		}
-	}, [frame, frames, drawFrame, dragAngle, hasDragged, userId, stage, animate, dancing, wearables]);
+	}, [
+		frame,
+		frames,
+		drawFrame,
+		dragAngle,
+		hasDragged,
+		userId,
+		stage,
+		animate,
+		dancing,
+		wearables,
+	]);
 
 	const sceneryPreStyle = {
 		margin: 0,

@@ -4,17 +4,17 @@
  */
 
 import {
-	type V3,
-	type V2,
+	CHAR_ASPECT,
+	col,
+	cross,
+	dot3,
+	LIGHT,
+	normV,
+	RAMP,
 	rotY,
 	rotZ,
-	dot3,
-	normV,
-	cross,
-	col,
-	RAMP,
-	LIGHT,
-	CHAR_ASPECT,
+	type V2,
+	type V3,
 } from "./ascii3d";
 
 export type Rarity = "common" | "uncommon" | "rare" | "legendary";
@@ -373,12 +373,20 @@ function renderCdFrame(yAngle: number): string[] {
 // --- Headphones rendering (ray-traced) ---
 
 function raySphere(
-	ox: number, oy: number, oz: number,
-	dx: number, dy: number, dz: number,
-	sx: number, sy: number, sz: number,
+	ox: number,
+	oy: number,
+	oz: number,
+	dx: number,
+	dy: number,
+	dz: number,
+	sx: number,
+	sy: number,
+	sz: number,
 	sr: number,
 ): [number, V3] | null {
-	const ex = ox - sx, ey = oy - sy, ez = oz - sz;
+	const ex = ox - sx,
+		ey = oy - sy,
+		ez = oz - sz;
 	const a = dx * dx + dy * dy + dz * dz;
 	const b = 2 * (ex * dx + ey * dy + ez * dz);
 	const c = ex * ex + ey * ey + ez * ez - sr * sr;
@@ -386,15 +394,22 @@ function raySphere(
 	if (disc < 0) return null;
 	const t = (-b - Math.sqrt(disc)) / (2 * a);
 	if (t < 0) return null;
-	const hx = ox + dx * t - sx, hy = oy + dy * t - sy, hz = oz + dz * t - sz;
+	const hx = ox + dx * t - sx,
+		hy = oy + dy * t - sy,
+		hz = oz + dz * t - sz;
 	const il = 1 / sr;
 	return [t, [hx * il, hy * il, hz * il]];
 }
 
 function rayChain(
-	ox: number, oy: number, oz: number,
-	dx: number, dy: number, dz: number,
-	centers: V3[], radius: number,
+	ox: number,
+	oy: number,
+	oz: number,
+	dx: number,
+	dy: number,
+	dz: number,
+	centers: V3[],
+	radius: number,
 ): [number, V3] | null {
 	let best: [number, V3] | null = null;
 	for (const c of centers) {
@@ -405,10 +420,13 @@ function rayChain(
 }
 
 function renderHeadphonesFrame(yAngle: number): string[] {
-	const bright: number[][] = Array.from({ length: SH }, () => Array(SW).fill(-1));
+	const bright: number[][] = Array.from({ length: SH }, () =>
+		Array(SW).fill(-1),
+	);
 	const zone: string[][] = Array.from({ length: SH }, () => Array(SW).fill(""));
 
-	const cosA = Math.cos(yAngle), sinA = Math.sin(yAngle);
+	const cosA = Math.cos(yAngle),
+		sinA = Math.sin(yAngle);
 
 	const arcR = 1.7;
 	const tubeR = 0.14;
@@ -438,15 +456,23 @@ function renderHeadphonesFrame(yAngle: number): string[] {
 
 	const leftCup: V3 = [-arcR * cosA, cupY, arcR * sinA];
 	const rightCup: V3 = [arcR * cosA, cupY, -arcR * sinA];
-	const leftPad: V3 = [-arcR * cosA - sinA * 0.15, cupY, arcR * sinA - cosA * 0.15];
-	const rightPad: V3 = [arcR * cosA + sinA * 0.15, cupY, -arcR * sinA + cosA * 0.15];
+	const leftPad: V3 = [
+		-arcR * cosA - sinA * 0.15,
+		cupY,
+		arcR * sinA - cosA * 0.15,
+	];
+	const rightPad: V3 = [
+		arcR * cosA + sinA * 0.15,
+		cupY,
+		-arcR * sinA + cosA * 0.15,
+	];
 
 	const camZ = -CAM;
 	const fov = 2.2;
 
 	for (let sy2 = 0; sy2 < SH; sy2++) {
 		for (let sx = 0; sx < SW; sx++) {
-			const nx = ((sx + 0.5) / SW - 0.5) * fov * (SW / SH) / CHAR_ASPECT;
+			const nx = (((sx + 0.5) / SW - 0.5) * fov * (SW / SH)) / CHAR_ASPECT;
 			const ny = ((sy2 + 0.5) / SH - 0.5) * fov;
 			const rd = normV([nx, ny, 1]);
 
@@ -456,23 +482,70 @@ function renderHeadphonesFrame(yAngle: number): string[] {
 
 			// Ear cups
 			for (const cup of [leftCup, rightCup]) {
-				const hit = raySphere(0, 0, camZ, rd[0], rd[1], rd[2], cup[0], cup[1], cup[2], cupR);
-				if (hit && hit[0] < bestT) { bestT = hit[0]; bestN = hit[1]; bestZone = "cup"; }
+				const hit = raySphere(
+					0,
+					0,
+					camZ,
+					rd[0],
+					rd[1],
+					rd[2],
+					cup[0],
+					cup[1],
+					cup[2],
+					cupR,
+				);
+				if (hit && hit[0] < bestT) {
+					bestT = hit[0];
+					bestN = hit[1];
+					bestZone = "cup";
+				}
 			}
 
 			// Ear pads
 			for (const pad of [leftPad, rightPad]) {
-				const hit = raySphere(0, 0, camZ, rd[0], rd[1], rd[2], pad[0], pad[1], pad[2], padR);
-				if (hit && hit[0] < bestT) { bestT = hit[0]; bestN = hit[1]; bestZone = "pad"; }
+				const hit = raySphere(
+					0,
+					0,
+					camZ,
+					rd[0],
+					rd[1],
+					rd[2],
+					pad[0],
+					pad[1],
+					pad[2],
+					padR,
+				);
+				if (hit && hit[0] < bestT) {
+					bestT = hit[0];
+					bestN = hit[1];
+					bestZone = "pad";
+				}
 			}
 
 			// Headband
 			const bandHit = rayChain(0, 0, camZ, rd[0], rd[1], rd[2], bandPts, tubeR);
-			if (bandHit && bandHit[0] < bestT) { bestT = bandHit[0]; bestN = bandHit[1]; bestZone = "band"; }
+			if (bandHit && bandHit[0] < bestT) {
+				bestT = bandHit[0];
+				bestN = bandHit[1];
+				bestZone = "band";
+			}
 
 			// Connectors
-			const connHit = rayChain(0, 0, camZ, rd[0], rd[1], rd[2], connPts, tubeR * 0.8);
-			if (connHit && connHit[0] < bestT) { bestT = connHit[0]; bestN = connHit[1]; bestZone = "band"; }
+			const connHit = rayChain(
+				0,
+				0,
+				camZ,
+				rd[0],
+				rd[1],
+				rd[2],
+				connPts,
+				tubeR * 0.8,
+			);
+			if (connHit && connHit[0] < bestT) {
+				bestT = connHit[0];
+				bestN = connHit[1];
+				bestZone = "band";
+			}
 
 			if (bestT < Infinity) {
 				const diffuse = Math.max(0, -dot3(bestN, LIGHT));
@@ -482,7 +555,7 @@ function renderHeadphonesFrame(yAngle: number): string[] {
 					bestN[1] * 2 * dot3(bestN, LIGHT) - LIGHT[1],
 					bestN[2] * 2 * dot3(bestN, LIGHT) - LIGHT[2],
 				];
-				const spec = Math.pow(Math.max(0, -ref[2]), 16) * 0.3;
+				const spec = Math.max(0, -ref[2]) ** 16 * 0.3;
 				const lit = Math.min(1, ambient + diffuse * 0.65 + spec);
 				bright[sy2][sx] = lit;
 				zone[sy2][sx] = bestZone;
@@ -494,11 +567,15 @@ function renderHeadphonesFrame(yAngle: number): string[] {
 		row
 			.map((val, x) => {
 				if (val < 0) return " ";
-				const idx = Math.min(Math.floor(val * (RAMP.length - 1)), RAMP.length - 1);
+				const idx = Math.min(
+					Math.floor(val * (RAMP.length - 1)),
+					RAMP.length - 1,
+				);
 				const ch = RAMP[idx];
 				if (ch === " ") return " ";
 				if (zone[y][x] === "pad") return col("#3a3a3a", ch);
-				if (zone[y][x] === "cup") return val > 0.6 ? col("#e0b0ff", ch) : col("#c084fc", ch);
+				if (zone[y][x] === "cup")
+					return val > 0.6 ? col("#e0b0ff", ch) : col("#c084fc", ch);
 				return val > 0.55 ? col("#BBBBBB", ch) : col("#888888", ch);
 			})
 			.join(""),
