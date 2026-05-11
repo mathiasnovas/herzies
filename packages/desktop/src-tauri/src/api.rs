@@ -286,6 +286,15 @@ pub async fn api_cancel_trade(client: &Client, trade_id: &str) -> bool {
     }
 }
 
+pub async fn api_fetch_active_events(client: &Client) -> Option<Vec<GameEvent>> {
+    let resp = api_fetch(client, reqwest::Method::GET, "/events/active", None).await?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    let data: ActiveEventsResponse = resp.json().await.ok()?;
+    Some(data.events)
+}
+
 pub async fn api_poll_trade(client: &Client, trade_id: &str) -> Option<Trade> {
     let path = format!("/trade/status?tradeId={}", urlencoding::encode(trade_id));
     let resp = api_fetch(client, reqwest::Method::GET, &path, None).await?;

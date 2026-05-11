@@ -130,6 +130,25 @@ export interface SecretTrackConfig {
 	maxClaims: number;
 }
 
+export interface SongHuntHint {
+	text: string;
+	/** ISO date string — hint becomes readable after this time (UTC) */
+	unlocksAt: string;
+}
+
+export interface SongHuntConfig {
+	trackTitle: string;
+	trackArtist: string;
+	rewardItemId: string;
+	maxClaims: number;
+	hints: SongHuntHint[];
+}
+
+export interface SongHuntFinder {
+	name: string;
+	claimedAt: string;
+}
+
 export const GENRES = [
 	"pop",
 	"rock",

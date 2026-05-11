@@ -1,5 +1,6 @@
 import type {
 	ActiveMultiplier,
+	GameEvent,
 	Herzie,
 	HerzieProfile,
 	Inventory,
@@ -69,8 +70,12 @@ export const herzies = {
 	tradePoll: (tradeId: string) =>
 		invoke<Trade | null>("trade_poll", { tradeId }),
 
+	fetchActiveEvents: () =>
+		invoke<{ events: GameEvent[] }>("fetch_active_events"),
+
 	testNotification: () => invoke<void>("test_notification"),
 	testActivity: () => invoke<void>("test_activity"),
+	quit: () => invoke<void>("quit"),
 
 	onDeepLink: (cb: (itemId: string) => void) => {
 		let cancelled = false;

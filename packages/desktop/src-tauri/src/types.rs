@@ -169,6 +169,26 @@ pub struct NowPlayingDisplay {
     pub artist: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameEvent {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub event_type: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub active: bool,
+    pub starts_at: String,
+    pub ends_at: String,
+    pub config: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveEventsResponse {
+    pub events: Vec<GameEvent>,
+}
+
 /// Full now-playing info from osascript
 #[derive(Debug, Clone)]
 #[allow(dead_code)]

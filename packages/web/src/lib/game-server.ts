@@ -354,7 +354,7 @@ async function checkSecretTrackEvents(
 	const { data: events } = await admin
 		.from("events")
 		.select("*")
-		.eq("type", "secret_track")
+		.in("type", ["secret_track", "song_hunt"])
 		.eq("active", true)
 		.lte("starts_at", now)
 		.gte("ends_at", now);

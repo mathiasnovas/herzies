@@ -254,6 +254,15 @@ async fn trade_poll(trade_id: String) -> Result<Option<Trade>, String> {
     Ok(api::api_poll_trade(&client, &trade_id).await)
 }
 
+#[tauri::command]
+async fn fetch_active_events() -> Result<serde_json::Value, String> {
+    let client = Client::new();
+    match api::api_fetch_active_events(&client).await {
+        Some(events) => Ok(serde_json::json!({ "events": events })),
+        None => Ok(serde_json::json!({ "events": [] })),
+    }
+}
+
 // --- Helper types for command results ---
 
 #[derive(serde::Serialize)]
@@ -399,6 +408,11 @@ fn test_notification(app: AppHandle) {
 #[tauri::command]
 fn test_activity(app: AppHandle) {
     let _ = app.emit("activity", "Test activity log entry");
+}
+
+#[tauri::command]
+fn quit(app: AppHandle) {
+    app.exit(0);
 }
 
 fn send_notification(app: &AppHandle, title: &str, body: &str, deep_link: Option<&str>) {
@@ -566,8 +580,10 @@ pub fn run() {
             trade_accept,
             trade_cancel,
             trade_poll,
+            fetch_active_events,
             test_notification,
             test_activity,
+            quit,
         ])
         .setup(|app| {
             // Set notification bundle ID so clicks activate this app
