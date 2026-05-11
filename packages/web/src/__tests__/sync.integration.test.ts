@@ -247,6 +247,77 @@ describe("Sync flow", () => {
 		expect(body.herzie.totalMinutesListened).toBe(8);
 	});
 
+	it("sends first-finder notification for song_hunt events", async () => {
+		const admin = getAdminClient();
+
+		// Create a song_hunt event
+		const tomorrow = new Date(Date.now() + 86400_000).toISOString();
+		const { data: event } = await admin
+			.from("events")
+			.insert({
+				type: "song_hunt",
+				title: "Test Hunt",
+				description: "Find the song!",
+				active: true,
+				starts_at: new Date(Date.now() - 86400_000).toISOString(),
+				ends_at: tomorrow,
+				config: {
+					trackTitle: "Never Gonna Give You Up",
+					trackArtist: "Rick Astley",
+					rewardItemId: "cd",
+					maxClaims: 100,
+					hints: [],
+				},
+			})
+			.select("id")
+			.single();
+
+		expect(event).toBeDefined();
+
+		// Create a second user who "found" the song
+		const finder = await createTestUser();
+		await createTestHerzie(finder.userId, { name: "FinderHerzie" });
+
+		// Insert a claim for the finder
+		await admin.from("event_claims").insert({
+			event_id: event!.id,
+			user_id: finder.userId,
+		});
+
+		// Sync the original user — should get a first-finder notification
+		const res = await syncRoute(
+			authenticatedRequest("/sync", user.accessToken, {
+				nowPlaying: null,
+				minutesListened: 0,
+				genres: [],
+			}),
+		);
+		expect(res.status).toBe(200);
+		const body = await res.json();
+
+		const huntNotif = body.notifications.find(
+			(n: { type: string }) => n.type === "info" && n.message.includes("FinderHerzie"),
+		);
+		expect(huntNotif).toBeDefined();
+		expect(huntNotif.message).toContain("found the song");
+
+		// Sync again — should NOT get the notification a second time
+		const res2 = await syncRoute(
+			authenticatedRequest("/sync", user.accessToken, {
+				nowPlaying: null,
+				minutesListened: 0,
+				genres: [],
+			}),
+		);
+		expect(res2.status).toBe(200);
+		const body2 = await res2.json();
+
+		const huntNotif2 = body2.notifications.find(
+			(n: { type: string }) => n.type === "info" && n.message.includes("FinderHerzie"),
+		);
+		expect(huntNotif2).toBeUndefined();
+	});
+
 	it("sync does not wipe inventory changes from other operations", async () => {
 		const admin = getAdminClient();
 

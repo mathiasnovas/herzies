@@ -290,15 +290,72 @@ export async function processSync(
 		notifications.push(...eventNotifications);
 	}
 
+	// 6b. First-finder notifications for song hunts
+	const notifiedHunts = (row.notified_hunts ?? []) as string[];
+	{
+		const { data: activeHunts } = await admin
+			.from("events")
+			.select("id, title")
+			.eq("type", "song_hunt")
+			.eq("active", true)
+			.lte("starts_at", now.toISOString())
+			.gte("ends_at", now.toISOString());
+
+		if (activeHunts) {
+			for (const hunt of activeHunts) {
+				if (notifiedHunts.includes(hunt.id)) continue;
+
+				// Check if user already claimed this hunt (they'd get the item_granted notif instead)
+				const { data: ownClaim } = await admin
+					.from("event_claims")
+					.select("id")
+					.eq("event_id", hunt.id)
+					.eq("user_id", userId)
+					.maybeSingle();
+
+				if (ownClaim) continue;
+
+				// Check if anyone has found it
+				const { data: firstClaim } = await admin
+					.from("event_claims")
+					.select("user_id")
+					.eq("event_id", hunt.id)
+					.order("claimed_at", { ascending: true })
+					.limit(1)
+					.maybeSingle();
+
+				if (!firstClaim) continue;
+
+				// Get the finder's name
+				const { data: finderHerzie } = await admin
+					.from("herzies")
+					.select("name")
+					.eq("user_id", firstClaim.user_id as string)
+					.single();
+
+				const finderName = (finderHerzie?.name as string) ?? "Someone";
+				notifications.push({
+					type: "info",
+					title: hunt.title as string,
+					message: `${finderName} found the song! Find it yourself to claim your reward.`,
+				});
+				notifiedHunts.push(hunt.id);
+			}
+		}
+	}
+
 	// 7. Update the herzie in DB
 	// Spotify catch-up: don't overwrite now_playing (it may be stale)
 	const npPayload = source === "cli" && nowPlaying
 		? { title: nowPlaying.title, artist: nowPlaying.artist }
 		: null;
-	const updateData = herzieToRow(herzie, npPayload);
+	const updateData: Record<string, unknown> = {
+		...herzieToRow(herzie, npPayload),
+		notified_hunts: notifiedHunts,
+	};
 	if (source === "spotify") {
 		// Don't overwrite now_playing for spotify catch-up
-		delete (updateData as Record<string, unknown>).now_playing;
+		delete updateData.now_playing;
 	}
 	await admin
 		.from("herzies")
