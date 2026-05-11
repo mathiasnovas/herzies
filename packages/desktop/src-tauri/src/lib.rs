@@ -263,7 +263,62 @@ async fn fetch_active_events() -> Result<serde_json::Value, String> {
     }
 }
 
+#[tauri::command]
+async fn get_auth_config() -> Result<Option<AuthConfig>, String> {
+    let client = Client::new();
+    let token = api::get_token_public(&client).await;
+    let session = storage::load_session();
+
+    match (token, session) {
+        (Some(access_token), Some(session)) => {
+            let supabase_url = std::env::var("NEXT_PUBLIC_SUPABASE_URL")
+                .or_else(|_| std::env::var("SUPABASE_URL"))
+                .unwrap_or_else(|_| "https://ojqfqxolbjegorgoyond.supabase.co".to_string());
+            let anon_key = std::env::var("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+                .or_else(|_| std::env::var("SUPABASE_ANON_KEY"))
+                .unwrap_or_else(|_| "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qcWZxeG9sYmplZ29yZ295b25kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTcwMjgsImV4cCI6MjA5MzIzMzAyOH0.BBT77VK1ROJr57BJvMfCyra3lbycMA9u2-jxG-LhBJE".to_string());
+            Ok(Some(AuthConfig {
+                supabase_url,
+                anon_key,
+                access_token,
+                user_id: session.user_id,
+            }))
+        }
+        _ => Ok(None),
+    }
+}
+
+#[tauri::command]
+async fn chat_fetch() -> Result<Option<ChatFetchResponse>, String> {
+    if !api::is_logged_in() {
+        return Ok(None);
+    }
+    let client = Client::new();
+    Ok(api::api_chat_fetch(&client).await)
+}
+
+#[tauri::command]
+async fn chat_send(content: String, item_refs: Vec<String>) -> Result<Option<ChatSendResponse>, String> {
+    if !api::is_logged_in() {
+        return Ok(None);
+    }
+    let client = Client::new();
+    match api::api_chat_send(&client, &content, &item_refs).await {
+        Some(msg) => Ok(Some(ChatSendResponse { message: msg })),
+        None => Ok(None),
+    }
+}
+
 // --- Helper types for command results ---
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AuthConfig {
+    supabase_url: String,
+    anon_key: String,
+    access_token: String,
+    user_id: String,
+}
 
 #[derive(serde::Serialize)]
 struct FriendResult {
@@ -581,6 +636,9 @@ pub fn run() {
             trade_cancel,
             trade_poll,
             fetch_active_events,
+            get_auth_config,
+            chat_fetch,
+            chat_send,
             test_notification,
             test_activity,
             quit,

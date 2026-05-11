@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@herzies/shared": "workspace:*",
+    "@supabase/supabase-js": "^2.105.1",
     "@tauri-apps/api": "^2.5.0"
   },
   "devDependencies": {

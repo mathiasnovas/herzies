@@ -9,6 +9,15 @@ import type {
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
+export interface ChatMessage {
+	id: string;
+	userId: string;
+	username: string;
+	content: string;
+	itemRefs: string[];
+	createdAt: string;
+}
+
 export interface AppState {
 	herzie: Herzie | null;
 	nowPlaying: { title: string; artist: string } | null;
@@ -72,6 +81,16 @@ export const herzies = {
 
 	fetchActiveEvents: () =>
 		invoke<{ events: GameEvent[] }>("fetch_active_events"),
+
+	getAuthConfig: () =>
+		invoke<{ supabaseUrl: string; anonKey: string; accessToken: string; userId: string } | null>(
+			"get_auth_config",
+		),
+
+	chatFetch: () =>
+		invoke<{ messages: ChatMessage[] } | null>("chat_fetch"),
+	chatSend: (content: string, itemRefs: string[]) =>
+		invoke<{ message: ChatMessage } | null>("chat_send", { content, itemRefs }),
 
 	testNotification: () => invoke<void>("test_notification"),
 	testActivity: () => invoke<void>("test_activity"),
