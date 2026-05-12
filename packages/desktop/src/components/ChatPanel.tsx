@@ -333,14 +333,12 @@ export function ChatPanel({
 
 	const feed: FeedEntry[] = [];
 
-	// Activity log entries don't have a full timestamp, just HH:MM. Use today's date for sorting.
-	const today = new Date().toISOString().slice(0, 10);
 	for (const entry of activityLog) {
 		feed.push({
 			kind: "activity",
 			time: entry.time,
 			message: entry.message,
-			sortKey: `${today}T${entry.time}:00`,
+			sortKey: entry.time,
 		});
 	}
 	for (const msg of messages) {
@@ -381,6 +379,8 @@ export function ChatPanel({
 					)}
 					{feed.map((entry, i) => {
 						if (entry.kind === "activity") {
+							const d = new Date(entry.time);
+							const display = `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 							return (
 								<div
 									key={`a-${i}`}
@@ -392,7 +392,7 @@ export function ChatPanel({
 										wordBreak: "break-word",
 									}}
 								>
-									<span style={{ color: "#555" }}>{entry.time}</span>{" "}
+									<span style={{ color: "#555" }}>{display}</span>{" "}
 									{entry.message}
 								</div>
 							);

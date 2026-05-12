@@ -29,8 +29,7 @@ function App() {
 	const [stageOverride, setStageOverride] = useState<number | null>(null);
 
 	const addLog = useCallback((message: string) => {
-		const now = new Date();
-		const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+		const time = new Date().toISOString();
 		setActivityLog((prev) => [...prev.slice(-49), { time, message }]);
 	}, []);
 
