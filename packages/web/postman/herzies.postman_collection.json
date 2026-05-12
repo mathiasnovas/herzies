@@ -1,0 +1,534 @@
+{
+  "info": {
+    "name": "Herzies Web API",
+    "description": "HTTP endpoints exposed by packages/web (Next.js App Router under /api). Most endpoints expect a Supabase access token in `Authorization: Bearer <token>`. Admin endpoints use `x-admin-secret`. The cron endpoint uses `Authorization: Bearer <CRON_SECRET>`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "herzies-web-api"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{SUPABASE_TOKEN}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "BASE_URL", "value": "http://localhost:3000", "type": "string" },
+    { "key": "SUPABASE_TOKEN", "value": "", "type": "string", "description": "Supabase access token (Bearer)." },
+    { "key": "GAME_ADMIN_SECRET", "value": "", "type": "string", "description": "Value of GAME_ADMIN_SECRET, sent as x-admin-secret." },
+    { "key": "CRON_SECRET", "value": "", "type": "string", "description": "Value of CRON_SECRET, sent as Bearer on /api/cron/*." },
+    { "key": "FRIEND_CODE", "value": "HERZ-1111", "type": "string" },
+    { "key": "FRIEND_CODE_OTHER", "value": "HERZ-2222", "type": "string" },
+    { "key": "TRADE_ID", "value": "", "type": "string" },
+    { "key": "ITEM_ID", "value": "", "type": "string" },
+    { "key": "EVENT_ID", "value": "", "type": "string" },
+    { "key": "REFRESH_TOKEN", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Public",
+      "item": [
+        {
+          "name": "GET /api/health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}/api/health", "host": ["{{BASE_URL}}"], "path": ["api", "health"] }
+          }
+        },
+        {
+          "name": "GET /api/lookup (single)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/lookup?code={{FRIEND_CODE}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "lookup"],
+              "query": [{ "key": "code", "value": "{{FRIEND_CODE}}" }]
+            }
+          }
+        },
+        {
+          "name": "GET /api/lookup (batch)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/lookup?codes={{FRIEND_CODE}},{{FRIEND_CODE_OTHER}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "lookup"],
+              "query": [{ "key": "codes", "value": "{{FRIEND_CODE}},{{FRIEND_CODE_OTHER}}", "description": "Comma-separated, max 50." }]
+            }
+          }
+        },
+        {
+          "name": "GET /api/name-check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/name-check?name=Sparky",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "name-check"],
+              "query": [{ "key": "name", "value": "Sparky" }]
+            }
+          }
+        },
+        {
+          "name": "GET /api/events/active",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}/api/events/active", "host": ["{{BASE_URL}}"], "path": ["api", "events", "active"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /api/auth/refresh",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{REFRESH_TOKEN}}\"\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/auth/refresh", "host": ["{{BASE_URL}}"], "path": ["api", "auth", "refresh"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Herzie",
+      "item": [
+        {
+          "name": "GET /api/me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}/api/me", "host": ["{{BASE_URL}}"], "path": ["api", "me"] }
+          }
+        },
+        {
+          "name": "POST /api/herzie (register)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sparky\",\n  \"appearance\": {},\n  \"friendCode\": \"{{FRIEND_CODE}}\"\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/herzie", "host": ["{{BASE_URL}}"], "path": ["api", "herzie"] }
+          }
+        },
+        {
+          "name": "DELETE /api/herzie",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}/api/herzie", "host": ["{{BASE_URL}}"], "path": ["api", "herzie"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "GET /api/chat",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/chat?limit=50",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "chat"],
+              "query": [{ "key": "limit", "value": "50", "description": "Default 50, max 100." }]
+            }
+          }
+        },
+        {
+          "name": "POST /api/chat",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Hello everyone!\",\n  \"itemRefs\": []\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/chat", "host": ["{{BASE_URL}}"], "path": ["api", "chat"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sync",
+      "item": [
+        {
+          "name": "POST /api/sync",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nowPlaying\": {\n    \"title\": \"Song Title\",\n    \"artist\": \"Artist Name\",\n    \"genre\": \"pop\"\n  },\n  \"minutesListened\": 5.5,\n  \"genres\": [\"pop\", \"rock\"]\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/sync", "host": ["{{BASE_URL}}"], "path": ["api", "sync"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "item": [
+        {
+          "name": "GET /api/inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}/api/inventory", "host": ["{{BASE_URL}}"], "path": ["api", "inventory"] }
+          }
+        },
+        {
+          "name": "POST /api/inventory/equip",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemId\": \"{{ITEM_ID}}\",\n  \"action\": \"equip\"\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/inventory/equip", "host": ["{{BASE_URL}}"], "path": ["api", "inventory", "equip"] }
+          }
+        },
+        {
+          "name": "POST /api/inventory/sell",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemId\": \"{{ITEM_ID}}\",\n  \"quantity\": 1\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/inventory/sell", "host": ["{{BASE_URL}}"], "path": ["api", "inventory", "sell"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Friends",
+      "item": [
+        {
+          "name": "POST /api/friends/add",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"myCode\": \"{{FRIEND_CODE}}\",\n  \"theirCode\": \"{{FRIEND_CODE_OTHER}}\"\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/friends/add", "host": ["{{BASE_URL}}"], "path": ["api", "friends", "add"] }
+          }
+        },
+        {
+          "name": "POST /api/friends/remove",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"myCode\": \"{{FRIEND_CODE}}\",\n  \"theirCode\": \"{{FRIEND_CODE_OTHER}}\"\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/friends/remove", "host": ["{{BASE_URL}}"], "path": ["api", "friends", "remove"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Events",
+      "item": [
+        {
+          "name": "POST /api/events/claim",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{EVENT_ID}}\"\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/events/claim", "host": ["{{BASE_URL}}"], "path": ["api", "events", "claim"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Trade",
+      "item": [
+        {
+          "name": "POST /api/trade/create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.tradeId) {",
+                  "    pm.collectionVariables.set('TRADE_ID', json.tradeId);",
+                  "  }",
+                  "} catch (_) {}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetFriendCode\": \"{{FRIEND_CODE_OTHER}}\"\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/trade/create", "host": ["{{BASE_URL}}"], "path": ["api", "trade", "create"] }
+          }
+        },
+        {
+          "name": "GET /api/trade/status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/trade/status?tradeId={{TRADE_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "trade", "status"],
+              "query": [{ "key": "tradeId", "value": "{{TRADE_ID}}" }]
+            }
+          }
+        },
+        {
+          "name": "GET /api/trade/pending",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}/api/trade/pending", "host": ["{{BASE_URL}}"], "path": ["api", "trade", "pending"] }
+          }
+        },
+        {
+          "name": "POST /api/trade/join",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tradeId\": \"{{TRADE_ID}}\"\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/trade/join", "host": ["{{BASE_URL}}"], "path": ["api", "trade", "join"] }
+          }
+        },
+        {
+          "name": "POST /api/trade/offer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tradeId\": \"{{TRADE_ID}}\",\n  \"offer\": {\n    \"items\": {\n      \"{{ITEM_ID}}\": 1\n    },\n    \"currency\": 0\n  }\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/trade/offer", "host": ["{{BASE_URL}}"], "path": ["api", "trade", "offer"] }
+          }
+        },
+        {
+          "name": "POST /api/trade/lock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tradeId\": \"{{TRADE_ID}}\"\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/trade/lock", "host": ["{{BASE_URL}}"], "path": ["api", "trade", "lock"] }
+          }
+        },
+        {
+          "name": "POST /api/trade/accept",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tradeId\": \"{{TRADE_ID}}\"\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/trade/accept", "host": ["{{BASE_URL}}"], "path": ["api", "trade", "accept"] }
+          }
+        },
+        {
+          "name": "POST /api/trade/cancel",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tradeId\": \"{{TRADE_ID}}\"\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/trade/cancel", "host": ["{{BASE_URL}}"], "path": ["api", "trade", "cancel"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spotify (browser session)",
+      "description": "These endpoints rely on the Supabase session cookie set in the browser, not a Bearer token. Best driven from the web app; included here for reference.",
+      "item": [
+        {
+          "name": "GET /api/spotify/connect",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}/api/spotify/connect", "host": ["{{BASE_URL}}"], "path": ["api", "spotify", "connect"] }
+          }
+        },
+        {
+          "name": "GET /api/spotify/callback",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/spotify/callback?code=&state=",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "spotify", "callback"],
+              "query": [
+                { "key": "code", "value": "" },
+                { "key": "state", "value": "" },
+                { "key": "error", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/spotify/disconnect",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}/api/spotify/disconnect", "host": ["{{BASE_URL}}"], "path": ["api", "spotify", "disconnect"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cron",
+      "item": [
+        {
+          "name": "GET /api/cron/spotify-sync",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{CRON_SECRET}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}/api/cron/spotify-sync", "host": ["{{BASE_URL}}"], "path": ["api", "cron", "spotify-sync"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "description": "Auth via `x-admin-secret: {{GAME_ADMIN_SECRET}}` header.",
+      "auth": { "type": "noauth" },
+      "item": [
+        {
+          "name": "GET /api/admin/events",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [{ "key": "x-admin-secret", "value": "{{GAME_ADMIN_SECRET}}" }],
+            "url": { "raw": "{{BASE_URL}}/api/admin/events", "host": ["{{BASE_URL}}"], "path": ["api", "admin", "events"] }
+          }
+        },
+        {
+          "name": "POST /api/admin/events",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "x-admin-secret", "value": "{{GAME_ADMIN_SECRET}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"secret_track\",\n  \"title\": \"Discover Hidden Track\",\n  \"description\": \"Find the secret track\",\n  \"active\": true,\n  \"startsAt\": \"2026-05-01T00:00:00Z\",\n  \"endsAt\": \"2026-05-31T23:59:59Z\",\n  \"config\": {\n    \"rewardItemId\": \"item-123\",\n    \"rewardItemName\": \"Track Badge\",\n    \"rewardItemDescription\": \"Reward for discovering\",\n    \"rewardItemRarity\": \"legendary\",\n    \"maxClaims\": 100,\n    \"hints\": []\n  }\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/admin/events", "host": ["{{BASE_URL}}"], "path": ["api", "admin", "events"] }
+          }
+        },
+        {
+          "name": "POST /api/admin/grant-item",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "x-admin-secret", "value": "{{GAME_ADMIN_SECRET}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemId\": \"{{ITEM_ID}}\",\n  \"friendCode\": \"{{FRIEND_CODE}}\"\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/admin/grant-item", "host": ["{{BASE_URL}}"], "path": ["api", "admin", "grant-item"] }
+          }
+        },
+        {
+          "name": "GET /api/admin/multipliers",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [{ "key": "x-admin-secret", "value": "{{GAME_ADMIN_SECRET}}" }],
+            "url": { "raw": "{{BASE_URL}}/api/admin/multipliers", "host": ["{{BASE_URL}}"], "path": ["api", "admin", "multipliers"] }
+          }
+        },
+        {
+          "name": "POST /api/admin/multipliers",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "x-admin-secret", "value": "{{GAME_ADMIN_SECRET}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Double XP\",\n  \"bonus\": 2.0,\n  \"active\": true,\n  \"startsAt\": \"2026-05-01T00:00:00Z\",\n  \"endsAt\": \"2026-05-31T23:59:59Z\",\n  \"schedule\": null\n}"
+            },
+            "url": { "raw": "{{BASE_URL}}/api/admin/multipliers", "host": ["{{BASE_URL}}"], "path": ["api", "admin", "multipliers"] }
+          }
+        },
+        {
+          "name": "DELETE /api/admin/multipliers",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "DELETE",
+            "header": [{ "key": "x-admin-secret", "value": "{{GAME_ADMIN_SECRET}}" }],
+            "url": {
+              "raw": "{{BASE_URL}}/api/admin/multipliers?id=",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "admin", "multipliers"],
+              "query": [{ "key": "id", "value": "" }]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
