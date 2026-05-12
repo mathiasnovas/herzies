@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import type { Metadata } from "next";
 import { createServerClient } from "@/lib/supabase-server";
 import "./globals.css";
 
@@ -53,7 +53,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   return (
     <html lang="en">
       <body>
@@ -81,7 +83,17 @@ export default async function RootLayout({
                 textDecoration: "none",
               }}
             >
-              herzies<span style={{ fontSize: 10, fontWeight: 500, opacity: 0.6, marginLeft: 4 }}>[beta]</span>
+              herzies
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 500,
+                  opacity: 0.6,
+                  marginLeft: 4,
+                }}
+              >
+                [beta]
+              </span>
             </a>
           </div>
           <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
@@ -98,7 +110,10 @@ export default async function RootLayout({
               about
             </a>
             {user && (
-              <a href="/dashboard" style={{ fontSize: 13, color: "var(--green)" }}>
+              <a
+                href="/dashboard"
+                style={{ fontSize: 13, color: "var(--green)" }}
+              >
                 dashboard
               </a>
             )}
