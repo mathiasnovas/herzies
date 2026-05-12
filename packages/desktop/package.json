@@ -8,7 +8,8 @@
     "check": "tsc --noEmit",
     "build": "tauri build",
     "vite:dev": "vite dev --port 1420",
-    "vite:build": "vite build"
+    "vite:build": "vite build",
+    "sandbox": "vite dev --port 1420 --open /sandbox.html"
   },
   "dependencies": {
     "@herzies/shared": "workspace:*",
