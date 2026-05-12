@@ -19,6 +19,5 @@
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"
   },
-  "version": "0.0.1",
-  "onlyBuiltDependencies": ["electron", "esbuild"]
+  "version": "0.0.1"
 }

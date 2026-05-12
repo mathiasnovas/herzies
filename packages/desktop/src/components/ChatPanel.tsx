@@ -1,4 +1,4 @@
-import type { Inventory } from "@herzies/shared";
+import { CHAT_MESSAGE_MAX_LENGTH, type Inventory } from "@herzies/shared";
 import { createClient, type RealtimeChannel } from "@supabase/supabase-js";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -182,7 +182,7 @@ export function ChatPanel({
 	// Send handler
 	const handleSend = async () => {
 		if (!input.trim() || cooldown) return;
-		const content = input.trim();
+		const content = input.trim().slice(0, CHAT_MESSAGE_MAX_LENGTH);
 		const refs = [...itemRefs];
 		setInput("");
 		setItemRefs([]);
@@ -361,10 +361,10 @@ export function ChatPanel({
 				<div
 					ref={scrollRef}
 					style={{
-						maxHeight: 84,
-						minHeight: 28,
+						maxHeight: 58,
+						minHeight: 20,
 						overflow: "auto",
-						padding: "4px 0",
+						padding: "2px 0",
 					}}
 				>
 					{feed.length === 0 && (
@@ -373,7 +373,7 @@ export function ChatPanel({
 								fontSize: 9,
 								color: "#444",
 								textAlign: "center",
-								padding: "4px 0",
+								padding: "2px 0",
 							}}
 						>
 							No messages yet
@@ -387,10 +387,9 @@ export function ChatPanel({
 									style={{
 										fontSize: 9,
 										color: "#666",
-										whiteSpace: "nowrap",
-										overflow: "hidden",
-										textOverflow: "ellipsis",
 										lineHeight: "14px",
+										overflowWrap: "break-word",
+										wordBreak: "break-word",
 									}}
 								>
 									<span style={{ color: "#555" }}>{entry.time}</span>{" "}
@@ -407,9 +406,8 @@ export function ChatPanel({
 								style={{
 									fontSize: 9,
 									lineHeight: "14px",
-									whiteSpace: "nowrap",
-									overflow: "hidden",
-									textOverflow: "ellipsis",
+									overflowWrap: "break-word",
+									wordBreak: "break-word",
 								}}
 							>
 								<span style={{ color: "#555" }}>{time}</span>{" "}
@@ -444,7 +442,7 @@ export function ChatPanel({
 									background: "#1a1a1a",
 									border: "1px solid #444",
 									borderRadius: 4,
-									maxHeight: 120,
+									maxHeight: 88,
 									overflow: "auto",
 									zIndex: 100,
 								}}
@@ -470,7 +468,7 @@ export function ChatPanel({
 								))}
 							</div>
 						)}
-						<div style={{ display: "flex", gap: 4, padding: "4px 0" }}>
+						<div style={{ display: "flex", gap: 3, padding: "2px 0" }}>
 							<input
 								ref={inputRef}
 								style={{ ...inputStyle, flex: 1, fontSize: 10 }}
@@ -478,7 +476,7 @@ export function ChatPanel({
 								value={input}
 								onChange={handleInputChange}
 								onKeyDown={handleKeyDown}
-								maxLength={500}
+								maxLength={CHAT_MESSAGE_MAX_LENGTH}
 							/>
 							<button
 								style={{

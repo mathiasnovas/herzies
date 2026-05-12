@@ -1,3 +1,4 @@
+import { CHAT_MESSAGE_MAX_LENGTH } from "@herzies/shared";
 import { NextResponse } from "next/server";
 import { authenticateRequest, isAuthError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-admin";
@@ -75,8 +76,11 @@ export async function POST(request: Request) {
 	if (content.length === 0) {
 		return NextResponse.json({ error: "content is empty after sanitization" }, { status: 400 });
 	}
-	if (content.length > 500) {
-		return NextResponse.json({ error: "content exceeds 500 characters" }, { status: 400 });
+	if (content.length > CHAT_MESSAGE_MAX_LENGTH) {
+		return NextResponse.json(
+			{ error: `content exceeds ${CHAT_MESSAGE_MAX_LENGTH} characters` },
+			{ status: 400 },
+		);
 	}
 
 	let itemRefs: string[] = [];

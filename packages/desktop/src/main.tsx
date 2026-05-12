@@ -130,7 +130,7 @@ function App() {
 					/>
 				)}
 			</div>
-			{herzie && (
+			{herzie && view === "home" && (
 				<ChatPanel activityLog={activityLog} isOnline={state.isOnline} />
 			)}
 			{herzie && <TabBar view={view} setView={switchView} />}

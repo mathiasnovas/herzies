@@ -1,3 +1,4 @@
+export * from "./chat.js";
 export * from "./craving.js";
 export * from "./genres.js";
 export * from "./leveling.js";
