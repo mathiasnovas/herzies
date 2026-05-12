@@ -10,7 +10,7 @@ import {
 	dot3,
 	LIGHT,
 	normV,
-	RAMP,
+	RAMP_ITEM,
 	rotY,
 	rotZ,
 	type V2,
@@ -234,10 +234,10 @@ function renderCardFrame(yAngle: number): string[] {
 			.map((val, x) => {
 				if (val < 0) return " ";
 				const idx = Math.min(
-					Math.floor(val * (RAMP.length - 1)),
-					RAMP.length - 1,
+					Math.floor(val * (RAMP_ITEM.length - 1)),
+					RAMP_ITEM.length - 1,
 				);
-				const ch = RAMP[idx];
+				const ch = RAMP_ITEM[idx];
 				if (ch === " ") return " ";
 				return isContent[y][x]
 					? col("#FFD700", ch)
@@ -355,10 +355,10 @@ function renderCdFrame(yAngle: number): string[] {
 			.map((val) => {
 				if (val < 0) return " ";
 				const idx = Math.min(
-					Math.floor(val * (RAMP.length - 1)),
-					RAMP.length - 1,
+					Math.floor(val * (RAMP_ITEM.length - 1)),
+					RAMP_ITEM.length - 1,
 				);
-				const ch = RAMP[idx];
+				const ch = RAMP_ITEM[idx];
 				if (ch === " ") return " ";
 				return val > 0.6
 					? col("#E8E8E8", ch)
@@ -568,10 +568,10 @@ function renderHeadphonesFrame(yAngle: number): string[] {
 			.map((val, x) => {
 				if (val < 0) return " ";
 				const idx = Math.min(
-					Math.floor(val * (RAMP.length - 1)),
-					RAMP.length - 1,
+					Math.floor(val * (RAMP_ITEM.length - 1)),
+					RAMP_ITEM.length - 1,
 				);
-				const ch = RAMP[idx];
+				const ch = RAMP_ITEM[idx];
 				if (ch === " ") return " ";
 				if (zone[y][x] === "pad") return col("#3a3a3a", ch);
 				if (zone[y][x] === "cup")
