@@ -17,12 +17,15 @@ function formatCountdown(endsAt: string): string {
 
 function timeAgo(dateStr: string): string {
   const ms = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(ms / 60_000);
-  if (mins < 60) return `${mins}m ago`;
+  if (ms < 1000) return `${ms}ms ago`;
+  const secs = Math.floor(ms / 1000);
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ${secs % 60}s ago`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `${hours}h ${mins % 60}m ago`;
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `${days}d ${hours % 24}h ago`;
 }
 
 export function EventsView() {
@@ -62,8 +65,6 @@ export function EventsView() {
   }
 
   const hunt = events.find((e) => e.type === "song_hunt");
-
-  console.log("> events", events);
 
   if (!hunt) {
     return (
