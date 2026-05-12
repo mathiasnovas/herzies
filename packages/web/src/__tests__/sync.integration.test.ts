@@ -318,6 +318,59 @@ describe("Sync flow", () => {
 		expect(huntNotif2).toBeUndefined();
 	});
 
+	it("sends a win notification and log-only reward line when the user finds a song_hunt track", async () => {
+		const admin = getAdminClient();
+
+		const winner = await createTestUser();
+		await createTestHerzie(winner.userId, { name: "WinnerHerzie" });
+
+		const { data: event } = await admin
+			.from("events")
+			.insert({
+				type: "song_hunt",
+				title: "Winnable Hunt",
+				description: "Find it!",
+				active: true,
+				starts_at: new Date(Date.now() - 86400_000).toISOString(),
+				ends_at: new Date(Date.now() + 86400_000).toISOString(),
+				config: {
+					trackTitle: "Take On Me",
+					trackArtist: "a-ha",
+					rewardItemId: "cd",
+					maxClaims: 100,
+					hints: [],
+				},
+			})
+			.select("id")
+			.single();
+		expect(event).toBeDefined();
+
+		const res = await syncRoute(
+			authenticatedRequest("/sync", winner.accessToken, {
+				nowPlaying: { title: "Take On Me", artist: "a-ha" },
+				minutesListened: 1,
+				genres: ["pop"],
+			}),
+		);
+		expect(res.status).toBe(200);
+		const body = await res.json();
+
+		const winNotif = body.notifications.find(
+			(n: { type: string; message: string; logOnly?: boolean }) =>
+				n.type === "item_granted" && !n.logOnly,
+		);
+		expect(winNotif).toBeDefined();
+		expect(winNotif.message.toLowerCase()).toContain("won");
+
+		const rewardNotif = body.notifications.find(
+			(n: { logOnly?: boolean; message: string }) =>
+				n.logOnly === true && n.message.toLowerCase().startsWith("you received"),
+		);
+		expect(rewardNotif).toBeDefined();
+		// "cd" item has display name "CD" — should resolve the human name, not the id
+		expect(rewardNotif.message).toContain("CD");
+	});
+
 	it("sync does not wipe inventory changes from other operations", async () => {
 		const admin = getAdminClient();
 

@@ -579,8 +579,12 @@ async fn sync_tick(app: &AppHandle, client: &Client) -> Result<(), String> {
 
         // Show server-sent notifications (item drops, etc.)
         for notif in &sync_resp.notifications {
-            send_notification(app, &notif.title, &notif.message, notif.item_id.as_deref());
-            let _ = app.emit("activity", format!("{}: {}", notif.title, notif.message));
+            if notif.log_only.unwrap_or(false) {
+                let _ = app.emit("activity", &notif.message);
+            } else {
+                send_notification(app, &notif.title, &notif.message, notif.item_id.as_deref());
+                let _ = app.emit("activity", format!("{}: {}", notif.title, notif.message));
+            }
         }
     } else {
         let mut s = state.lock().unwrap();
@@ -660,7 +664,7 @@ pub fn run() {
             tray::setup_tray(app.handle())?;
 
             // Set up window hide-on-blur (production only)
-            if std::env::var("TAURI_DEV").is_err() {
+            if !tauri::is_dev() {
                 if let Some(window) = app.get_webview_window("main") {
                     let app_handle = app.handle().clone();
                     window.on_window_event(move |event| match event {

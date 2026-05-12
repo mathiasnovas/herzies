@@ -108,6 +108,8 @@ export interface EventNotification {
 	message: string;
 	itemId?: string;
 	quantity?: number;
+	/** When true, the desktop client logs this in the activity feed only and skips the native OS popup. */
+	logOnly?: boolean;
 }
 
 /** A game event (secret track challenge, etc.) */

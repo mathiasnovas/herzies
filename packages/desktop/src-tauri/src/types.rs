@@ -113,6 +113,8 @@ pub struct EventNotification {
     pub item_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub quantity: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub log_only: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

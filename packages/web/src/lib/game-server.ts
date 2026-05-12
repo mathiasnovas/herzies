@@ -454,12 +454,33 @@ async function checkSecretTrackEvents(
 			p_quantity: 1,
 		});
 
+		// Resolve human-readable item name (falls back to the id if missing).
+		const { data: itemRow } = await admin
+			.from("items")
+			.select("name")
+			.eq("id", config.rewardItemId)
+			.maybeSingle();
+		const itemName = (itemRow?.name as string | undefined) ?? config.rewardItemId;
+
+		const eventTitle = (event.title as string | null) ?? "Song Hunt";
+
+		// Native + log: the "you won" line.
 		notifications.push({
 			type: "item_granted",
-			title: config.rewardItemId,
-			message: `You discovered the secret track "${config.trackTitle}"! You earned a collectible!`,
+			title: eventTitle,
+			message: `You won! You found "${config.trackTitle}" first.`,
 			itemId: config.rewardItemId,
 			quantity: 1,
+		});
+
+		// Log-only: the reward line. Desktop skips the native popup for this.
+		notifications.push({
+			type: "item_granted",
+			title: eventTitle,
+			message: `You received: ${itemName}`,
+			itemId: config.rewardItemId,
+			quantity: 1,
+			logOnly: true,
 		});
 	}
 
