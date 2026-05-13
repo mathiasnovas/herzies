@@ -41,17 +41,8 @@ export default async function HerziePage({ params }: Props) {
 
 	if (!data) {
 		return (
-			<main
-				style={{
-					maxWidth: 800,
-					margin: "0 auto",
-					padding: "3rem 1.5rem",
-					textAlign: "center",
-				}}
-			>
-				<p style={{ color: "var(--text-dim)", fontSize: 14 }}>
-					no herzie found with that name.
-				</p>
+			<main className="max-w-[800px] mx-auto px-6 py-12 text-center">
+				<p className="text-text-dim text-sm">no herzie found with that name.</p>
 			</main>
 		);
 	}

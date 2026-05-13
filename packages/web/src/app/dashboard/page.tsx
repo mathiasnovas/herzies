@@ -23,31 +23,15 @@ export default async function DashboardPage() {
 		.maybeSingle();
 
 	return (
-		<main
-			style={{
-				maxWidth: 800,
-				margin: "0 auto",
-				padding: "2rem 1.5rem",
-			}}
-		>
-			<h1 style={{ fontSize: 18, color: "var(--purple)", marginBottom: "1.5rem" }}>
-				dashboard
-			</h1>
+		<main className="max-w-[800px] mx-auto px-6 py-8">
+			<h1 className="text-lg text-purple mb-6">dashboard</h1>
 
 			<SpotifyCard connection={connection} />
 
-			<form action="/auth/logout" method="POST" style={{ marginTop: "2rem" }}>
+			<form action="/auth/logout" method="POST" className="mt-8">
 				<button
 					type="submit"
-					style={{
-						background: "none",
-						border: "none",
-						color: "var(--text-dim)",
-						fontFamily: "inherit",
-						fontSize: 12,
-						cursor: "pointer",
-						padding: 0,
-					}}
+					className="bg-transparent border-0 text-text-dim font-[inherit] text-xs cursor-pointer p-0"
 				>
 					sign out
 				</button>

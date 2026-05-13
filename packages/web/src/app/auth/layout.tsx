@@ -10,14 +10,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 			<style>{`
 				body > nav, body > footer { display: none !important; }
 			`}</style>
-			<div
-				style={{
-					minHeight: "100vh",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-				}}
-			>
+			<div className="min-h-screen flex items-center justify-center">
 				{children}
 			</div>
 		</>

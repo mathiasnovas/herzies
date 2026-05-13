@@ -14,28 +14,16 @@ export function CopyBlock({ command }: { command: string }) {
 	return (
 		<div
 			onClick={handleClick}
-			style={{
-				background: "var(--bg-panel)",
-				border: "1px solid var(--border)",
-				borderRadius: 6,
-				padding: "1rem",
-				cursor: "pointer",
-				position: "relative",
-			}}
+			className="bg-bg-panel border border-border rounded-md p-4 cursor-pointer relative"
 		>
-			<code style={{ fontSize: 13 }}>
-				<span style={{ color: "var(--text-dim)" }}>$ </span>
+			<code className="text-[13px]">
+				<span className="text-text-dim">$ </span>
 				{command}
 			</code>
 			<span
-				style={{
-					position: "absolute",
-					right: "1rem",
-					top: "50%",
-					transform: "translateY(-50%)",
-					fontSize: 11,
-					color: copied ? "var(--green)" : "var(--text-dim)",
-				}}
+				className={`absolute right-4 top-1/2 -translate-y-1/2 text-[11px] ${
+					copied ? "text-green" : "text-text-dim"
+				}`}
 			>
 				{copied ? "copied!" : "click to copy"}
 			</span>

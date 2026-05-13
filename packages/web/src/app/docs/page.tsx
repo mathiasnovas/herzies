@@ -58,64 +58,34 @@ const commands = [
 ];
 
 export default function DocsPage() {
-	const panel = {
-		background: "var(--bg-panel)",
-		border: "1px solid var(--border)",
-		borderRadius: 6,
-		padding: "1rem",
-	} as const;
-
 	return (
-		<main
-			style={{
-				maxWidth: 800,
-				margin: "0 auto",
-				padding: "3rem 1.5rem",
-				display: "flex",
-				flexDirection: "column",
-				gap: "1.5rem",
-			}}
-		>
+		<main className="max-w-[800px] mx-auto px-6 py-12 flex flex-col gap-6">
 			<section>
-				<h1 style={{ fontSize: 18, color: "var(--purple)", marginBottom: 4 }}>
-					docs
-				</h1>
-				<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-					// commands and usage
-				</p>
+				<h1 className="text-lg text-purple mb-1">docs</h1>
+				<p className="text-xs text-text-dim">// commands and usage</p>
 			</section>
 
 			<section>
-				<h2 style={{ fontSize: 14, color: "var(--cyan)", marginBottom: 8 }}>
-					get started
-				</h2>
+				<h2 className="text-sm text-cyan mb-2">get started</h2>
 				<CopyBlock command="npm i -g herzies" />
 			</section>
 
 			<section>
-				<h2 style={{ fontSize: 14, color: "var(--cyan)", marginBottom: 8 }}>
-					commands
-				</h2>
-				<div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+				<h2 className="text-sm text-cyan mb-2">commands</h2>
+				<div className="flex flex-col gap-2">
 					{commands.map((cmd) => (
-						<div key={cmd.name} style={panel}>
-							<code style={{ fontSize: 13, color: "var(--green)" }}>
-								{cmd.name}
-							</code>
-							<p style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 4 }}>
-								{cmd.description}
-							</p>
+						<div key={cmd.name} className="bg-bg-panel border border-border rounded-md p-4">
+							<code className="text-[13px] text-green">{cmd.name}</code>
+							<p className="text-xs text-text-dim mt-1">{cmd.description}</p>
 						</div>
 					))}
 				</div>
 			</section>
 
 			<section>
-				<h2 style={{ fontSize: 14, color: "var(--cyan)", marginBottom: 8 }}>
-					requirements
-				</h2>
-				<div style={panel}>
-					<p style={{ fontSize: 13 }}>
+				<h2 className="text-sm text-cyan mb-2">requirements</h2>
+				<div className="bg-bg-panel border border-border rounded-md p-4">
+					<p className="text-[13px]">
 						macOS with Apple Music or Spotify. Linux and Windows support is coming.
 					</p>
 				</div>

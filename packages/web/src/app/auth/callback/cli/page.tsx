@@ -4,14 +4,6 @@ import { createSupabaseClient } from "@/lib/supabase";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 
-const panel = {
-	background: "var(--bg-panel)",
-	border: "1px solid var(--border)",
-	borderRadius: 6,
-	padding: "1.25rem",
-	maxWidth: 400,
-} as const;
-
 function CallbackHandler() {
 	const searchParams = useSearchParams();
 	const cliPort = searchParams.get("cli_port");
@@ -22,8 +14,6 @@ function CallbackHandler() {
 		async function handleCallback() {
 			const supabase = createSupabaseClient();
 
-			// The code was already exchanged server-side in /auth/callback.
-			// Just read the session from cookies.
 			const { data: { session }, error } = await supabase.auth.getSession();
 
 			if (error || !session) {
@@ -59,29 +49,15 @@ function CallbackHandler() {
 	}, [cliPort]);
 
 	return (
-		<main
-			style={{
-				width: "100%",
-				maxWidth: 360,
-				padding: "0 1.5rem",
-				display: "flex",
-				flexDirection: "column",
-				gap: "1rem",
-				textAlign: "center",
-			}}
-		>
+		<main className="w-full max-w-[360px] px-6 flex flex-col gap-4 text-center">
 			{status === "loading" && (
 				<>
 					<div>
-						<h1 style={{ fontSize: 18, color: "var(--purple)", marginBottom: 4 }}>
-							logging in
-						</h1>
-						<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-							hang tight...
-						</p>
+						<h1 className="text-lg text-purple mb-1">logging in</h1>
+						<p className="text-xs text-text-dim">hang tight...</p>
 					</div>
-					<div style={panel}>
-						<p style={{ fontSize: 13, color: "var(--text-dim)" }}>...</p>
+					<div className="bg-bg-panel border border-border rounded-md p-5 max-w-[400px]">
+						<p className="text-[13px] text-text-dim">...</p>
 					</div>
 				</>
 			)}
@@ -89,15 +65,11 @@ function CallbackHandler() {
 			{status === "error" && (
 				<>
 					<div>
-						<h1 style={{ fontSize: 18, color: "var(--red)", marginBottom: 4 }}>
-							something went wrong
-						</h1>
-						<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-							login failed
-						</p>
+						<h1 className="text-lg text-red mb-1">something went wrong</h1>
+						<p className="text-xs text-text-dim">login failed</p>
 					</div>
-					<div style={{ ...panel, borderColor: "var(--red)" }}>
-						<p style={{ fontSize: 13, color: "var(--red)" }}>{error}</p>
+					<div className="bg-bg-panel border border-red rounded-md p-5 max-w-[400px]">
+						<p className="text-[13px] text-red">{error}</p>
 					</div>
 				</>
 			)}
@@ -105,22 +77,13 @@ function CallbackHandler() {
 			{status === "success" && (
 				<>
 					<div>
-						<h1 style={{ fontSize: 18, color: "var(--green)", marginBottom: 4 }}>
-							you're in
-						</h1>
-						<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-							logged in successfully
-						</p>
+						<h1 className="text-lg text-green mb-1">you're in</h1>
+						<p className="text-xs text-text-dim">logged in successfully</p>
 					</div>
-					<div style={panel}>
-						<p style={{ fontSize: 13 }}>
+					<div className="bg-bg-panel border border-border rounded-md p-5 max-w-[400px]">
+						<p className="text-[13px]">
 							Run{" "}
-							<code style={{
-								background: "var(--bg)",
-								padding: "0.15rem 0.4rem",
-								borderRadius: 4,
-								fontSize: 12,
-							}}>
+							<code className="bg-bg px-1.5 py-0.5 rounded text-xs">
 								herzies login
 							</code>{" "}
 							in your terminal to sync your herzie.
@@ -134,7 +97,7 @@ function CallbackHandler() {
 
 export default function CLICallbackPage() {
 	return (
-		<Suspense fallback={<p style={{ padding: "2rem" }}>Loading...</p>}>
+		<Suspense fallback={<p className="p-8">Loading...</p>}>
 			<CallbackHandler />
 		</Suspense>
 	);

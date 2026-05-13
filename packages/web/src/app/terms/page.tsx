@@ -6,48 +6,24 @@ export const metadata: Metadata = {
 };
 
 export default function TermsPage() {
-	const panel = {
-		background: "var(--bg-panel)",
-		border: "1px solid var(--border)",
-		borderRadius: 6,
-		padding: "1rem",
-	} as const;
-
 	return (
-		<main
-			style={{
-				maxWidth: 800,
-				margin: "0 auto",
-				padding: "3rem 1.5rem",
-				display: "flex",
-				flexDirection: "column",
-				gap: "1.5rem",
-			}}
-		>
+		<main className="max-w-[800px] mx-auto px-6 py-12 flex flex-col gap-6">
 			<section>
-				<h1 style={{ fontSize: 18, color: "var(--purple)", marginBottom: 4 }}>
-					terms of service
-				</h1>
-				<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-					// the fine print
-				</p>
+				<h1 className="text-lg text-purple mb-1">terms of service</h1>
+				<p className="text-xs text-text-dim">// the fine print</p>
 			</section>
 
 			<section>
-				<h2 style={{ fontSize: 16, color: "var(--cyan)", marginBottom: 4 }}>
-					data &amp; privacy
-				</h2>
-				<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-					// what we collect
-				</p>
+				<h2 className="text-base text-cyan mb-1">data &amp; privacy</h2>
+				<p className="text-xs text-text-dim">// what we collect</p>
 			</section>
 
-			<div style={{ ...panel, display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-				<p style={{ fontSize: 13 }}>
+			<div className="bg-bg-panel border border-border rounded-md p-4 flex flex-col gap-3">
+				<p className="text-[13px]">
 					Herzies collects only what it needs to work. When you register and sync,
 					the following is stored:
 				</p>
-				<ul style={{ fontSize: 13, paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: 4 }}>
+				<ul className="text-[13px] pl-5 flex flex-col gap-1">
 					<li>Your email address (for authentication)</li>
 					<li>Your herzie's name, level, stage, XP, and appearance</li>
 					<li>Total minutes listened and a breakdown by genre</li>
@@ -56,55 +32,47 @@ export default function TermsPage() {
 					<li>Items and event progress</li>
 					<li>Daily streak data</li>
 				</ul>
-				<p style={{ fontSize: 13 }}>
+				<p className="text-[13px]">
 					We store your listening history so you can see stats like your recently played
 					tracks and top artists on your profile. This data is publicly visible on your
 					herzie's profile page.
 				</p>
-				<p style={{ fontSize: 13 }}>
-					We do <span style={{ fontWeight: 700 }}>not</span> sell or share your data with anyone.
+				<p className="text-[13px]">
+					We do <span className="font-bold">not</span> sell or share your data with anyone.
 					All data is processed by the herzies game server and stored securely.
 				</p>
-				<p style={{ fontSize: 13 }}>
+				<p className="text-[13px]">
 					If you don't register, everything stays local on your machine
-					in <code style={{ fontSize: 12, color: "var(--text-dim)" }}>~/.config/herzies/</code> and
+					in <code className="text-xs text-text-dim">~/.config/herzies/</code> and
 					nothing is sent anywhere.
 				</p>
 			</div>
 
 			<section>
-				<h2 style={{ fontSize: 16, color: "var(--red)", marginBottom: 4 }}>
-					delete your data
-				</h2>
-				<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-					// the nuclear option
-				</p>
+				<h2 className="text-base text-red mb-1">delete your data</h2>
+				<p className="text-xs text-text-dim">// the nuclear option</p>
 			</section>
 
-			<div style={{ ...panel, display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-				<p style={{ fontSize: 13 }}>
+			<div className="bg-bg-panel border border-border rounded-md p-4 flex flex-col gap-3">
+				<p className="text-[13px]">
 					You can permanently delete your herzie and all associated data from our servers.
 					This removes your account, herzie stats, listening history, friend connections,
 					and leaderboard entry. This action is irreversible.
 				</p>
-				<p style={{ fontSize: 13 }}>
+				<p className="text-[13px]">
 					To delete your herzie, log in through the CLI and
-					run <code style={{ fontSize: 12, color: "var(--text-dim)" }}>herzies kill</code>.
+					run <code className="text-xs text-text-dim">herzies kill</code>.
 					Your local data will be removed as well.
 				</p>
 			</div>
 
 			<section>
-				<h2 style={{ fontSize: 16, color: "var(--text)", marginBottom: 4 }}>
-					usage
-				</h2>
-				<p style={{ fontSize: 12, color: "var(--text-dim)" }}>
-					// the basics
-				</p>
+				<h2 className="text-base text-text mb-1">usage</h2>
+				<p className="text-xs text-text-dim">// the basics</p>
 			</section>
 
-			<div style={{ ...panel, display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-				<p style={{ fontSize: 13 }}>
+			<div className="bg-bg-panel border border-border rounded-md p-4 flex flex-col gap-3">
+				<p className="text-[13px]">
 					Herzies is provided as-is. We reserve the right to remove accounts that
 					abuse the service. By signing in, you agree to these terms.
 				</p>

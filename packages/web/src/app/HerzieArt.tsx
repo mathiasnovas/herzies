@@ -320,19 +320,16 @@ export function HerzieArt({ appearance, stage = 1, size = 16, animate = true }: 
 
 	return (
 		<pre
+			className="leading-tight m-0 transition-transform duration-300 ease-in-out select-none"
 			style={{
 				fontSize: size,
-				lineHeight: 1.3,
-				margin: 0,
 				transform: `translateY(${bounceOffset}px)`,
-				transition: "transform 0.3s ease-in-out",
 				filter: `drop-shadow(0 0 12px ${color}40)`,
-				userSelect: "none",
 			}}
 			aria-label={`A stage ${stage} herzie`}
 		>
 			{finalLines.map((l, i) => (
-				<span key={i} style={{ color: l.color, display: "block" }}>
+				<span key={i} className="block" style={{ color: l.color }}>
 					{l.text}
 				</span>
 			))}

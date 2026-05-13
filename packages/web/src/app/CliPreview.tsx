@@ -16,87 +16,71 @@ function XpBar({ progress, width = 20 }: { progress: number; width?: number }) {
 	const bar = "█".repeat(filled) + "░".repeat(empty);
 	return (
 		<span>
-			<span style={{ color: "var(--green)" }}>[{bar}]</span>{" "}
-			<span style={{ color: "var(--yellow)" }}>{Math.round(progress * 100)}%</span>
+			<span className="text-green">[{bar}]</span>{" "}
+			<span className="text-yellow">{Math.round(progress * 100)}%</span>
 		</span>
 	);
 }
 
 export function CliPreview() {
 	return (
-		<div
-			style={{
-				background: "var(--bg-panel)",
-				border: "1px solid var(--border)",
-				borderRadius: 8,
-				overflow: "hidden",
-			}}
-		>
+		<div className="bg-bg-panel border border-border rounded-lg overflow-hidden">
 			{/* Title bar */}
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: 6,
-					padding: "8px 12px",
-					borderBottom: "1px solid var(--border)",
-					fontSize: 12,
-				}}
-			>
-				<span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57", display: "inline-block" }} />
-				<span style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e", display: "inline-block" }} />
-				<span style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840", display: "inline-block" }} />
-				<span style={{ color: "var(--text-dim)", marginLeft: 8 }}>herzies</span>
+			<div className="flex items-center gap-1.5 px-3 py-2 border-b border-border text-xs">
+				<span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57] inline-block" />
+				<span className="w-2.5 h-2.5 rounded-full bg-[#febc2e] inline-block" />
+				<span className="w-2.5 h-2.5 rounded-full bg-[#28c840] inline-block" />
+				<span className="text-text-dim ml-2">herzies</span>
 			</div>
 
 			{/* Terminal content */}
-			<div style={{ padding: "12px 16px", fontSize: 13, lineHeight: 1.6 }}>
+			<div className="px-4 py-3 text-[13px] leading-relaxed">
 				{/* Header */}
 				<div>
-					<span style={{ color: "var(--purple)", fontWeight: 700 }}>♫ herzies</span>
-					<span style={{ color: "var(--text-dim)" }}> — listening</span>
+					<span className="text-purple font-bold">♫ herzies</span>
+					<span className="text-text-dim"> — listening</span>
 				</div>
 
 				{/* Main: art + stats */}
-				<div style={{ display: "flex", flexDirection: "row", marginTop: 8, gap: 8 }}>
-					<div className="leaderboard-herzie" style={{ flexShrink: 0 }}>
+				<div className="flex flex-row mt-2 gap-2">
+					<div className="leaderboard-herzie shrink-0">
 						<HerzieArt appearance={SAMPLE_APPEARANCE} stage={1} size={13} />
 					</div>
 
-					<div style={{ display: "flex", flexDirection: "column", gap: 2, paddingLeft: 4 }}>
+					<div className="flex flex-col gap-0.5 pl-1">
 						<div>
-							<span style={{ color: "var(--cyan)", fontWeight: 700 }}>Mochi</span>
-							<span style={{ color: "var(--text-dim)" }}> — Baby (Stage 1)</span>
+							<span className="text-cyan font-bold">Mochi</span>
+							<span className="text-text-dim"> — Baby (Stage 1)</span>
 						</div>
 
-						<div style={{ marginTop: 4 }}>
-							<span style={{ fontWeight: 700 }}>Level:</span>{" "}
-							<span style={{ color: "var(--yellow)" }}>7</span>
+						<div className="mt-1">
+							<span className="font-bold">Level:</span>{" "}
+							<span className="text-yellow">7</span>
 						</div>
 						<div>
-							<span style={{ fontWeight: 700 }}>XP: </span>
+							<span className="font-bold">XP: </span>
 							<XpBar progress={0.65} />
-							<span style={{ color: "var(--text-dim)" }}> (87 to next)</span>
+							<span className="text-text-dim"> (87 to next)</span>
 						</div>
 
-						<div style={{ marginTop: 4 }}>
-							<span style={{ fontWeight: 700 }}>Music: </span>
-							<span style={{ color: "var(--purple)" }}>12.4h (744 min)</span>
+						<div className="mt-1">
+							<span className="font-bold">Music: </span>
+							<span className="text-purple">12.4h (744 min)</span>
 						</div>
 						<div>
-							<span style={{ fontWeight: 700 }}>Code: </span>
-							<span style={{ color: "var(--cyan)" }}>MCHI-7X2</span>
-							<span style={{ color: "var(--text-dim)" }}> (3 friendzies, +6% XP)</span>
+							<span className="font-bold">Code: </span>
+							<span className="text-cyan">MCHI-7X2</span>
+							<span className="text-text-dim"> (3 friendzies, +6% XP)</span>
 						</div>
 					</div>
 				</div>
 
 				{/* Now playing */}
-				<div style={{ marginTop: 8 }}>
-					<span style={{ color: "var(--green)", fontWeight: 700 }}>♪ </span>
-					<span style={{ fontWeight: 700 }}>Midnight City</span>
-					<span style={{ color: "var(--text-dim)" }}> — M83</span>
-					<span style={{ color: "var(--text-dim)" }}> | +42 XP this session</span>
+				<div className="mt-2">
+					<span className="text-green font-bold">♪ </span>
+					<span className="font-bold">Midnight City</span>
+					<span className="text-text-dim"> — M83</span>
+					<span className="text-text-dim"> | +42 XP this session</span>
 				</div>
 			</div>
 		</div>

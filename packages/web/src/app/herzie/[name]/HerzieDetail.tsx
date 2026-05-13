@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createSupabaseClient } from "@/lib/supabase";
-import { HerzieArt } from "../../HerzieArt";
+import { Herzie3D } from "../../Herzie3D";
 
 const POLL_INTERVAL = 10_000;
 
@@ -12,10 +12,10 @@ const STAGE_LABELS: Record<number, string> = {
 	3: "champion",
 };
 
-const STAGE_COLORS: Record<number, string> = {
-	1: "var(--yellow)",
-	2: "var(--cyan)",
-	3: "var(--purple)",
+const STAGE_COLOR_CLASS: Record<number, string> = {
+	1: "text-yellow",
+	2: "text-cyan",
+	3: "text-purple",
 };
 
 interface HerzieRow {
@@ -104,7 +104,6 @@ export function HerzieDetail({
 		if (data) setHerzie(data as HerzieRow);
 	}, [initial.name]);
 
-	// Fetch friends
 	useEffect(() => {
 		if (herzie.friend_codes.length === 0) return;
 		const supabase = createSupabaseClient();
@@ -117,7 +116,6 @@ export function HerzieDetail({
 			});
 	}, [herzie.friend_codes]);
 
-	// Poll for updates
 	useEffect(() => {
 		const interval = setInterval(refresh, POLL_INTERVAL);
 		return () => clearInterval(interval);
@@ -126,73 +124,37 @@ export function HerzieDetail({
 	const age = daysSince(herzie.created_at);
 
 	return (
-		<main
-			style={{
-				maxWidth: 800,
-				margin: "0 auto",
-				padding: "3rem 1.5rem",
-				display: "flex",
-				flexDirection: "column",
-				gap: "1.5rem",
-			}}
-		>
+		<main className="max-w-[800px] mx-auto px-6 py-12 flex flex-col gap-6">
 			{/* Header: art + info */}
-			<div
-				style={{
-					display: "flex",
-					gap: "2rem",
-					alignItems: "flex-start",
-					flexWrap: "wrap",
-				}}
-			>
-				<div style={{ flexShrink: 0 }}>
-					<HerzieArt
-						appearance={herzie.appearance}
+			<div className="flex gap-8 items-start flex-wrap">
+				<div className="shrink-0">
+					<Herzie3D
+						userId={herzie.friend_code || herzie.name}
 						stage={herzie.stage}
-						size={14}
-						animate={!!herzie.now_playing}
+						size={5}
+						isPlaying={!!herzie.now_playing}
+						ariaLabel={`${herzie.name}, a stage ${herzie.stage} herzie`}
 					/>
 				</div>
 
-				<div style={{ flex: 1, minWidth: 200 }}>
-					<h1 style={{ fontSize: 22, margin: 0 }}>{herzie.name}</h1>
-					<div
-						style={{
-							fontSize: 13,
-							color: STAGE_COLORS[herzie.stage],
-							marginTop: 4,
-						}}
-					>
+				<div className="flex-1 min-w-[200px]">
+					<h1 className="text-[22px] m-0">{herzie.name}</h1>
+					<div className={`text-[13px] mt-1 ${STAGE_COLOR_CLASS[herzie.stage] ?? "text-text"}`}>
 						{STAGE_LABELS[herzie.stage]} (stage {herzie.stage})
 					</div>
 
-					<div
-						style={{
-							display: "flex",
-							gap: "1.5rem",
-							marginTop: 16,
-							flexWrap: "wrap",
-						}}
-					>
-						<Stat label="level" value={String(herzie.level)} color="var(--yellow)" />
-						<Stat label="listened" value={formatMinutes(herzie.total_minutes_listened)} color="var(--green)" />
-						<Stat label="age" value={`${age}d`} color="var(--text-dim)" />
-						<Stat label="friendzies" value={String(herzie.friend_codes.length)} color="var(--cyan)" />
+					<div className="flex gap-6 mt-4 flex-wrap">
+						<Stat label="level" value={String(herzie.level)} colorClass="text-yellow" />
+						<Stat label="listened" value={formatMinutes(herzie.total_minutes_listened)} colorClass="text-green" />
+						<Stat label="age" value={`${age}d`} colorClass="text-text-dim" />
+						<Stat label="friendzies" value={String(herzie.friend_codes.length)} colorClass="text-cyan" />
 					</div>
 
 					{/* Now playing */}
 					{herzie.now_playing && (
-						<div
-							style={{
-								marginTop: 16,
-								fontSize: 13,
-								color: "var(--cyan)",
-							}}
-						>
+						<div className="mt-4 text-[13px] text-cyan">
 							&#9834; {herzie.now_playing.title}
-							<span style={{ color: "var(--text-dim)" }}>
-								{" "}— {herzie.now_playing.artist}
-							</span>
+							<span className="text-text-dim"> — {herzie.now_playing.artist}</span>
 						</div>
 					)}
 				</div>
@@ -201,29 +163,19 @@ export function HerzieDetail({
 			{/* Recently Played */}
 			<Panel title="recently played">
 				{recentTracks.length === 0 ? (
-					<p style={{ color: "var(--text-dim)", fontSize: 13, margin: 0 }}>
-						no listening activity yet.
-					</p>
+					<p className="text-text-dim text-[13px] m-0">no listening activity yet.</p>
 				) : (
-					<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+					<div className="flex flex-col gap-2">
 						{recentTracks.map((track, i) => (
 							<div
 								key={`${track.listened_at}-${i}`}
-								style={{
-									display: "flex",
-									justifyContent: "space-between",
-									alignItems: "center",
-									fontSize: 13,
-									padding: "6px 8px",
-									borderRadius: 4,
-									background: "var(--bg)",
-								}}
+								className="flex justify-between items-center text-[13px] px-2 py-1.5 rounded bg-bg"
 							>
 								<span>
-									<span style={{ color: "var(--cyan)" }}>&#9834; {track.track_name}</span>
-									<span style={{ color: "var(--text-dim)" }}> — {track.artist_name}</span>
+									<span className="text-cyan">&#9834; {track.track_name}</span>
+									<span className="text-text-dim"> — {track.artist_name}</span>
 								</span>
-								<span style={{ color: "var(--text-dim)", fontSize: 11, flexShrink: 0, marginLeft: 12 }}>
+								<span className="text-text-dim text-[11px] shrink-0 ml-3">
 									{formatTimeAgo(track.listened_at)}
 								</span>
 							</div>
@@ -235,31 +187,19 @@ export function HerzieDetail({
 			{/* Top Artists */}
 			<Panel title="top artists">
 				{topArtists.length === 0 ? (
-					<p style={{ color: "var(--text-dim)", fontSize: 13, margin: 0 }}>
-						no listening activity yet.
-					</p>
+					<p className="text-text-dim text-[13px] m-0">no listening activity yet.</p>
 				) : (
-					<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+					<div className="flex flex-col gap-2">
 						{topArtists.map((artist, i) => (
 							<div
 								key={artist.name}
-								style={{
-									display: "flex",
-									justifyContent: "space-between",
-									alignItems: "center",
-									fontSize: 13,
-									padding: "6px 8px",
-									borderRadius: 4,
-									background: "var(--bg)",
-								}}
+								className="flex justify-between items-center text-[13px] px-2 py-1.5 rounded bg-bg"
 							>
 								<span>
-									<span style={{ color: "var(--yellow)", marginRight: 8 }}>
-										{i + 1}.
-									</span>
-									<span style={{ color: "var(--green)" }}>{artist.name}</span>
+									<span className="text-yellow mr-2">{i + 1}.</span>
+									<span className="text-green">{artist.name}</span>
 								</span>
-								<span style={{ color: "var(--text-dim)", fontSize: 11 }}>
+								<span className="text-text-dim text-[11px]">
 									{artist.plays} {artist.plays === 1 ? "play" : "plays"}
 								</span>
 							</div>
@@ -271,52 +211,30 @@ export function HerzieDetail({
 			{/* Friends */}
 			<Panel title={`friendzies (${herzie.friend_codes.length})`}>
 				{herzie.friend_codes.length === 0 ? (
-					<p style={{ color: "var(--text-dim)", fontSize: 13, margin: 0 }}>
-						no friendzies yet.
-					</p>
+					<p className="text-text-dim text-[13px] m-0">no friendzies yet.</p>
 				) : (
-					<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+					<div className="flex flex-col gap-2">
 						{friends.map((f) => (
 							<a
 								key={f.friend_code}
 								href={`/herzie/${encodeURIComponent(f.name)}`}
-								style={{
-									display: "flex",
-									justifyContent: "space-between",
-									alignItems: "center",
-									fontSize: 13,
-									textDecoration: "none",
-									color: "inherit",
-									padding: "6px 8px",
-									borderRadius: 4,
-									background: "var(--bg)",
-								}}
+								className="flex justify-between items-center text-[13px] no-underline text-inherit px-2 py-1.5 rounded bg-bg"
 							>
 								<span>
-									<span style={{ color: "var(--cyan)" }}>{f.name}</span>
-									<span style={{ color: "var(--text-dim)" }}>
-										{" "}lv.{f.level} {STAGE_LABELS[f.stage]}
-									</span>
+									<span className="text-cyan">{f.name}</span>
+									<span className="text-text-dim"> lv.{f.level} {STAGE_LABELS[f.stage]}</span>
 								</span>
 								{f.now_playing && (
-									<span style={{ color: "var(--cyan)", fontSize: 12 }}>
+									<span className="text-cyan text-xs">
 										&#9834; {f.now_playing.title}
 									</span>
 								)}
 							</a>
 						))}
-						{/* Show friend codes that weren't found */}
 						{herzie.friend_codes
 							.filter((code) => !friends.find((f) => f.friend_code === code))
 							.map((code) => (
-								<div
-									key={code}
-									style={{
-										fontSize: 13,
-										color: "var(--text-dim)",
-										padding: "6px 8px",
-									}}
-								>
+								<div key={code} className="text-[13px] text-text-dim px-2 py-1.5">
 									{code} — offline
 								</div>
 							))}
@@ -327,35 +245,19 @@ export function HerzieDetail({
 	);
 }
 
-function Stat({ label, value, color }: { label: string; value: string; color: string }) {
+function Stat({ label, value, colorClass }: { label: string; value: string; colorClass: string }) {
 	return (
 		<div>
-			<div style={{ fontSize: 18, fontWeight: 700, color }}>{value}</div>
-			<div style={{ fontSize: 11, color: "var(--text-dim)" }}>{label}</div>
+			<div className={`text-lg font-bold ${colorClass}`}>{value}</div>
+			<div className="text-[11px] text-text-dim">{label}</div>
 		</div>
 	);
 }
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
 	return (
-		<div
-			style={{
-				background: "var(--bg-panel)",
-				border: "1px solid var(--border)",
-				borderRadius: 6,
-				padding: "1rem",
-			}}
-		>
-			<h2
-				style={{
-					fontSize: 13,
-					color: "var(--text-dim)",
-					margin: "0 0 12px 0",
-					fontWeight: 400,
-				}}
-			>
-				// {title}
-			</h2>
+		<div className="bg-bg-panel border border-border rounded-md p-4">
+			<h2 className="text-[13px] text-text-dim mb-3 font-normal">// {title}</h2>
 			{children}
 		</div>
 	);

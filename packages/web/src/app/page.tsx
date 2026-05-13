@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CliPreview } from "./CliPreview";
 import { CopyBlock } from "./docs/CopyBlock";
+import { Herzie3DHero } from "./Herzie3DHero";
 
 export const metadata: Metadata = {
   title: "Herzies — Your digital pet that grows by listening to music",
@@ -24,7 +25,7 @@ const jsonLd = {
   applicationCategory: "EntertainmentApplication",
   operatingSystem: "macOS",
   description:
-    "Your digital pet that lives in your terminal and grows by listening to music. Works with Apple Music and Spotify.",
+    "Your digital pet that grows by listening to music. Works with Apple Music and Spotify.",
   url: "https://www.herzies.app",
   installUrl: "https://www.npmjs.com/package/herzies",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -32,16 +33,7 @@ const jsonLd = {
 
 export default function Home() {
   return (
-    <main
-      style={{
-        maxWidth: 800,
-        margin: "0 auto",
-        padding: "3rem 1.5rem",
-        display: "flex",
-        flexDirection: "column",
-        gap: "1.5rem",
-      }}
-    >
+    <main className="max-w-[800px] mx-auto px-6 py-12 flex flex-col gap-6">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -52,41 +44,29 @@ export default function Home() {
           Herzies — Your digital pet that grows by listening to music
         </h1>
         <pre
-          className="banner"
+          className="banner text-purple leading-tight mx-auto mb-4 whitespace-pre table"
           aria-hidden="true"
-          style={{
-            color: "var(--purple)",
-            lineHeight: 1.25,
-            margin: "0 auto 1rem",
-            whiteSpace: "pre",
-            display: "table",
-          }}
         >
           {BANNER}
         </pre>
 
-        <p
-          style={{
-            textAlign: "center",
-            fontSize: 13,
-            color: "var(--text-dim)",
-          }}
-        >
-          A digital pet that lives in your terminal <br /> and grows by
-          listening to music.
+        <p className="text-center text-[13px] text-text-dim">
+          Your digital pet <br /> that grows by listening to music.
         </p>
+
+        {/* <Herzie3DHero /> */}
       </section>
 
       {/* Install */}
-      <CopyBlock command="npm i -g herzies" />
+      {/* <CopyBlock command="npm i -g herzies" /> */}
 
-      <CliPreview />
+      {/* <CliPreview /> */}
 
-      <div style={{ textAlign: "center" }}>
-        <a href="/docs" style={{ fontSize: 13, color: "var(--cyan)" }}>
+      {/* <div className="text-center">
+        <a href="/docs" className="text-[13px] text-cyan">
           get started →
         </a>
-      </div>
+      </div> */}
     </main>
   );
 }
