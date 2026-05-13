@@ -3,8 +3,8 @@ import {
   getItem,
   RARITY_COLORS as ITEM_RARITY_COLORS,
   RARITY_LABELS,
-} from "../items";
-import { ItemDisplay } from "./ItemDisplay";
+} from "@herzies/shared";
+import { ItemDisplay } from "@herzies/shared";
 
 export default function ItemInspectOverlay({
   itemId,

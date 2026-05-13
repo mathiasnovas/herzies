@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Herzie3D } from "./Herzie3D";
+import { Herzie3D } from "@herzies/shared";
 
 const SEEDS = [
   "hero-mochi",

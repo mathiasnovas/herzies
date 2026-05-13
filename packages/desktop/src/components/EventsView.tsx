@@ -1,9 +1,9 @@
 import type { GameEvent } from "@herzies/shared";
 import { useEffect, useState } from "react";
-import { getItem, RARITY_COLORS as ITEM_RARITY_COLORS } from "../items";
+import { getItem, RARITY_COLORS as ITEM_RARITY_COLORS } from "@herzies/shared";
 import { herzies } from "../tauri-bridge";
 import HerzieInspectOverlay from "./HerzieInspectOverlay";
-import { ItemDisplay } from "./ItemDisplay";
+import { ItemDisplay } from "@herzies/shared";
 import ItemInspectOverlay from "./ItemInspectOverlay";
 
 function formatCountdown(endsAt: string): string {

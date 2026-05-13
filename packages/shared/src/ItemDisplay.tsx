@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ItemDef } from "../items";
+import type { ItemDef } from "./items.js";
 
 interface Props {
 	item: ItemDef;

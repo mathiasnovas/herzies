@@ -5,9 +5,9 @@ import {
   getItem,
   RARITY_COLORS as ITEM_RARITY_COLORS,
   RARITY_LABELS,
-} from "../items";
+} from "@herzies/shared";
 import { type ChatMessage, herzies } from "../tauri-bridge";
-import { ItemDisplay } from "./ItemDisplay";
+import { ItemDisplay } from "@herzies/shared";
 import ItemInspectOverlay from "./ItemInspectOverlay";
 import { btnStyle, inputStyle } from "./styles";
 

@@ -48,7 +48,7 @@ export function Leaderboard() {
         "name, stage, level, xp, appearance, total_minutes_listened, genre_minutes, now_playing",
       )
       .order("xp", { ascending: false })
-      .limit(10);
+      .limit(100);
     setRows((data ?? []) as HerzieRow[]);
     setLoading(false);
   }, []);

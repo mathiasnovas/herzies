@@ -16,7 +16,7 @@ import {
   RAMP_HERZIE,
   rotY,
   type V3,
-} from "./ascii3d";
+} from "./ascii3d.js";
 
 // --- Creature viewport ---
 const SW = 80;

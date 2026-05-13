@@ -15,7 +15,7 @@ import {
 	rotZ,
 	type V2,
 	type V3,
-} from "./ascii3d";
+} from "@herzies/shared";
 
 export type Rarity = "common" | "uncommon" | "rare" | "legendary";
 

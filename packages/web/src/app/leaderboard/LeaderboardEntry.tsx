@@ -74,9 +74,11 @@ export function LeaderboardEntry({
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-sm font-bold">{name}</span>
+          <span className="text-lg">{name}</span>
           <span className="text-[11px] text-text-dim">lv.{level}</span>
-          <span className={`text-[11px] ${STAGE_COLOR_CLASS[stage] ?? "text-text"}`}>
+          <span
+            className={`text-[11px] ${STAGE_COLOR_CLASS[stage] ?? "text-text"}`}
+          >
             {STAGE_LABELS[stage] ?? `stage ${stage}`}
           </span>
         </div>

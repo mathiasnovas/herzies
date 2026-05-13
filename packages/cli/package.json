@@ -1,7 +1,7 @@
 {
   "name": "herzies",
   "version": "0.6.1",
-  "description": "A digital pet that lives in your terminal that grows by listening to music",
+  "description": "Your digital pet that grows by listening to music",
   "type": "module",
   "bin": {
     "herzies": "./dist/bin/herzies.js"

@@ -6,7 +6,7 @@
 | | | |  __/ |   / /| |  __/\__ \
 |_| |_|\___|_|  /___|_|\___||___/
 ```
-A digital pet that lives in your terminal and grows by listening to music. **[herzies.app](https://www.herzies.app)**
+Your digital pet that grows by listening to music. **[herzies.app](https://www.herzies.app)**
 
 The CLI sends listening observations to the herzies game server, which calculates XP, manages events, and tracks streaks. Log in to sync across devices, compete on the leaderboard, and collect items.
 

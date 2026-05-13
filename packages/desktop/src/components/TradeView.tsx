@@ -1,6 +1,6 @@
 import type { Herzie, Inventory, Trade } from "@herzies/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getItem } from "../items";
+import { getItem } from "@herzies/shared";
 import { herzies } from "../tauri-bridge";
 import { NumberTicker } from "./NumberTicker";
 import { btnStyle, inputStyle } from "./styles";

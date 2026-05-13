@@ -4,7 +4,7 @@
  * Sky (9 rows): clouds by day, stars by night, anchored to window top.
  */
 
-import { mulberry32, simpleHash } from "./creature-renderer";
+import { mulberry32, simpleHash } from "./creature-renderer.js";
 
 const SKY_COLOR = "#8899aa";
 const BRIGHT_STAR_COLOR = "#ccddee";

@@ -4,10 +4,10 @@ import {
 	getItem,
 	RARITY_COLORS as ITEM_RARITY_COLORS,
 	RARITY_LABELS,
-} from "../items";
+} from "@herzies/shared";
 import { herzies } from "../tauri-bridge";
 import { BackButton } from "./BackButton";
-import { ItemDisplay } from "./ItemDisplay";
+import { ItemDisplay } from "@herzies/shared";
 import { NumberTicker } from "./NumberTicker";
 import { btnStyle } from "./styles";
 

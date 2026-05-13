@@ -5,9 +5,9 @@ import { Command } from "commander";
 const require = createRequire(import.meta.url);
 const { version } = require("../../package.json");
 import {
-	runFriendsAdd,
-	runFriendsList,
-	runFriendsRemove,
+  runFriendsAdd,
+  runFriendsList,
+  runFriendsRemove,
 } from "../src/commands/friends.js";
 import { runHatch } from "../src/commands/hatch.js";
 import { runLogin } from "../src/commands/login.js";
@@ -23,102 +23,102 @@ import { runInventory } from "../src/commands/inventory.js";
 const program = new Command();
 
 program
-	.name("herzies")
-	.description("A digital pet that lives in your terminal that grows by listening to music")
-	.version(version);
+  .name("herzies")
+  .description("Your digital pet that grows by listening to music")
+  .version(version);
 
 program
-	.command("hatch")
-	.description("Hatch a new Herzie")
-	.action(() => {
-		runHatch();
-	});
+  .command("hatch")
+  .description("Hatch a new Herzie")
+  .action(() => {
+    runHatch();
+  });
 
 program
-	.command("status")
-	.description("Quick snapshot of your Herzie")
-	.action(() => {
-		runStatus();
-	});
+  .command("status")
+  .description("Quick snapshot of your Herzie")
+  .action(() => {
+    runStatus();
+  });
 
 program
-	.command("login")
-	.description("Log in to sync your Herzie from another device")
-	.action(() => {
-		runLogin();
-	});
+  .command("login")
+  .description("Log in to sync your Herzie from another device")
+  .action(() => {
+    runLogin();
+  });
 
 const friendsCmd = program
-	.command("friends")
-	.description("Manage your friendzies")
-	.action(() => {
-		runFriendsList();
-	});
+  .command("friends")
+  .description("Manage your friendzies")
+  .action(() => {
+    runFriendsList();
+  });
 
 friendsCmd
-	.command("add <code>")
-	.description("Add a friendzie by their code")
-	.action((code: string) => {
-		runFriendsAdd(code);
-	});
+  .command("add <code>")
+  .description("Add a friendzie by their code")
+  .action((code: string) => {
+    runFriendsAdd(code);
+  });
 
 friendsCmd
-	.command("remove <code>")
-	.description("Remove a friendzie")
-	.action((code: string) => {
-		runFriendsRemove(code);
-	});
+  .command("remove <code>")
+  .description("Remove a friendzie")
+  .action((code: string) => {
+    runFriendsRemove(code);
+  });
 
 program
-	.command("start")
-	.description("Start background listening (no terminal needed)")
-	.action(() => {
-		runStart();
-	});
+  .command("start")
+  .description("Start background listening (no terminal needed)")
+  .action(() => {
+    runStart();
+  });
 
 program
-	.command("autostart [action]")
-	.description("Auto-start daemon on login (on/off)")
-	.action((action?: string) => {
-		runAutostart(action ?? "");
-	});
+  .command("autostart [action]")
+  .description("Auto-start daemon on login (on/off)")
+  .action((action?: string) => {
+    runAutostart(action ?? "");
+  });
 
 program
-	.command("stop")
-	.description("Stop background listening")
-	.action(() => {
-		runStop();
-	});
+  .command("stop")
+  .description("Stop background listening")
+  .action(() => {
+    runStop();
+  });
 
 program
-	.command("inventory")
-	.description("View your item collection")
-	.action(() => {
-		runInventory();
-	});
+  .command("inventory")
+  .description("View your item collection")
+  .action(() => {
+    runInventory();
+  });
 
 program
-	.command("kill")
-	.description("Permanently delete your Herzie and all data")
-	.action(() => {
-		runKill();
-	});
+  .command("kill")
+  .description("Permanently delete your Herzie and all data")
+  .action(() => {
+    runKill();
+  });
 
 program
-	.command("help")
-	.description("Show available commands")
-	.action(() => {
-		program.outputHelp();
-	});
+  .command("help")
+  .description("Show available commands")
+  .action(() => {
+    program.outputHelp();
+  });
 
 // Default: launch the live dashboard, or onboard if first time
 program.action(async () => {
-	const { loadHerzie } = await import("../src/storage/state.js");
-	if (!loadHerzie()) {
-		await runOnboard();
-	} else {
-		runApp();
-	}
+  const { loadHerzie } = await import("../src/storage/state.js");
+  if (!loadHerzie()) {
+    await runOnboard();
+  } else {
+    runApp();
+  }
 });
 
 program.parse();
