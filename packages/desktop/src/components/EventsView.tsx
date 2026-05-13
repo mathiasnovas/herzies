@@ -2,7 +2,9 @@ import type { GameEvent } from "@herzies/shared";
 import { useEffect, useState } from "react";
 import { getItem, RARITY_COLORS as ITEM_RARITY_COLORS } from "../items";
 import { herzies } from "../tauri-bridge";
+import HerzieInspectOverlay from "./HerzieInspectOverlay";
 import { ItemDisplay } from "./ItemDisplay";
+import ItemInspectOverlay from "./ItemInspectOverlay";
 
 function formatCountdown(endsAt: string): string {
   const ms = new Date(endsAt).getTime() - Date.now();
@@ -31,6 +33,9 @@ function timeAgo(dateStr: string): string {
 export function EventsView() {
   const [events, setEvents] = useState<GameEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [inspectOverlay, setInspectOverlay] = useState<
+    "item" | "herzie" | null
+  >(null);
 
   useEffect(() => {
     herzies
@@ -220,6 +225,7 @@ export function EventsView() {
                 padding: "2px 0",
                 borderBottom: "1px solid #222",
               }}
+              onClick={() => setInspectOverlay("herzie")}
             >
               <span style={{ color: "#facc15" }}>{finder.name}</span>
               <span style={{ color: "#555" }}>{timeAgo(finder.claimedAt)}</span>
@@ -231,6 +237,19 @@ export function EventsView() {
           </div>
         )}
       </div>
+
+      {/* {inspectOverlay === "item" && (
+        <ItemInspectOverlay
+          itemId={config.rewardItemId}
+          onClose={() => setInspectOverlay(null)}
+        />
+      )}
+      {inspectOverlay === "herzie" && (
+        <HerzieInspectOverlay
+          herzie={config.firstFinders[0].}
+          onClose={() => setInspectOverlay(null)}
+        />
+      )} */}
     </div>
   );
 }
