@@ -56,6 +56,8 @@ jobs:
         working-directory: packages/desktop
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm tauri build --target universal-apple-darwin
 
       - name: Notarize
@@ -85,13 +87,54 @@ jobs:
           name: Herzies-${{ steps.version.outputs.version }}-universal.dmg
           path: packages/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
 
+      - name: Build updater manifest
+        id: manifest
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          BUNDLE_DIR=packages/desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos
+          TARGZ=$(find "$BUNDLE_DIR" -name '*.app.tar.gz' | head -1)
+          SIG_FILE="${TARGZ}.sig"
+
+          if [ -z "$TARGZ" ] || [ ! -f "$SIG_FILE" ]; then
+            echo "error: updater artifacts not found — is TAURI_SIGNING_PRIVATE_KEY set and createUpdaterArtifacts enabled?" >&2
+            ls -la "$BUNDLE_DIR" >&2 || true
+            exit 1
+          fi
+
+          SIG_CONTENT=$(cat "$SIG_FILE")
+          TARGZ_NAME=$(basename "$TARGZ")
+          DOWNLOAD_URL="https://github.com/Herzies/herzies/releases/download/desktop-v${VERSION}/${TARGZ_NAME}"
+
+          # Universal binary: both architectures point at the same .app.tar.gz.
+          jq -n \
+            --arg version "$VERSION" \
+            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg sig "$SIG_CONTENT" \
+            --arg url "$DOWNLOAD_URL" \
+            '{
+              version: $version,
+              notes: ("Herzies Desktop v" + $version),
+              pub_date: $pub_date,
+              platforms: {
+                "darwin-x86_64":  { signature: $sig, url: $url },
+                "darwin-aarch64": { signature: $sig, url: $url }
+              }
+            }' > latest.json
+
+          echo "targz=$TARGZ" >> "$GITHUB_OUTPUT"
+          echo "sig=$SIG_FILE" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=${{ steps.version.outputs.version }}
           DMG=$(find packages/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg -name '*.dmg' | head -1)
-          gh release create "desktop-v${VERSION}" "$DMG" \
+          gh release create "desktop-v${VERSION}" \
+            "$DMG" \
+            "${{ steps.manifest.outputs.targz }}" \
+            "${{ steps.manifest.outputs.sig }}" \
+            latest.json \
             --title "Herzies Desktop v${VERSION}" \
             --generate-notes \
             --target main

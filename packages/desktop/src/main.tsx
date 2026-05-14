@@ -1,3 +1,9 @@
+import {
+	isPermissionGranted,
+	requestPermission,
+	sendNotification,
+} from "@tauri-apps/plugin-notification";
+import type { Update } from "@tauri-apps/plugin-updater";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ChatPanel } from "./components/ChatPanel";
@@ -10,7 +16,9 @@ import { SettingsView } from "./components/SettingsView";
 import { SplashScreen } from "./components/SplashScreen";
 import { TabBar, type View } from "./components/TabBar";
 import { TradeView } from "./components/TradeView";
-import { type AppState, herzies } from "./tauri-bridge";
+import { type AppState, checkForUpdate, herzies } from "./tauri-bridge";
+
+const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6h
 
 function App() {
 	const [state, setState] = useState<AppState>({
@@ -30,6 +38,8 @@ function App() {
 	const [deepLinkItem, setDeepLinkItem] = useState<string | null>(null);
 	const [stageOverride, setStageOverride] = useState<number | null>(null);
 	const [previewOnboarding, setPreviewOnboarding] = useState(false);
+	const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null);
+	const notifiedVersionRef = useRef<string | null>(null);
 
 	const addLog = useCallback((message: string) => {
 		const time = new Date().toISOString();
@@ -66,6 +76,41 @@ function App() {
 		}
 		prevOnline.current = state.isOnline;
 	}, [state.isOnline]);
+
+	// Check for updates on launch and every 6h. Fires a system notification
+	// once per detected version so the user knows even if the window is hidden.
+	useEffect(() => {
+		let cancelled = false;
+
+		const run = async () => {
+			const update = await checkForUpdate();
+			if (cancelled) return;
+			if (!update) {
+				setAvailableUpdate(null);
+				return;
+			}
+			setAvailableUpdate(update);
+			if (notifiedVersionRef.current === update.version) return;
+			notifiedVersionRef.current = update.version;
+
+			const granted =
+				(await isPermissionGranted()) ||
+				(await requestPermission()) === "granted";
+			if (granted) {
+				sendNotification({
+					title: "Herzies update available",
+					body: `Version ${update.version} is ready to install. Open Settings to update.`,
+				});
+			}
+		};
+
+		run();
+		const id = setInterval(run, UPDATE_CHECK_INTERVAL_MS);
+		return () => {
+			cancelled = true;
+			clearInterval(id);
+		};
+	}, []);
 
 	const { herzie } = state;
 
@@ -152,6 +197,8 @@ function App() {
 						stageOverride={stageOverride}
 						onStageOverride={setStageOverride}
 						onPreviewOnboarding={() => setPreviewOnboarding(true)}
+						availableUpdate={availableUpdate}
+						onUpdateInstalled={() => setAvailableUpdate(null)}
 					/>
 				)}
 			</div>

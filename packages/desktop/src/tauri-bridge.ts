@@ -9,6 +9,8 @@ import type {
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { check, type Update } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
 
 export interface ChatMessage {
@@ -151,4 +153,53 @@ export function useWindowFocused(): boolean {
 		};
 	}, []);
 	return focused;
+}
+
+export type UpdateInstallEvent =
+	| { kind: "started"; contentLength: number | undefined }
+	| { kind: "progress"; downloaded: number; total: number | undefined }
+	| { kind: "finished" };
+
+/**
+ * Thin wrapper around @tauri-apps/plugin-updater. Returns the Update handle if
+ * a newer version is available, or null if the app is current. Resolves to
+ * null (instead of throwing) on transient network or signature errors so the
+ * caller can decide whether to surface anything.
+ */
+export async function checkForUpdate(): Promise<Update | null> {
+	try {
+		return await check();
+	} catch (err) {
+		console.warn("Update check failed:", err);
+		return null;
+	}
+}
+
+/**
+ * Download + install + relaunch. Streams progress through onProgress so the
+ * caller can render a percentage. Throws if download/install fails — the
+ * caller should surface the error.
+ */
+export async function installUpdate(
+	update: Update,
+	onProgress?: (e: UpdateInstallEvent) => void,
+): Promise<void> {
+	let downloaded = 0;
+	let total: number | undefined;
+	await update.downloadAndInstall((event) => {
+		switch (event.event) {
+			case "Started":
+				total = event.data.contentLength;
+				onProgress?.({ kind: "started", contentLength: total });
+				break;
+			case "Progress":
+				downloaded += event.data.chunkLength;
+				onProgress?.({ kind: "progress", downloaded, total });
+				break;
+			case "Finished":
+				onProgress?.({ kind: "finished" });
+				break;
+		}
+	});
+	await relaunch();
 }

@@ -29,6 +29,7 @@
   "bundle": {
     "active": true,
     "targets": ["dmg", "app"],
+    "createUpdaterArtifacts": true,
     "macOS": {
       "minimumSystemVersion": "10.15"
     },
@@ -38,5 +39,12 @@
     ],
     "category": "Music"
   },
-  "plugins": {}
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNDREI4QkY4NjQzMjRGNjgKUldSb1R6SmsrSXZiUEFnSWIvK1FlWHphWGZaTUwyNVVwUlFrSitaS3JkNjRFTW5oZGdaVVYvSFEK",
+      "endpoints": [
+        "https://github.com/Herzies/herzies/releases/latest/download/latest.json"
+      ]
+    }
+  }
 }

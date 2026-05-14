@@ -25,6 +25,13 @@ for var in "${required[@]}"; do
   fi
 done
 
+# Tauri updater signing — optional locally. Without these, the build still
+# produces a DMG but skips the .app.tar.gz updater artifact + .sig file.
+if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+  echo "warn: TAURI_SIGNING_PRIVATE_KEY is unset; updater artifacts will NOT be produced." >&2
+  echo "      Add the key to .env.local to enable signed updater bundles." >&2
+fi
+
 echo "==> Ensuring both macOS Rust targets are installed"
 rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null
 

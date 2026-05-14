@@ -1,5 +1,11 @@
+import type { Update } from "@tauri-apps/plugin-updater";
 import { useState } from "react";
-import { type AppState, herzies } from "../tauri-bridge";
+import {
+	type AppState,
+	herzies,
+	installUpdate,
+	type UpdateInstallEvent,
+} from "../tauri-bridge";
 import { btnStyle } from "./styles";
 
 export function SettingsView({
@@ -7,13 +13,53 @@ export function SettingsView({
 	stageOverride,
 	onStageOverride,
 	onPreviewOnboarding,
+	availableUpdate,
+	onUpdateInstalled,
 }: {
 	state: AppState;
 	stageOverride: number | null;
 	onStageOverride: (v: number | null) => void;
 	onPreviewOnboarding: () => void;
+	availableUpdate: Update | null;
+	onUpdateInstalled: () => void;
 }) {
 	const [loggingIn, setLoggingIn] = useState(false);
+	const [updateStatus, setUpdateStatus] = useState<
+		| { kind: "idle" }
+		| { kind: "installing"; downloaded: number; total: number | undefined }
+		| { kind: "error"; message: string }
+	>({ kind: "idle" });
+
+	const handleInstallUpdate = async () => {
+		if (!availableUpdate) return;
+		setUpdateStatus({ kind: "installing", downloaded: 0, total: undefined });
+		try {
+			await installUpdate(availableUpdate, (e: UpdateInstallEvent) => {
+				if (e.kind === "started") {
+					setUpdateStatus({
+						kind: "installing",
+						downloaded: 0,
+						total: e.contentLength,
+					});
+				} else if (e.kind === "progress") {
+					setUpdateStatus({
+						kind: "installing",
+						downloaded: e.downloaded,
+						total: e.total,
+					});
+				}
+			});
+			// installUpdate calls relaunch(); we won't actually reach here, but
+			// reset state defensively in case it returns instead of relaunching.
+			onUpdateInstalled();
+			setUpdateStatus({ kind: "idle" });
+		} catch (err) {
+			setUpdateStatus({
+				kind: "error",
+				message: err instanceof Error ? err.message : String(err),
+			});
+		}
+	};
 
 	return (
 		<div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -96,6 +142,40 @@ export function SettingsView({
 							</button>
 						))}
 					</div>
+				</div>
+			)}
+
+			{/* Update */}
+			{availableUpdate && (
+				<div style={{ marginBottom: 16 }}>
+					<div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>
+						Update
+					</div>
+					<div style={{ fontSize: 11, color: "#4ade80", marginBottom: 4 }}>
+						Version {availableUpdate.version} available
+					</div>
+					{updateStatus.kind === "idle" && (
+						<button
+							style={{ ...btnStyle, color: "#4ade80" }}
+							onClick={handleInstallUpdate}
+						>
+							Install &amp; restart
+						</button>
+					)}
+					{updateStatus.kind === "installing" && (
+						<div style={{ fontSize: 10, color: "#888" }}>
+							{updateStatus.total
+								? `Downloading ${Math.round(
+										(updateStatus.downloaded / updateStatus.total) * 100,
+								  )}%`
+								: "Downloading..."}
+						</div>
+					)}
+					{updateStatus.kind === "error" && (
+						<div style={{ fontSize: 10, color: "#f87171" }}>
+							Update failed: {updateStatus.message}
+						</div>
+					)}
 				</div>
 			)}
 

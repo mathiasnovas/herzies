@@ -52,7 +52,8 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
             } = event
             {
                 // Store tray icon position in physical pixels for window anchoring
-                let scale = tray.app_handle()
+                let scale = tray
+                    .app_handle()
                     .get_webview_window("main")
                     .and_then(|w| w.scale_factor().ok())
                     .unwrap_or(1.0);
@@ -62,7 +63,9 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
                 };
                 let (sw, sh) = match rect.size {
                     tauri::Size::Physical(s) => (s.width as i32, s.height as i32),
-                    tauri::Size::Logical(l) => ((l.width * scale) as i32, (l.height * scale) as i32),
+                    tauri::Size::Logical(l) => {
+                        ((l.width * scale) as i32, (l.height * scale) as i32)
+                    }
                 };
                 TRAY_X.store(px as u64, Ordering::Relaxed);
                 TRAY_Y.store((py + sh) as u64, Ordering::Relaxed);

@@ -58,7 +58,9 @@ async fn register_herzie(
     }
     let name_re = regex_lite::Regex::new(r"^[A-Za-z0-9 _-]+$").unwrap();
     if !name_re.is_match(&trimmed) {
-        return Err("Name can only contain letters, numbers, spaces, hyphens, and underscores.".into());
+        return Err(
+            "Name can only contain letters, numbers, spaces, hyphens, and underscores.".into(),
+        );
     }
 
     // Refuse if a herzie already exists locally — caller should know.
@@ -369,7 +371,10 @@ async fn chat_fetch() -> Result<Option<ChatFetchResponse>, String> {
 }
 
 #[tauri::command]
-async fn chat_send(content: String, item_refs: Vec<String>) -> Result<Option<ChatSendResponse>, String> {
+async fn chat_send(
+    content: String,
+    item_refs: Vec<String>,
+) -> Result<Option<ChatSendResponse>, String> {
     if !api::is_logged_in() {
         return Ok(None);
     }
@@ -738,6 +743,8 @@ pub fn run() {
             None,
         ))
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             // Show window when second instance tries to launch
             if let Some(window) = app.get_webview_window("main") {

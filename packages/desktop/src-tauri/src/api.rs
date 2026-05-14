@@ -53,7 +53,10 @@ async fn ensure_fresh_token(client: &Client) {
         }
         Ok(resp) => {
             // Server rejected the refresh token (401, 403, etc.) — session is dead
-            log::warn!("Token refresh failed with status {}, logging out", resp.status());
+            log::warn!(
+                "Token refresh failed with status {}, logging out",
+                resp.status()
+            );
             storage::clear_session();
         }
         Err(e) => {
@@ -223,18 +226,29 @@ pub async fn api_fetch_inventory(client: &Client) -> Option<(Inventory, u32, Vec
     let data: serde_json::Value = resp.json().await.ok()?;
     let inventory: Inventory = serde_json::from_value(data["inventory"].clone()).ok()?;
     let currency = data["currency"].as_u64().unwrap_or(0) as u32;
-    let equipped: Vec<String> = serde_json::from_value(data["equipped"].clone()).unwrap_or_default();
+    let equipped: Vec<String> =
+        serde_json::from_value(data["equipped"].clone()).unwrap_or_default();
     Some((inventory, currency, equipped))
 }
 
-pub async fn api_equip_item(client: &Client, item_id: &str, action: &str) -> Result<serde_json::Value, String> {
+pub async fn api_equip_item(
+    client: &Client,
+    item_id: &str,
+    action: &str,
+) -> Result<serde_json::Value, String> {
     let body = serde_json::json!({ "itemId": item_id, "action": action });
-    let resp = api_fetch(client, reqwest::Method::POST, "/inventory/equip", Some(body)).await
-        .ok_or_else(|| "Network error".to_string())?;
+    let resp = api_fetch(
+        client,
+        reqwest::Method::POST,
+        "/inventory/equip",
+        Some(body),
+    )
+    .await
+    .ok_or_else(|| "Network error".to_string())?;
     let status = resp.status();
     let text = resp.text().await.map_err(|e| format!("Read error: {e}"))?;
-    let data: serde_json::Value = serde_json::from_str(&text)
-        .map_err(|_| format!("Server returned {status}"))?;
+    let data: serde_json::Value =
+        serde_json::from_str(&text).map_err(|_| format!("Server returned {status}"))?;
     if !status.is_success() {
         let msg = data["error"].as_str().unwrap_or("Unknown error");
         return Err(msg.to_string());
@@ -335,7 +349,11 @@ pub async fn api_chat_fetch(client: &Client) -> Option<ChatFetchResponse> {
     resp.json().await.ok()
 }
 
-pub async fn api_chat_send(client: &Client, content: &str, item_refs: &[String]) -> Option<ChatMessage> {
+pub async fn api_chat_send(
+    client: &Client,
+    content: &str,
+    item_refs: &[String],
+) -> Option<ChatMessage> {
     let body = serde_json::json!({ "content": content, "itemRefs": item_refs });
     let resp = api_fetch(client, reqwest::Method::POST, "/chat", Some(body)).await?;
     if !resp.status().is_success() {
