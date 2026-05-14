@@ -55,6 +55,23 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "" "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH"
 
+      - name: Inspect signing identities
+        if: env.HAS_APPLE_CERT == 'true'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          echo "=== Codesigning identities in temp keychain ==="
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
+          echo ""
+          echo "=== Codesigning identities across all search list ==="
+          security find-identity -v -p codesigning || true
+          echo ""
+          echo "=== Match check for APPLE_SIGNING_IDENTITY ==="
+          security find-identity -v -p codesigning -s "$APPLE_SIGNING_IDENTITY" "$KEYCHAIN_PATH" || true
+          echo ""
+          echo "Length of APPLE_SIGNING_IDENTITY secret: ${#APPLE_SIGNING_IDENTITY}"
+
       - name: Build universal binary
         working-directory: packages/desktop
         env:
