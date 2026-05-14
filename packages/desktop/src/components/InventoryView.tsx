@@ -1,13 +1,13 @@
 import type { Herzie, Inventory } from "@herzies/shared";
-import { useCallback, useEffect, useState } from "react";
 import {
 	getItem,
 	RARITY_COLORS as ITEM_RARITY_COLORS,
+	ItemDisplay,
 	RARITY_LABELS,
 } from "@herzies/shared";
+import { useCallback, useEffect, useState } from "react";
 import { herzies } from "../tauri-bridge";
 import { BackButton } from "./BackButton";
-import { ItemDisplay } from "@herzies/shared";
 import { NumberTicker } from "./NumberTicker";
 import { btnStyle } from "./styles";
 

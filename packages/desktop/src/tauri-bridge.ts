@@ -147,7 +147,9 @@ export function useWindowFocused(): boolean {
 		w.onFocusChanged(({ payload }) => setFocused(payload)).then((fn) => {
 			unlisten = fn;
 		});
-		w.isFocused().then((v) => setFocused(v)).catch(() => {});
+		w.isFocused()
+			.then((v) => setFocused(v))
+			.catch(() => {});
 		return () => {
 			unlisten?.();
 		};

@@ -167,7 +167,7 @@ export function SettingsView({
 							{updateStatus.total
 								? `Downloading ${Math.round(
 										(updateStatus.downloaded / updateStatus.total) * 100,
-								  )}%`
+									)}%`
 								: "Downloading..."}
 						</div>
 					)}

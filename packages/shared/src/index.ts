@@ -8,6 +8,6 @@ export * from "./ItemDisplay.js";
 export * from "./items.js";
 export * from "./leveling.js";
 export * from "./name.js";
-export * from "./scenery-renderer.js";
 export * from "./Sky.js";
+export * from "./scenery-renderer.js";
 export * from "./types.js";
