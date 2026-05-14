@@ -6,7 +6,6 @@ import Container from "@/components/container";
 import { DesktopEventsPreview } from "@/components/DesktopEventsPreview";
 import { DesktopHomePreview } from "@/components/DesktopHomePreview";
 import { DesktopInventoryPreview } from "@/components/DesktopInventoryPreview";
-import { HeroHerzie } from "@/components/HeroHerzie";
 import TextAndMedia from "@/components/text-and-media";
 
 export const metadata: Metadata = {
@@ -68,8 +67,6 @@ export default function Home() {
         </section>
       </Container>
 
-      {/* <HeroHerzie /> */}
-
       <Container className="pb-8 md:pb-12">
         <TextAndMedia
           preTitle="Listen"
@@ -94,8 +91,6 @@ export default function Home() {
           media={<DesktopEventsPreview />}
           position="left"
         />
-
-        {/* <HeroHerzie /> */}
       </Container>
 
       <Container className="">

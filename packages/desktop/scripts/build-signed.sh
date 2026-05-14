@@ -25,5 +25,8 @@ for var in "${required[@]}"; do
   fi
 done
 
-echo "==> Building with identity: $APPLE_SIGNING_IDENTITY"
-pnpm tauri build "$@"
+echo "==> Ensuring both macOS Rust targets are installed"
+rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null
+
+echo "==> Building universal binary with identity: $APPLE_SIGNING_IDENTITY"
+pnpm tauri build --target universal-apple-darwin "$@"
