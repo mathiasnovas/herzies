@@ -61,6 +61,7 @@ export function ChatPanel({
   useEffect(() => {
     if (!isOnline) return;
     let cancelled = false;
+    let localChannel: RealtimeChannel | null = null;
 
     herzies.getAuthConfig().then((config) => {
       if (cancelled || !config) return;
@@ -68,7 +69,7 @@ export function ChatPanel({
         global: { headers: { Authorization: `Bearer ${config.accessToken}` } },
       });
 
-      const channel = supabase
+      localChannel = supabase
         .channel("chat_messages_realtime")
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .on(
@@ -77,24 +78,29 @@ export function ChatPanel({
           (payload: any) => {
             const newId = payload.new?.id;
             if (!newId) return;
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === newId)) return prev;
-              herzies.chatFetch().then((data) => {
-                if (data) setMessages(data.messages);
-              });
-              return prev;
+            // Re-fetch outside the setState updater so strict-mode's double
+            // invocation doesn't fire two chatFetch round-trips per message.
+            herzies.chatFetch().then((data) => {
+              if (data) setMessages(data.messages);
             });
           },
         )
         .subscribe();
 
-      channelRef.current = channel;
+      // Race: if cleanup ran while getAuthConfig was pending, tear down now.
+      if (cancelled) {
+        localChannel.unsubscribe();
+        localChannel = null;
+        return;
+      }
+      channelRef.current = localChannel;
     });
 
     return () => {
       cancelled = true;
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
+      const ch = channelRef.current ?? localChannel;
+      if (ch) {
+        ch.unsubscribe();
         channelRef.current = null;
       }
     };

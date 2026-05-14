@@ -103,16 +103,6 @@ pub fn is_logged_in() -> bool {
     storage::load_session().is_some()
 }
 
-/// Lightweight connectivity check — HEAD request to the API base.
-pub async fn is_reachable(client: &Client) -> bool {
-    client
-        .head(api_base())
-        .timeout(std::time::Duration::from_secs(5))
-        .send()
-        .await
-        .is_ok()
-}
-
 pub async fn api_sync(
     client: &Client,
     now_playing: Option<NowPlayingPayload>,
@@ -140,18 +130,45 @@ pub async fn api_get_me(client: &Client) -> Option<Herzie> {
     serde_json::from_value(data["herzie"].clone()).ok()
 }
 
-pub async fn api_register_herzie(client: &Client, herzie: &Herzie) -> Option<Herzie> {
+pub enum RegisterError {
+    NameTaken,
+    FriendCodeCollision,
+    Network,
+    Server(String),
+}
+
+pub async fn api_register_herzie(
+    client: &Client,
+    herzie: &Herzie,
+) -> Result<Herzie, RegisterError> {
     let body = serde_json::json!({
         "name": herzie.name,
         "appearance": herzie.appearance,
         "friendCode": herzie.friend_code,
     });
-    let resp = api_fetch(client, reqwest::Method::POST, "/herzie", Some(body)).await?;
-    if !resp.status().is_success() {
-        return None;
+    let resp = api_fetch(client, reqwest::Method::POST, "/herzie", Some(body))
+        .await
+        .ok_or(RegisterError::Network)?;
+    let status = resp.status();
+    let data: serde_json::Value = resp.json().await.map_err(|_| RegisterError::Network)?;
+
+    if status.is_success() {
+        return serde_json::from_value(data["herzie"].clone())
+            .map_err(|e| RegisterError::Server(e.to_string()));
     }
-    let data: serde_json::Value = resp.json().await.ok()?;
-    serde_json::from_value(data["herzie"].clone()).ok()
+
+    let msg = data["error"].as_str().unwrap_or("").to_string();
+    if status == reqwest::StatusCode::CONFLICT {
+        if msg.contains("Friend code") {
+            return Err(RegisterError::FriendCodeCollision);
+        }
+        return Err(RegisterError::NameTaken);
+    }
+    Err(RegisterError::Server(if msg.is_empty() {
+        format!("Server returned {}", status)
+    } else {
+        msg
+    }))
 }
 
 pub async fn api_add_friend(client: &Client, my_code: &str, their_code: &str) -> bool {

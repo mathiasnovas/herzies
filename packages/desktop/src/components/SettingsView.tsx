@@ -6,10 +6,12 @@ export function SettingsView({
 	state,
 	stageOverride,
 	onStageOverride,
+	onPreviewOnboarding,
 }: {
 	state: AppState;
 	stageOverride: number | null;
 	onStageOverride: (v: number | null) => void;
+	onPreviewOnboarding: () => void;
 }) {
 	const [loggingIn, setLoggingIn] = useState(false);
 
@@ -53,20 +55,25 @@ export function SettingsView({
 				)}
 			</div>
 
-			{/* Debug */}
-			<div style={{ marginBottom: 16 }}>
-				<div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>
-					Debug
+			{/* Debug (dev-only) */}
+			{import.meta.env.DEV && (
+				<div style={{ marginBottom: 16 }}>
+					<div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>
+						Debug
+					</div>
+					<div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+						<button style={btnStyle} onClick={() => herzies.testNotification()}>
+							Test Notification
+						</button>
+						<button style={btnStyle} onClick={() => herzies.testActivity()}>
+							Test Activity Log
+						</button>
+						<button style={btnStyle} onClick={onPreviewOnboarding}>
+							Preview Onboarding
+						</button>
+					</div>
 				</div>
-				<div style={{ display: "flex", gap: 4 }}>
-					<button style={btnStyle} onClick={() => herzies.testNotification()}>
-						Test Notification
-					</button>
-					<button style={btnStyle} onClick={() => herzies.testActivity()}>
-						Test Activity Log
-					</button>
-				</div>
-			</div>
+			)}
 
 			{/* Dev-only stage selector */}
 			{import.meta.env.DEV && (

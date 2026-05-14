@@ -145,24 +145,40 @@ async fn do_login(app: &AppHandle, web_url: &str, port: u16) -> bool {
         user_id,
     });
 
+    let state = app.state::<SharedState>();
+
+    // Reconcile any in-memory or on-disk herzie against the new session. If
+    // the local data belongs to a different user (or no one), it gets wiped
+    // here so we don't accidentally re-register someone else's pet.
+    let local_for_user = crate::adopt_local_herzie();
+    {
+        let mut s = state.lock().unwrap();
+        s.herzie = local_for_user;
+    }
+
     // Sync herzie with server
     let client = Client::new();
     let server_herzie = api::api_get_me(&client).await;
-
-    let state = app.state::<SharedState>();
 
     if let Some(h) = server_herzie {
         storage::save_herzie(&h);
         let mut s = state.lock().unwrap();
         s.herzie = Some(h);
     } else {
-        // Check if we have a local herzie to register — clone it outside the lock
+        // Server has nothing for this user. If we still hold a local herzie
+        // here, it provably belongs to this user (adopt_local_herzie just
+        // confirmed it) — upload it. Otherwise the UI falls through to the
+        // onboarding screen.
         let herzie_clone = {
             let s = state.lock().unwrap();
             s.herzie.clone()
         };
         if let Some(herzie) = herzie_clone {
-            let _ = api::api_register_herzie(&client, &herzie).await;
+            if let Ok(registered) = api::api_register_herzie(&client, &herzie).await {
+                storage::save_herzie(&registered);
+                let mut s = state.lock().unwrap();
+                s.herzie = Some(registered);
+            }
         }
     }
 

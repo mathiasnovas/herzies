@@ -1,6 +1,7 @@
 mod api;
 mod auth;
 mod game;
+mod hatch;
 mod nowplaying;
 mod state;
 mod storage;
@@ -15,7 +16,11 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_autostart::MacosLauncher;
 use types::*;
 
-type PendingDeepLink = Mutex<Option<String>>;
+// Wrapped in newtype structs so Tauri's type-keyed state manager can
+// distinguish them — a plain `type` alias resolves to the same Rust type
+// and would collide on the second `.manage()` call.
+pub struct PendingDeepLink(pub Mutex<Option<String>>);
+pub struct LastTradeNotified(pub Mutex<Option<String>>);
 
 // --- Tauri commands ---
 
@@ -33,10 +38,76 @@ async fn login(app: AppHandle) -> Result<bool, String> {
 #[tauri::command]
 fn logout(app: AppHandle, state: tauri::State<SharedState>) {
     storage::clear_session();
-    let s = state.lock().unwrap();
+    storage::clear_herzie();
+    let mut s = state.lock().unwrap();
+    s.herzie = None;
     let app_state = s.to_app_state(env!("CARGO_PKG_VERSION"));
     drop(s);
     let _ = app.emit("state-update", &app_state);
+}
+
+#[tauri::command]
+async fn register_herzie(
+    name: String,
+    app: AppHandle,
+    state: tauri::State<'_, SharedState>,
+) -> Result<(), String> {
+    let trimmed = name.trim().to_string();
+    if trimmed.is_empty() || trimmed.len() > 20 {
+        return Err("Name must be 1-20 characters.".into());
+    }
+    let name_re = regex_lite::Regex::new(r"^[A-Za-z0-9 _-]+$").unwrap();
+    if !name_re.is_match(&trimmed) {
+        return Err("Name can only contain letters, numbers, spaces, hyphens, and underscores.".into());
+    }
+
+    // Refuse if a herzie already exists locally — caller should know.
+    {
+        let s = state.lock().unwrap();
+        if s.herzie.is_some() {
+            return Err("Herzie already exists.".into());
+        }
+    }
+
+    if !api::is_logged_in() {
+        return Err("Not logged in.".into());
+    }
+
+    let client = Client::new();
+
+    // Retry on friend-code collision (vanishingly rare but cheap to handle).
+    let mut last_err: Option<String> = None;
+    for _ in 0..5 {
+        let candidate = hatch::new_herzie(trimmed.clone());
+        match api::api_register_herzie(&client, &candidate).await {
+            Ok(registered) => {
+                storage::save_herzie(&registered);
+                let mut s = state.lock().unwrap();
+                s.herzie = Some(registered);
+                let app_state = s.to_app_state(env!("CARGO_PKG_VERSION"));
+                drop(s);
+                let _ = app.emit("state-update", &app_state);
+                let _ = app.emit("activity", format!("{} has hatched!", trimmed));
+                return Ok(());
+            }
+            Err(api::RegisterError::FriendCodeCollision) => {
+                // Try again with a new code.
+                continue;
+            }
+            Err(api::RegisterError::NameTaken) => {
+                return Err("That name is already taken.".into());
+            }
+            Err(api::RegisterError::Network) => {
+                last_err = Some("Network error. Check your connection and try again.".into());
+                break;
+            }
+            Err(api::RegisterError::Server(msg)) => {
+                last_err = Some(msg);
+                break;
+            }
+        }
+    }
+    Err(last_err.unwrap_or_else(|| "Couldn't allocate a friend code. Try again.".into()))
 }
 
 #[tauri::command]
@@ -337,17 +408,21 @@ struct InventoryResult {
 
 async fn poll_loop(app: AppHandle) {
     let client = Client::new();
-    let mut interval = tokio::time::interval(Duration::from_secs(3));
 
     loop {
-        interval.tick().await;
-        if let Err(e) = poll_tick(&app, &client).await {
+        // 3s while the window is open (tight feedback for the now-playing card),
+        // 6s while hidden — XP/min is unchanged because poll_tick credits real
+        // elapsed seconds, not a fixed 3s slice.
+        let delay = if tray::is_window_visible() { 3 } else { 6 };
+        tokio::time::sleep(Duration::from_secs(delay)).await;
+
+        if let Err(e) = poll_tick(&app, &client, delay).await {
             log::warn!("Poll error: {}", e);
         }
     }
 }
 
-async fn poll_tick(app: &AppHandle, _client: &Client) -> Result<(), String> {
+async fn poll_tick(app: &AppHandle, _client: &Client, elapsed_secs: u64) -> Result<(), String> {
     let state = app.state::<SharedState>();
 
     let has_herzie = {
@@ -383,7 +458,7 @@ async fn poll_tick(app: &AppHandle, _client: &Client) -> Result<(), String> {
                     vec![info.genre.clone()]
                 };
 
-                let minutes = 3.0 / 60.0; // 3 seconds = 0.05 minutes
+                let minutes = elapsed_secs as f64 / 60.0;
                 if minutes > 0.01 {
                     s.pending_minutes += minutes;
 
@@ -473,7 +548,7 @@ fn quit(app: AppHandle) {
 fn send_notification(app: &AppHandle, title: &str, body: &str, deep_link: Option<&str>) {
     // Store deep link for when the notification is clicked
     if let Some(item_id) = deep_link {
-        if let Ok(mut dl) = app.state::<PendingDeepLink>().lock() {
+        if let Ok(mut dl) = app.state::<PendingDeepLink>().0.lock() {
             *dl = Some(item_id.to_string());
         }
     }
@@ -490,7 +565,7 @@ fn send_notification(app: &AppHandle, title: &str, body: &str, deep_link: Option
             if matches!(response, mac_notification_sys::NotificationResponse::Click) {
                 tray::ensure_visible(&app);
                 // Emit pending deep link (covers case where window was already visible)
-                if let Ok(mut dl) = app.state::<PendingDeepLink>().lock() {
+                if let Ok(mut dl) = app.state::<PendingDeepLink>().0.lock() {
                     if let Some(item_id) = dl.take() {
                         let _ = app.emit("deep-link", item_id);
                     }
@@ -502,10 +577,14 @@ fn send_notification(app: &AppHandle, title: &str, body: &str, deep_link: Option
 
 async fn sync_loop(app: AppHandle) {
     let client = Client::new();
-    let mut interval = tokio::time::interval(Duration::from_secs(10));
 
     loop {
-        interval.tick().await;
+        // 10s when the user can see results; 60s when the window is hidden
+        // (still flushes pending listening minutes, but avoids 17k/day Vercel
+        // calls per idle user).
+        let delay = if tray::is_window_visible() { 10 } else { 60 };
+        tokio::time::sleep(Duration::from_secs(delay)).await;
+
         if let Err(e) = sync_tick(&app, &client).await {
             log::warn!("Sync error: {}", e);
         }
@@ -529,14 +608,13 @@ async fn sync_tick(app: &AppHandle, client: &Client) -> Result<(), String> {
         (has, logged, mins, np, g)
     };
 
-    // Check actual internet connectivity independently
-    let reachable = api::is_reachable(client).await;
-    let connected = is_logged_in && reachable;
-    tray::set_connected(app, connected);
-
     if !has_herzie || !is_logged_in {
+        // Not signed in or no herzie yet — no server call needed, and we can't
+        // distinguish "offline" from "logged out" without one, so assume the
+        // server is reachable. The tray title already defaults to <3.
+        tray::set_connected(app, is_logged_in);
         let mut s = state.lock().unwrap();
-        s.is_connected = connected;
+        s.is_connected = is_logged_in;
         let app_state = s.to_app_state(env!("CARGO_PKG_VERSION"));
         drop(s);
         let _ = app.emit("state-update", &app_state);
@@ -544,6 +622,9 @@ async fn sync_tick(app: &AppHandle, client: &Client) -> Result<(), String> {
     }
 
     let result = api::api_sync(client, np_payload, minutes_to_sync, genres).await;
+    // The sync POST doubles as our connectivity probe — no separate HEAD needed.
+    let connected = result.is_some();
+    tray::set_connected(app, connected);
 
     if let Some(sync_resp) = result {
         let mut s = state.lock().unwrap();
@@ -570,11 +651,31 @@ async fn sync_tick(app: &AppHandle, client: &Client) -> Result<(), String> {
         drop(s);
         let _ = app.emit("state-update", &app_state);
 
-        // Show notification for incoming trade requests
+        // Show notification for incoming trade requests — dedupe by trade ID
+        // so we don't re-notify on every sync tick while the trade is pending.
         if let Some(trade_req) = &sync_resp.pending_trade_request {
-            let msg = format!("{} wants to trade with you!", trade_req.from_name);
-            send_notification(app, "Trade Request", &msg, None);
-            let _ = app.emit("activity", format!("Trade Request: {}", msg));
+            let should_notify = {
+                let state = app.state::<LastTradeNotified>();
+                let mut last = state.0.lock().unwrap();
+                if last.as_deref() == Some(trade_req.trade_id.as_str()) {
+                    false
+                } else {
+                    *last = Some(trade_req.trade_id.clone());
+                    true
+                }
+            };
+            if should_notify {
+                let msg = format!("{} wants to trade with you!", trade_req.from_name);
+                let deep_link = format!("trade:{}", trade_req.trade_id);
+                send_notification(app, "Trade Request", &msg, Some(&deep_link));
+                let _ = app.emit("activity", format!("Trade Request: {}", msg));
+            }
+        } else {
+            // Pending trade is gone (joined, cancelled, or expired) — reset
+            // so a future request from the same partner re-notifies.
+            if let Ok(mut last) = app.state::<LastTradeNotified>().0.lock() {
+                *last = None;
+            }
         }
 
         // Show server-sent notifications (item drops, etc.)
@@ -597,11 +698,35 @@ async fn sync_tick(app: &AppHandle, client: &Client) -> Result<(), String> {
     Ok(())
 }
 
+/// Decide whether the on-disk herzie belongs to the current session and
+/// should be loaded into memory. Wipes orphaned data so the onboarding
+/// screen can take over.
+///
+/// - Owner matches current session → adopt.
+/// - Legacy file (no owner) + active session → migrate by claiming for current user.
+/// - Owner mismatch, or no session → wipe the local file and start clean.
+pub(crate) fn adopt_local_herzie() -> Option<Herzie> {
+    let loaded = storage::load_herzie()?;
+    let session = storage::load_session();
+
+    match (loaded.owner, session) {
+        (Some(owner), Some(s)) if owner == s.user_id => Some(loaded.herzie),
+        (None, Some(s)) => {
+            storage::save_herzie_with_owner(&loaded.herzie, &s.user_id);
+            Some(loaded.herzie)
+        }
+        _ => {
+            storage::clear_herzie();
+            None
+        }
+    }
+}
+
 // --- Tauri setup ---
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let herzie = storage::load_herzie();
+    let herzie = adopt_local_herzie();
     log::info!(
         "Loaded herzie: {}",
         herzie.as_ref().map(|h| h.name.as_str()).unwrap_or("null")
@@ -621,11 +746,13 @@ pub fn run() {
             }
         }))
         .manage(Mutex::new(ManagedState::new(herzie)) as SharedState)
-        .manage(Mutex::new(None::<String>) as PendingDeepLink)
+        .manage(PendingDeepLink(Mutex::new(None)))
+        .manage(LastTradeNotified(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             get_state,
             login,
             logout,
+            register_herzie,
             friend_add,
             friend_remove,
             friend_lookup,
@@ -682,6 +809,7 @@ pub fn run() {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.center();
                     let _ = window.show();
+                    tray::on_focus(app.handle());
                 }
             }
 
@@ -703,7 +831,8 @@ pub fn run() {
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let client = Client::new();
-                let _ = poll_tick(&app_handle, &client).await;
+                // Initial tick credits no listening minutes (no prior interval).
+                let _ = poll_tick(&app_handle, &client, 0).await;
                 let _ = sync_tick(&app_handle, &client).await;
             });
 

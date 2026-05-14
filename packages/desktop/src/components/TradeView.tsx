@@ -1,28 +1,32 @@
 import type { Herzie, Inventory, Trade } from "@herzies/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getItem } from "@herzies/shared";
-import { herzies } from "../tauri-bridge";
+import { herzies, useWindowFocused } from "../tauri-bridge";
 import { NumberTicker } from "./NumberTicker";
 import { btnStyle, inputStyle } from "./styles";
 
 export function TradeView({
 	herzie,
 	initialTarget,
+	initialTradeId,
 	onClose,
 }: {
 	herzie: Herzie;
 	initialTarget?: string | null;
+	initialTradeId?: string | null;
 	onClose: () => void;
 }) {
 	const [targetCode, setTargetCode] = useState(initialTarget ?? "");
-	const [tradeId, setTradeId] = useState<string | null>(null);
+	const [tradeId, setTradeId] = useState<string | null>(initialTradeId ?? null);
 	const [trade, setTrade] = useState<Trade | null>(null);
 	const [message, setMessage] = useState("");
 	const creatingRef = useRef(false);
+	const joiningRef = useRef(false);
 	const [inventory, setInventory] = useState<Inventory | null>(null);
 	const [offerItems, setOfferItems] = useState<Record<string, number>>({});
 	const [offerCurrency, setOfferCurrency] = useState(0);
 	const [currency, setCurrency] = useState(herzie.currency);
+	const focused = useWindowFocused();
 
 	useEffect(() => {
 		herzies.fetchInventory().then((data) => {
@@ -33,9 +37,12 @@ export function TradeView({
 		});
 	}, []);
 
-	// Poll active trade
+	// Poll active trade — pauses while window is hidden; the user can't act on
+	// a trade they can't see, and the sync_loop will surface trade requests via
+	// notifications when the window reopens.
 	useEffect(() => {
 		if (!tradeId) return;
+		if (!focused) return;
 		const interval = setInterval(async () => {
 			const t = await herzies.tradePoll(tradeId);
 			if (t) setTrade(t);
@@ -49,7 +56,7 @@ export function TradeView({
 			}
 		}, 1500);
 		return () => clearInterval(interval);
-	}, [tradeId, onClose]);
+	}, [tradeId, onClose, focused]);
 
 	const handleCreate = useCallback(
 		async (overrideCode?: string) => {
@@ -73,6 +80,16 @@ export function TradeView({
 			handleCreate(initialTarget);
 		}
 	}, [initialTarget]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Auto-join an incoming trade when opened from a notification
+	useEffect(() => {
+		if (!initialTradeId || joiningRef.current) return;
+		joiningRef.current = true;
+		(async () => {
+			const ok = await herzies.tradeJoin(initialTradeId);
+			if (!ok) setMessage("Couldn't join trade — it may have expired");
+		})();
+	}, [initialTradeId]);
 
 	const handleCancel = async () => {
 		if (tradeId) await herzies.tradeCancel(tradeId);

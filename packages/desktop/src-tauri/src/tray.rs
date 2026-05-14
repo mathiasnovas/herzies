@@ -10,6 +10,14 @@ static IS_CONNECTED: AtomicBool = AtomicBool::new(true);
 /// Whether a delayed hide is pending (used to cancel on re-focus).
 static HIDE_PENDING: AtomicBool = AtomicBool::new(false);
 
+/// Whether the window is currently visible to the user. Background loops
+/// read this to throttle polling when the user can't see the result.
+static WINDOW_VISIBLE: AtomicBool = AtomicBool::new(false);
+
+pub fn is_window_visible() -> bool {
+    WINDOW_VISIBLE.load(Ordering::Relaxed)
+}
+
 /// Stored tray icon position for anchoring the window below it.
 static TRAY_X: AtomicU64 = AtomicU64::new(0);
 static TRAY_Y: AtomicU64 = AtomicU64::new(0);
@@ -106,6 +114,7 @@ pub fn toggle_window(app: &AppHandle) {
 fn show_window(app: &AppHandle, window: &tauri::WebviewWindow) {
     HIDE_PENDING.store(false, Ordering::Relaxed);
     LAST_TRAY_SHOW.store(now_ms(), Ordering::Relaxed);
+    WINDOW_VISIBLE.store(true, Ordering::Relaxed);
     // Switch to Regular so the app can take focus
     let _ = app.set_activation_policy(ActivationPolicy::Regular);
 
@@ -140,6 +149,7 @@ fn hide_window(app: &AppHandle, window: &tauri::WebviewWindow) {
         USER_Y.store(pos.y as u64, Ordering::Relaxed);
         HAS_USER_POSITION.store(true, Ordering::Relaxed);
     }
+    WINDOW_VISIBLE.store(false, Ordering::Relaxed);
     let _ = window.hide();
     // Switch back to Accessory (no dock icon)
     let _ = app.set_activation_policy(ActivationPolicy::Accessory);
@@ -148,8 +158,10 @@ fn hide_window(app: &AppHandle, window: &tauri::WebviewWindow) {
 /// Called when the window gains focus — cancels any pending hide and checks for deep links.
 pub fn on_focus(app: &AppHandle) {
     HIDE_PENDING.store(false, Ordering::Relaxed);
+    // Focus implies the window is on-screen; covers dev mode where show_window isn't used.
+    WINDOW_VISIBLE.store(true, Ordering::Relaxed);
     // Check for pending deep link
-    if let Ok(mut dl) = app.state::<crate::PendingDeepLink>().lock() {
+    if let Ok(mut dl) = app.state::<crate::PendingDeepLink>().0.lock() {
         if let Some(item_id) = dl.take() {
             let _ = app.emit("deep-link", item_id);
         }

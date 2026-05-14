@@ -1,7 +1,7 @@
 import type { GameEvent } from "@herzies/shared";
 import { useEffect, useState } from "react";
 import { getItem, RARITY_COLORS as ITEM_RARITY_COLORS } from "@herzies/shared";
-import { herzies } from "../tauri-bridge";
+import { herzies, useWindowFocused } from "../tauri-bridge";
 import HerzieInspectOverlay from "./HerzieInspectOverlay";
 import { ItemDisplay } from "@herzies/shared";
 import ItemInspectOverlay from "./ItemInspectOverlay";
@@ -36,6 +36,7 @@ export function EventsView() {
   const [inspectOverlay, setInspectOverlay] = useState<
     "item" | "herzie" | null
   >(null);
+  const focused = useWindowFocused();
 
   useEffect(() => {
     herzies
@@ -45,12 +46,15 @@ export function EventsView() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+  }, []);
 
+  useEffect(() => {
+    if (!focused) return;
     const interval = setInterval(() => {
       herzies.fetchActiveEvents().then((data) => setEvents(data.events));
     }, 60_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [focused]);
 
   if (loading) {
     return (

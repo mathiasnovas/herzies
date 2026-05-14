@@ -37,6 +37,8 @@ interface Props {
 	wearables?: string[];
 	/** Enable click-drag rotation with momentum. Default: true. */
 	draggable?: boolean;
+	/** Stop the frame timer to save CPU while the host is hidden / unfocused. */
+	paused?: boolean;
 	/** Wrapper around the canvas. Consumer controls width/positioning. */
 	wrapperStyle?: CSSProperties;
 	wrapperClassName?: string;
@@ -51,6 +53,7 @@ export function Herzie3D({
 	isPlaying = false,
 	wearables,
 	draggable = true,
+	paused = false,
 	wrapperStyle,
 	wrapperClassName,
 	ariaLabel,
@@ -186,13 +189,14 @@ export function Herzie3D({
 	}, [draggable, startMomentum]);
 
 	useEffect(() => {
+		if (paused) return;
 		if (frames.length <= 1) return;
 		const id = setInterval(
 			() => setFrame((f) => (f + 1) % frames.length),
 			interval,
 		);
 		return () => clearInterval(id);
-	}, [frames.length, interval]);
+	}, [frames.length, interval, paused]);
 
 	useEffect(() => {
 		setFrame(0);

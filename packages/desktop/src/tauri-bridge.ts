@@ -8,6 +8,8 @@ import type {
 } from "@herzies/shared";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useEffect, useState } from "react";
 
 export interface ChatMessage {
 	id: string;
@@ -43,6 +45,7 @@ export const herzies = {
 
 	login: () => invoke<boolean>("login"),
 	logout: () => invoke<void>("logout"),
+	registerHerzie: (name: string) => invoke<void>("register_herzie", { name }),
 
 	friendAdd: (code: string) =>
 		invoke<{ success: boolean; message: string }>("friend_add", { code }),
@@ -100,7 +103,12 @@ export const herzies = {
 	testActivity: () => invoke<void>("test_activity"),
 	quit: () => invoke<void>("quit"),
 
-	onDeepLink: (cb: (itemId: string) => void) => {
+	/**
+	 * Deep-link payloads from notification clicks.
+	 *   - `"trade:<tradeId>"` — open TradeView and auto-join the trade
+	 *   - any other string — treated as an item ID, opens InventoryView focused on that item
+	 */
+	onDeepLink: (cb: (payload: string) => void) => {
 		let cancelled = false;
 		const unlisten = listen<string>("deep-link", (event) => {
 			if (!cancelled) cb(event.payload);
@@ -122,3 +130,25 @@ export const herzies = {
 		};
 	},
 };
+
+/**
+ * Tracks whether the Tauri window currently has focus. The tray window is
+ * hidden when blurred (200ms after on_blur in tray.rs), so this doubles as
+ * "is the window actually visible to the user." Use it to pause animation
+ * timers that would otherwise keep burning CPU while the window is invisible.
+ */
+export function useWindowFocused(): boolean {
+	const [focused, setFocused] = useState(true);
+	useEffect(() => {
+		const w = getCurrentWindow();
+		let unlisten: (() => void) | undefined;
+		w.onFocusChanged(({ payload }) => setFocused(payload)).then((fn) => {
+			unlisten = fn;
+		});
+		w.isFocused().then((v) => setFocused(v)).catch(() => {});
+		return () => {
+			unlisten?.();
+		};
+	}, []);
+	return focused;
+}

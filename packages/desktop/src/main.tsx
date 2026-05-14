@@ -5,6 +5,7 @@ import { EventsView } from "./components/EventsView";
 import { FriendsView } from "./components/FriendsView";
 import { HomeView } from "./components/HomeView";
 import { InventoryView } from "./components/InventoryView";
+import { OnboardingScreen } from "./components/OnboardingScreen";
 import { SettingsView } from "./components/SettingsView";
 import { SplashScreen } from "./components/SplashScreen";
 import { TabBar, type View } from "./components/TabBar";
@@ -22,11 +23,13 @@ function App() {
 	});
 	const [view, setView] = useState<View>("home");
 	const [tradeTarget, setTradeTarget] = useState<string | null>(null);
+	const [incomingTradeId, setIncomingTradeId] = useState<string | null>(null);
 	const [activityLog, setActivityLog] = useState<
 		{ time: string; message: string }[]
 	>([]);
 	const [deepLinkItem, setDeepLinkItem] = useState<string | null>(null);
 	const [stageOverride, setStageOverride] = useState<number | null>(null);
+	const [previewOnboarding, setPreviewOnboarding] = useState(false);
 
 	const addLog = useCallback((message: string) => {
 		const time = new Date().toISOString();
@@ -37,9 +40,16 @@ function App() {
 		herzies.getState().then(setState);
 		const unlistenState = herzies.onStateUpdate(setState);
 		const unlistenActivity = herzies.onActivity(addLog);
-		const unlistenDeepLink = herzies.onDeepLink((itemId) => {
-			setDeepLinkItem(itemId);
-			setView("inventory");
+		const unlistenDeepLink = herzies.onDeepLink((payload) => {
+			if (payload.startsWith("trade:")) {
+				const tradeId = payload.slice("trade:".length);
+				setIncomingTradeId(tradeId);
+				setTradeTarget(null);
+				setView("trade");
+			} else {
+				setDeepLinkItem(payload);
+				setView("inventory");
+			}
 		});
 		return () => {
 			unlistenState();
@@ -63,8 +73,20 @@ function App() {
 		return <SplashScreen />;
 	}
 
+	if (!herzie) {
+		return <OnboardingScreen />;
+	}
+
+	if (previewOnboarding) {
+		return <OnboardingScreen onClose={() => setPreviewOnboarding(false)} />;
+	}
+
 	const switchView = (v: View) => {
 		if (v !== "inventory") setDeepLinkItem(null);
+		if (v !== "trade") {
+			setIncomingTradeId(null);
+			setTradeTarget(null);
+		}
 		setView(v);
 	};
 
@@ -115,8 +137,11 @@ function App() {
 					<TradeView
 						herzie={herzie}
 						initialTarget={tradeTarget}
+						initialTradeId={incomingTradeId}
+						key={incomingTradeId ?? tradeTarget ?? "trade"}
 						onClose={() => {
 							setTradeTarget(null);
+							setIncomingTradeId(null);
 							setView("friends");
 						}}
 					/>
@@ -126,6 +151,7 @@ function App() {
 						state={state}
 						stageOverride={stageOverride}
 						onStageOverride={setStageOverride}
+						onPreviewOnboarding={() => setPreviewOnboarding(true)}
 					/>
 				)}
 			</div>

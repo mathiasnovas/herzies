@@ -1,5 +1,6 @@
 import { Herzie3D as SharedHerzie3D, Sky } from "@herzies/shared";
 import { useEffect, useState } from "react";
+import { useWindowFocused } from "../tauri-bridge";
 
 interface Props {
 	userId: string;
@@ -36,6 +37,9 @@ export function Herzie3D({
 		return () => window.removeEventListener("resize", onResize);
 	}, [size]);
 
+	const focused = useWindowFocused();
+	const paused = !focused;
+
 	return (
 		<>
 			<Sky
@@ -43,7 +47,7 @@ export function Herzie3D({
 				isPlaying={isPlaying}
 				cols={sceneryCols}
 				size={size}
-				paused={animate === false}
+				paused={paused || animate === false}
 				style={{
 					position: "fixed",
 					top: 0,
@@ -59,6 +63,7 @@ export function Herzie3D({
 				animate={animate}
 				isPlaying={isPlaying}
 				wearables={wearables}
+				paused={paused}
 				wrapperStyle={{
 					position: "relative",
 					width: "100vw",
