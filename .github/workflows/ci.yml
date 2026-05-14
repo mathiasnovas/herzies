@@ -41,6 +41,9 @@ jobs:
         with:
           components: clippy, rustfmt
 
+      - name: Ensure rustup shims take precedence on PATH
+        run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: packages/desktop/src-tauri
