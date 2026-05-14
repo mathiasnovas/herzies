@@ -1,3 +1,5 @@
+"use client";
+
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { renderSky } from "./scenery-renderer.js";
 
