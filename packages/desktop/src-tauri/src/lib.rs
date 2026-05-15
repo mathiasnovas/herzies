@@ -620,8 +620,13 @@ async fn sync_tick(app: &AppHandle, client: &Client) -> Result<(), String> {
     }
 
     let result = api::api_sync(client, np_payload, minutes_to_sync, genres).await;
-    // The sync POST doubles as our connectivity probe — no separate HEAD needed.
-    let connected = result.is_some();
+    // /sync can fail for non-network reasons (5xx, schema mismatch, etc.) while
+    // the rest of the app keeps working. Treat ourselves as connected whenever
+    // we've gotten *any* HTTP response from the server in the last 90s, so a
+    // single failing sync doesn't flip the home screen to "reconnect to internet"
+    // while inventory/friends/etc. are clearly fine.
+    const REACHABLE_GRACE_MS: u64 = 90_000;
+    let connected = result.is_some() || api::ms_since_reachable() < REACHABLE_GRACE_MS;
     tray::set_connected(app, connected);
 
     if let Some(sync_resp) = result {
