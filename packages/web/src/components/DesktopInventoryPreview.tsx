@@ -12,7 +12,7 @@ const WINDOW_WIDTH = 380;
 const WINDOW_HEIGHT = 380;
 const TITLEBAR_HEIGHT = 28;
 const CONTENT_PADDING = 12;
-const ROTATION_MS = 5000;
+const ROTATION_MS = 1000;
 
 const MOCK_CURRENCY = 142;
 const MOCK_QTYS: Record<string, number> = {
@@ -58,10 +58,7 @@ export function DesktopInventoryPreview() {
           {item.name}
         </div>
         <div className="text-[11px] text-text-dim mb-1">
-          {RARITY_LABELS[item.rarity]} · x{qty}
-        </div>
-        <div className="text-[12px] text-text-dim mb-3 leading-snug">
-          {item.description}
+          {RARITY_LABELS[item.rarity]}
         </div>
       </div>
     </div>

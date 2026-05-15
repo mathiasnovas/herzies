@@ -1,3 +1,4 @@
+import { Herzie3D, Sky } from "@herzies/shared";
 import type { Metadata } from "next";
 import Link from "next/link";
 import BetaLeadForm from "@/components/beta-lead-form";
@@ -45,7 +46,7 @@ export default function Home() {
       />
 
       <Container>
-        <section className="hero text-center md:min-h-[60dvh] flex flex-col justify-center">
+        <section className="relative hero text-center md:min-h-[60dvh] flex flex-col justify-center pt-16">
           <h1 className="sr-only">
             Herzies — Your digital pet that grows by listening to music
           </h1>
@@ -64,14 +65,36 @@ export default function Home() {
           <Link href="#beta" className="inline mt-6">
             <Button className="inline">Early access</Button>
           </Link>
+
+          <div className="absolute bottom-0 right-0 translate-y-[110px] md:translate-y-[50px] translate-x-[80px]">
+            <Herzie3D
+              userId="e"
+              stage={2}
+              size={4}
+              ariaLabel="A stage 2 herzie"
+              draggable={false}
+              defaultAngle={0}
+            />
+          </div>
+
+          <div className="hidden sm:block absolute top-0 left-0 translate-x-[-100px]">
+            <Herzie3D
+              userId="t"
+              stage={1}
+              size={4}
+              ariaLabel="A stage 2 herzie"
+              draggable={false}
+              defaultAngle={100}
+            />
+          </div>
         </section>
       </Container>
 
       <Container className="pb-8 md:pb-12">
         <TextAndMedia
           preTitle="Listen"
-          title="You Herzie is unique to you"
-          description="Every Herzie is different. Your herzie grows with every track you listen to. Daily streaks, and friends give bonus XP."
+          title="Your Herzie is unique"
+          description="Every Herzie is different. Your Herzie grows with every track you listen to. Daily streaks, and friends give bonus XP."
           media={<DesktopHomePreview />}
           position="left"
         />
@@ -79,7 +102,7 @@ export default function Home() {
         <TextAndMedia
           preTitle="Collect"
           title="Collect rare items"
-          description="Every track you play has a chance to drop something. Cards, gear, oddities — equip your favorites or sell and trade them with your friends."
+          description="Every track you play has a chance to drop something. Cards, gear, oddities — equip your favorites or trade them with the Herzies community."
           media={<DesktopInventoryPreview />}
           position="right"
         />
@@ -87,7 +110,7 @@ export default function Home() {
         <TextAndMedia
           preTitle="Discover"
           title="Support emerging artists"
-          description="Join secret song hunts, receive rewards, and help artists get discovered."
+          description="Join secret song hunts and discover new music."
           media={<DesktopEventsPreview />}
           position="left"
         />

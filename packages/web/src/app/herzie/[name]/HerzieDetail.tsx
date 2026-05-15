@@ -133,7 +133,7 @@ export function HerzieDetail({
         <div className="relative mx-auto">
           <div className="shrink-0">
             <Herzie3D
-              userId={herzie.friend_code || herzie.name}
+              userId={herzie.friend_code}
               stage={herzie.stage}
               size={5}
               isPlaying={!!herzie.now_playing}

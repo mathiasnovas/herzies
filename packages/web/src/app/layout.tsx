@@ -58,7 +58,7 @@ export default async function RootLayout({
       <body className="min-h-screen flex flex-col justify-between items-start">
         <Header />
 
-        <main className="w-full flex-1">{children}</main>
+        <main className="w-full flex-1 overflow-clip">{children}</main>
 
         <Footer />
         <Analytics />

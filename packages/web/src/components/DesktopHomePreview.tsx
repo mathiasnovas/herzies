@@ -28,8 +28,8 @@ const MOCK = {
     { name: "Weekend Boost", bonus: 0.25 },
   ],
   nowPlaying: {
-    title: "Lover, You Should've Come Over",
-    artist: "Jeff Buckley",
+    title: "Ghost2",
+    artist: "Two Shell",
   },
 };
 
@@ -90,6 +90,7 @@ export function DesktopHomePreview() {
             size={SIZE}
             isPlaying
             ariaLabel={`A stage ${MOCK.stage} herzie named ${MOCK.name}`}
+            defaultAngle={50}
           />
         </div>
 
