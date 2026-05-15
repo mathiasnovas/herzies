@@ -71,7 +71,7 @@ export function HomeView({
 				}}
 			>
 				<Herzie3D
-					userId={herzie.id}
+					userId={herzie.friendCode}
 					stage={stageOverride ?? herzie.stage}
 					isPlaying={!!nowPlaying}
 					wearables={equipped}

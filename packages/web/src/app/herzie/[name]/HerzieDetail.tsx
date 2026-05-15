@@ -1,9 +1,9 @@
 "use client";
 
+import { Herzie3D } from "@herzies/shared";
 import { useCallback, useEffect, useState } from "react";
 import Container from "@/components/container";
 import { createSupabaseClient } from "@/lib/supabase";
-import { Herzie3D } from "@herzies/shared";
 
 const POLL_INTERVAL = 10_000;
 
@@ -130,14 +130,16 @@ export function HerzieDetail({
     <Container className="py-12 flex flex-col gap-6">
       {/* Header: art + info */}
       <div className="flex gap-8 items-start flex-wrap">
-        <div className="shrink-0">
-          <Herzie3D
-            userId={herzie.friend_code || herzie.name}
-            stage={herzie.stage}
-            size={5}
-            isPlaying={!!herzie.now_playing}
-            ariaLabel={`${herzie.name}, a stage ${herzie.stage} herzie`}
-          />
+        <div className="relative mx-auto">
+          <div className="shrink-0">
+            <Herzie3D
+              userId={herzie.friend_code || herzie.name}
+              stage={herzie.stage}
+              size={5}
+              isPlaying={!!herzie.now_playing}
+              ariaLabel={`${herzie.name}, a stage ${herzie.stage} herzie`}
+            />
+          </div>
         </div>
 
         <div className="flex-1 min-w-[200px]">
