@@ -551,7 +551,8 @@ fn quit(app: AppHandle) {
 }
 
 fn send_notification(app: &AppHandle, title: &str, body: &str, deep_link: Option<&str>) {
-    // Store deep link for when the notification is clicked
+    // Store deep link so RunEvent::Reopen (notification click) and on_focus
+    // (tray re-open) can deliver it once the user surfaces the window.
     if let Some(item_id) = deep_link {
         if let Ok(mut dl) = app.state::<PendingDeepLink>().0.lock() {
             *dl = Some(item_id.to_string());
@@ -560,23 +561,15 @@ fn send_notification(app: &AppHandle, title: &str, body: &str, deep_link: Option
 
     let title = title.to_string();
     let body = body.to_string();
-    let app = app.clone();
 
+    // Fire-and-forget. The previous implementation used wait_for_click(true),
+    // which inside mac-notification-sys spins an NSRunLoop until the user
+    // clicks — pegging a core at ~100% per pending notification. Click routing
+    // is now handled via RunEvent::Reopen in run().
     std::thread::spawn(move || {
         let mut n = mac_notification_sys::Notification::default();
-        n.title(&title).message(&body).wait_for_click(true);
-
-        if let Ok(response) = n.send() {
-            if matches!(response, mac_notification_sys::NotificationResponse::Click) {
-                tray::ensure_visible(&app);
-                // Emit pending deep link (covers case where window was already visible)
-                if let Ok(mut dl) = app.state::<PendingDeepLink>().0.lock() {
-                    if let Some(item_id) = dl.take() {
-                        let _ = app.emit("deep-link", item_id);
-                    }
-                }
-            }
-        }
+        n.title(&title).message(&body);
+        let _ = n.send();
     });
 }
 
@@ -845,6 +838,14 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // macOS sends Reopen when the app is re-activated — including via
+            // a notification click. Surfacing the window here triggers the
+            // existing on_focus chain which emits any pending deep link.
+            if matches!(event, tauri::RunEvent::Reopen { .. }) {
+                tray::ensure_visible(app_handle);
+            }
+        });
 }
